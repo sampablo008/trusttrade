@@ -1327,10 +1327,10 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] `/signup` page with gated form (code validates live, form reveals)
 - [x] `/api/invites/validate` GET Route Handler
 - [x] `/api/auth/signup` POST Route Handler (create user + rollback on failure + consume_invite)
-- [ ] `/admin/invites` page — two tabs: All Codes + Mint
-- [ ] `/api/admin/codes/mint` POST (1–1000 at once)
-- [ ] `/api/admin/codes/:code/revoke` POST
-- [ ] CSV export for minted batches
+- [x] `/admin/invites` page — two tabs: All Codes + Mint
+- [x] `/api/admin/codes/mint` POST (1–1000 at once)
+- [x] `/api/admin/codes/:code/revoke` POST
+- [x] CSV export for minted batches
 - [ ] Tests: single-use semantics, race condition (concurrent signups), revocation, expiry auto-flip
 - [ ] Playwright: signup without code → rejected; with valid code → account created
 
@@ -1348,14 +1348,30 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 ### Phase 3: Verify
 - [x] Verify lint and production build after the invitation slice — `pnpm lint`, `pnpm build`
-- [ ] Admin invitation queue, revoke/mint endpoints, CSV export, and signup Playwright coverage remain for the next slice
+- [ ] Invitation lifecycle tests and signup Playwright coverage remain for the next slice
+
+### Phase 4: Admin invite control panel
+- [x] Add protected admin invite backend helpers with preview/live paths — `lib/auth/assert-admin-api.ts` (created), `lib/invites/admin-service.ts` (created), `lib/invites/preview-data.ts` (modified), `schemas/invites.ts` (modified), `types/invites.ts` (modified)
+- [x] Add admin mint and revoke Route Handlers — `app/api/admin/codes/mint/route.ts` (created), `app/api/admin/codes/[code]/revoke/route.ts` (created)
+- [x] Build `/admin/invites` with All Codes, Mint, revoke actions, and batch CSV export — `app/admin/invites/page.tsx` (created), `components/admin/invite-control-panel.tsx` (created), `app/admin/page.tsx` (modified)
+
+### Phase 5: Verify
+- [x] Verify lint and production build after the admin invite slice — `pnpm lint`, `pnpm build`
+- [ ] Invitation lifecycle tests and signup Playwright coverage still remain
 
 **Files touched:**
 - `app/api/auth/signup/route.ts` — created
+- `app/api/admin/codes/[code]/revoke/route.ts` — created
+- `app/api/admin/codes/mint/route.ts` — created
 - `app/api/invites/validate/route.ts` — created
+- `app/admin/invites/page.tsx` — created
 - `app/signup/page.tsx` — created
+- `app/admin/page.tsx` — modified
+- `components/admin/invite-control-panel.tsx` — created
 - `components/auth/signup-form.tsx` — created
+- `lib/auth/assert-admin-api.ts` — created
 - `lib/env/server.ts` — modified
+- `lib/invites/admin-service.ts` — created
 - `lib/invites/preview-data.ts` — created
 - `lib/invites/service.ts` — created
 - `schemas/invites.ts` — created

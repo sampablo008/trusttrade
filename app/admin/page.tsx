@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import { signOutPreview } from "@/app/actions/auth";
 import { assertAdmin } from "@/lib/auth/assertAdmin";
 import { settlementRows } from "@/lib/constants/platform";
@@ -16,8 +18,8 @@ export default async function AdminPage() {
             </p>
             <h1 className="font-display text-5xl tracking-tight text-foreground">/admin</h1>
             <p className="max-w-2xl text-base leading-8 text-muted">
-              Admin redirect scaffold is live. The real queue, audit views, and user controls can
-              now land behind a stable protected route.
+              Protected shell is live. Invite control now has a real route. Trade queue and audit
+              views can keep landing here phase by phase.
             </p>
           </div>
 
@@ -31,37 +33,57 @@ export default async function AdminPage() {
           </form>
         </div>
 
-        <div className="mt-8 overflow-hidden rounded-[28px] border border-border">
-          <table className="min-w-full divide-y divide-border text-left">
-            <thead className="bg-background/55">
-              <tr>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-                  Trade
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-                  User
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-                  Stake
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-                  Flag
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-surface">
-              {settlementRows.map((row) => (
-                <tr key={row.id}>
-                  <td className="px-4 py-4 text-sm font-semibold text-foreground">{row.pair}</td>
-                  <td className="px-4 py-4 text-sm text-foreground">{row.user}</td>
-                  <td className="px-4 py-4 text-sm text-foreground">
-                    {formatUsdFromCents(row.stakeCents)}
-                  </td>
-                  <td className="px-4 py-4 text-sm text-muted">{row.flag}</td>
+        <div className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-[28px] border border-border bg-background/30 p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+              Live module
+            </p>
+            <h2 className="mt-3 font-display text-3xl text-foreground">Invitation gate ops</h2>
+            <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+              Mint root codes, inspect invite status, revoke active codes, and export the latest
+              batch from one control surface.
+            </p>
+            <Link
+              href="/admin/invites"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+            >
+              Open invites
+              <ArrowUpRight size={16} />
+            </Link>
+          </div>
+
+          <div className="overflow-hidden rounded-[28px] border border-border">
+            <table className="min-w-full divide-y divide-border text-left">
+              <thead className="bg-background/55">
+                <tr>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                    Trade
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                    User
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                    Stake
+                  </th>
+                  <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                    Flag
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border bg-surface">
+                {settlementRows.map((row) => (
+                  <tr key={row.id}>
+                    <td className="px-4 py-4 text-sm font-semibold text-foreground">{row.pair}</td>
+                    <td className="px-4 py-4 text-sm text-foreground">{row.user}</td>
+                    <td className="px-4 py-4 text-sm text-foreground">
+                      {formatUsdFromCents(row.stakeCents)}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-muted">{row.flag}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </main>

@@ -8,6 +8,10 @@ export const inviteCodeSchema = z
   .regex(/^[a-zA-Z0-9._-]+$/, "Invite code format is invalid.")
   .transform((value) => value.toUpperCase());
 
+export const inviteSourceSchema = z.enum(["admin", "user"]);
+export const inviteStatusSchema = z.enum(["active", "used", "revoked", "expired"]);
+export const inviteModeSchema = z.enum(["live", "preview"]);
+
 export const inviteValidationQuerySchema = z.object({
   code: inviteCodeSchema,
 });
@@ -18,9 +22,9 @@ export const inviteValidationResultSchema = z.object({
   isSingleUse: z.boolean(),
   isValid: z.boolean(),
   message: z.string(),
-  mode: z.enum(["live", "preview"]),
+  mode: inviteModeSchema,
   ownerUserId: z.string().uuid().nullable(),
-  source: z.enum(["admin", "user"]).nullable(),
+  source: inviteSourceSchema.nullable(),
   status: z.string().nullable(),
 });
 
@@ -43,4 +47,65 @@ export const invitedSignupSchema = z.object({
 export const inviteSignupResultSchema = z.object({
   nextPath: z.string(),
   userId: z.string().uuid(),
+});
+
+export const adminInviteCodeSchema = z.object({
+  code: inviteCodeSchema,
+  createdAt: z.string().datetime(),
+  createdByAdminId: z.string().uuid().nullable(),
+  expiresAt: z.string().datetime().nullable(),
+  isSingleUse: z.boolean(),
+  lastUsedAt: z.string().datetime().nullable(),
+  mode: inviteModeSchema,
+  note: z.string().max(240).nullable(),
+  ownerUserId: z.string().uuid().nullable(),
+  revokedAt: z.string().datetime().nullable(),
+  source: inviteSourceSchema,
+  status: inviteStatusSchema,
+  usedCount: z.number().int().nonnegative(),
+});
+
+export const adminInviteSummarySchema = z.object({
+  activeCount: z.number().int().nonnegative(),
+  adminCount: z.number().int().nonnegative(),
+  expiredCount: z.number().int().nonnegative(),
+  revokedCount: z.number().int().nonnegative(),
+  totalCount: z.number().int().nonnegative(),
+  usedCount: z.number().int().nonnegative(),
+  userCount: z.number().int().nonnegative(),
+});
+
+export const adminInviteCodesResultSchema = z.object({
+  items: z.array(adminInviteCodeSchema),
+  summary: adminInviteSummarySchema,
+});
+
+export const mintInviteCodesInputSchema = z.object({
+  count: z.coerce.number().int().min(1, "Mint at least one code.").max(1000, "Max batch is 1000."),
+  expiresAt: z.string().datetime().nullable(),
+  note: z
+    .string()
+    .trim()
+    .max(240, "Keep the batch note under 240 characters.")
+    .nullable(),
+});
+
+export const mintedInviteCodeSchema = z.object({
+  code: inviteCodeSchema,
+  createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime().nullable(),
+  mode: inviteModeSchema,
+  note: z.string().nullable(),
+});
+
+export const mintInviteCodesResultSchema = z.object({
+  batch: z.array(mintedInviteCodeSchema),
+  mode: inviteModeSchema,
+});
+
+export const revokeInviteCodeResultSchema = z.object({
+  code: inviteCodeSchema,
+  mode: inviteModeSchema,
+  revokedAt: z.string().datetime(),
+  status: inviteStatusSchema,
 });
