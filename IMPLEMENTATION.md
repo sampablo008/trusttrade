@@ -1401,20 +1401,25 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Migration `0011_storage_buckets.sql` — all 5 buckets with mime + size limits + RLS
 - [x] Admin token CRUD: `/admin/tokens` page + `/api/admin/tokens` endpoints
 - [x] Admin period CRUD: `/admin/periods` page + endpoints
-- [ ] Admin wallet CRUD: `/admin/wallets` + endpoints (last-8-char confirm)
+- [x] Admin wallet CRUD: `/admin/wallets` + endpoints (last-8-char confirm)
 - [x] Admin icon upload: `/api/admin/upload/token-icon`
 - [x] Media proxy: `/api/media/[bucket]/[...path]` Route Handler
 - [x] Public reads: `/api/tokens`, `/api/periods`, `/api/candles`
-- [ ] Edge Fn: `shadow_fetch` — Binance WS subscriber, scale+offset, updates `tokens.last_shadow_price`
-- [ ] Edge Fn: `tick_candles` — 1-second cron, generates OHLC with GBM or shadow or replay
-- [ ] Edge Fn: `aggregate_candles` — 1-minute cron, rolls up higher TFs
-- [ ] `/api/stream/candles` SSE Route Handler with server-side TF aggregation
-- [ ] `TradingChart.tsx` with lightweight-charts — candles + volume + crosshair + TF tabs
-- [ ] `TickInterpolator` hook — 60 fps sub-tick animation using `useEffectEvent`
-- [ ] `OrderBookIllusion.tsx` — synthetic depth ladder
-- [ ] `TickerStrip.tsx` — marquee of all tokens
-- [ ] `/admin/candles` controller — freeze, nudge, hard-set, replay CSV upload
-- [ ] "Pull from Binance" button — fetches historical candles via REST, seeds `candle_replay_bank`
+- [x] Edge Fn: `shadow_fetch` — Binance WS subscriber, scale+offset, updates `tokens.last_shadow_price`
+- [x] Edge Fn: `tick_candles` — 1-second cron, generates OHLC with GBM or shadow or replay
+- [x] Edge Fn: `aggregate_candles` — 1-minute cron, rolls up higher TFs
+- [x] `/api/stream/candles` SSE Route Handler with server-side TF aggregation
+- [x] `/api/stream/ticker` SSE Route Handler — all token prices
+- [x] `TradingChart.tsx` with lightweight-charts v5 — candles + volume + crosshair + TF tabs
+- [x] `TickInterpolator` hook — 60 fps sub-tick animation (rAF + ease-out cubic)
+- [x] `useCandleStream` hook — SSE → chart update + auto-reconnect
+- [x] `OrderBookIllusion.tsx` — synthetic depth ladder with 2s jitter
+- [x] `TickerStrip.tsx` — infinite marquee of all tokens
+- [x] `/admin/candles` controller — freeze, nudge, hard-set, feed-source toggle
+- [x] Replay CSV upload: `/api/admin/candles/:id/replay/upload`
+- [x] "Pull from Binance" button — fetches 500 1m candles via REST, seeds `candle_replay_bank`
+- [x] Migration `0012_wallet_addresses.sql` — wallet_addresses table + RLS
+- [x] Public wallets endpoint: `/api/wallets`
 - [ ] Tests: shadow scale hidden in API; multi-TF aggregation integrity; micro-tick range bounds; replay cursor advance
 
 **Exit.** Chart at 1s–1d TFs, follows real BTC via shadow, admin can freeze/replay, price label 60 fps smooth.
@@ -1465,6 +1470,76 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Verify lint and production build after the media slice — `pnpm lint`, `pnpm build`
 - [ ] Wallet CRUD and live chart streaming still remain
 
+### Phase 11: Admin wallet CRUD + wallet addresses migration
+- [x] Add wallet address types, schemas, preview data, and live service — `types/wallet.ts` (created), `schemas/wallet.ts` (created), `lib/wallets/preview-data.ts` (created), `lib/wallets/admin-service.ts` (created), `lib/wallets/service.ts` (created)
+- [x] Add admin wallet CRUD Route Handlers with last-8-char confirm UI — `app/api/admin/wallets/route.ts` (created), `app/api/admin/wallets/[id]/route.ts` (created)
+- [x] Add public wallets endpoint — `app/api/wallets/route.ts` (created)
+- [x] Build `/admin/wallets` control panel and wallet migration — `app/admin/wallets/page.tsx` (created), `components/admin/wallet-control-panel.tsx` (created), `supabase/migrations/0012_wallet_addresses.sql` (created), `app/admin/page.tsx` (modified)
+
+### Phase 12: Edge functions + SSE streams
+- [x] Write shadow_fetch Supabase edge function (Binance WS → scale+offset → tokens table) — `supabase/functions/shadow_fetch/index.ts` (created)
+- [x] Write tick_candles edge function (1s cron, shadow/synthetic/replay/frozen modes) — `supabase/functions/tick_candles/index.ts` (created)
+- [x] Write aggregate_candles edge function (1m cron, roll up to all TFs) — `supabase/functions/aggregate_candles/index.ts` (created)
+- [x] Add SSE candle stream (preview + live Realtime path) — `app/api/stream/candles/route.ts` (created)
+- [x] Add SSE ticker stream (all tokens, 2s updates) — `app/api/stream/ticker/route.ts` (created)
+- [x] Exclude supabase/functions from TypeScript compilation — `tsconfig.json` (modified)
+
+### Phase 13: Chart UI — TradingChart, TickInterpolator, hooks
+- [x] Add `lightweight-charts` v5 dependency — `package.json` (modified), `pnpm-lock.yaml` (modified)
+- [x] Build `useTickInterpolator` hook (60fps rAF loop, no render-time ref writes) — `hooks/useTickInterpolator.ts` (created)
+- [x] Build `useCandleStream` hook (SSE + exponential-backoff reconnect) — `hooks/useCandleStream.ts` (created)
+- [x] Build `TradingChart.tsx` (lightweight-charts v5 API, candlestick + volume, 8 TF tabs) — `components/chart/TradingChart.tsx` (created)
+
+### Phase 14: Order book illusion + ticker strip
+- [x] Build `OrderBookIllusion.tsx` (seeded synthetic depth, 2s jitter, no Math.random during render) — `components/chart/OrderBookIllusion.tsx` (created)
+- [x] Build `TickerStrip.tsx` (infinite CSS marquee, SSE price updates, connectRef pattern) — `components/chart/TickerStrip.tsx` (created)
+
+### Phase 15: Admin candle controller
+- [x] Add candle controller PATCH Route Handler (feed source, drift bias) — `app/api/admin/candles/controller/[tokenId]/route.ts` (created)
+- [x] Add hard-set price POST Route Handler — `app/api/admin/candles/[tokenId]/hard-set/route.ts` (created)
+- [x] Add replay CSV upload POST Route Handler — `app/api/admin/candles/[tokenId]/replay/upload/route.ts` (created)
+- [x] Add Pull-from-Binance POST Route Handler (500 × 1m klines) — `app/api/admin/candles/[tokenId]/replay/pull-binance/route.ts` (created)
+- [x] Build `CandleControllerPanel` component and `/admin/candles` page — `components/admin/candle-controller-panel.tsx` (created), `app/admin/candles/page.tsx` (created), `app/admin/page.tsx` (modified)
+- [x] Add candle controller types — `types/candle-controller.ts` (created)
+
+### Phase 16: Verify
+- [x] Verify lint (0 errors) and production build pass — `pnpm lint`, `pnpm build`
+
+**Files touched (Sprint 1 phases 11–16):**
+- `IMPLEMENTATION.md` — modified
+- `app/admin/candles/page.tsx` — created
+- `app/admin/page.tsx` — modified
+- `app/admin/wallets/page.tsx` — created
+- `app/api/admin/candles/[tokenId]/hard-set/route.ts` — created
+- `app/api/admin/candles/[tokenId]/replay/pull-binance/route.ts` — created
+- `app/api/admin/candles/[tokenId]/replay/upload/route.ts` — created
+- `app/api/admin/candles/controller/[tokenId]/route.ts` — created
+- `app/api/admin/wallets/[id]/route.ts` — created
+- `app/api/admin/wallets/route.ts` — created
+- `app/api/stream/candles/route.ts` — created
+- `app/api/stream/ticker/route.ts` — created
+- `app/api/wallets/route.ts` — created
+- `components/admin/candle-controller-panel.tsx` — created
+- `components/admin/wallet-control-panel.tsx` — created
+- `components/chart/OrderBookIllusion.tsx` — created
+- `components/chart/TickerStrip.tsx` — created
+- `components/chart/TradingChart.tsx` — created
+- `hooks/useCandleStream.ts` — created
+- `hooks/useTickInterpolator.ts` — created
+- `lib/wallets/admin-service.ts` — created
+- `lib/wallets/preview-data.ts` — created
+- `lib/wallets/service.ts` — created
+- `package.json` — modified
+- `pnpm-lock.yaml` — modified
+- `schemas/wallet.ts` — created
+- `supabase/functions/aggregate_candles/index.ts` — created
+- `supabase/functions/shadow_fetch/index.ts` — created
+- `supabase/functions/tick_candles/index.ts` — created
+- `supabase/migrations/0012_wallet_addresses.sql` — created
+- `tsconfig.json` — modified
+- `types/candle-controller.ts` — created
+- `types/wallet.ts` — created
+
 **Files touched:**
 - `IMPLEMENTATION.md` — modified
 - `app/admin/page.tsx` — modified
@@ -1506,25 +1581,116 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 **Goal.** End-to-end trade flow with countdowns.
 
-- [ ] Migration `0002_place_trade.sql` — `place_trade` security definer function
-- [ ] `/api/trades` POST (place) + GET (list, filterable)
-- [ ] `/api/trades/:id` GET
-- [ ] `/api/trades/:id/cancel` POST (2s grace)
-- [ ] `/api/me` GET + PATCH
-- [ ] `/api/me/balance` GET
-- [ ] `/api/stream/user` SSE Route Handler — all user-scoped events in one pipe
-- [ ] `useUserStream()` hook wiring SSE → Zustand + TanStack invalidations
-- [ ] `OrderTicket.tsx` composite — LongShortToggle, PeriodSelector, AmountInput, PayoutPreview
-- [ ] `PlaceTradeButton.tsx` with optimistic countdown
-- [ ] `ActivePositionsList.tsx` + `PositionRow.tsx`
-- [ ] `Countdown.tsx` — drift-free, absolute end time, pulse red at <10s
-- [ ] Chart overlay: entry price line + expiry marker per active trade
-- [ ] Trade settlement toast (win → success, lose → error)
-- [ ] Balance flash animation in header on update
-- [ ] Upstash rate limit: `place:${uid}` @ 5/10s
+- [x] Migration `0002_place_trade.sql` — `place_trade` + `apply_wager_progress` security definer functions
+- [x] `/api/trades` POST (place) + GET (list, filterable by status)
+- [x] `/api/trades/:id` GET
+- [x] `/api/trades/:id/cancel` POST (2s grace)
+- [x] `/api/me` GET + PATCH
+- [x] `/api/me/balance` GET
+- [x] `/api/stream/user` SSE Route Handler — snapshot + trade/balance/settlement events in one pipe
+- [x] `useUserStream()` hook wiring SSE → Zustand + TanStack invalidations, exponential-backoff reconnect
+- [x] `OrderTicket.tsx` composite — LongShortToggle, PeriodSelector, AmountInput, PayoutPreview
+- [x] `ActivePositionsList.tsx` + `PositionRow.tsx`
+- [x] `Countdown.tsx` — drift-free, absolute end time, pulse red at <10s
+- [x] `SettlementToast.tsx` — win/lose/void toast with auto-dismiss
+- [x] `BalanceHeader.tsx` — flash green/red on balance change
+- [x] `TradeShell.tsx` — client shell wiring chart + order ticket + positions + toasts
+- [x] `/trade/[symbol]` dynamic page — server-fetched token, periods, candles, balance, active trades
+- [x] `/trade` redirects to first enabled token
+- [x] `QueryProvider.tsx` — TanStack Query root provider added to layout
+- [x] Upstash rate limit: `place:${uid}` @ 5/10s (graceful no-op when Redis not configured)
+- [x] `lib/auth/assert-user-api.ts` — user auth guard for Route Handlers (preview + live)
+- [ ] Chart overlay: entry price line + expiry marker per active trade (deferred to Sprint 3 chart work)
 - [ ] Tests: happy path win + lose; insufficient funds; rate limit; trade page mobile
 
 **Exit.** User places a trade from UI. Admin (via SQL) marks it settled. User sees toast within 500 ms.
+
+**Sprint 2 log — 2026-04-19**
+
+### Phase 1: DB migration
+- [x] Write `place_trade` and `apply_wager_progress` security-definer SQL functions — `supabase/migrations/0002_place_trade.sql` (created)
+
+### Phase 2: Types + schemas
+- [x] Trade + profile types and Zod schemas — `types/trade.ts` (created), `schemas/trade.ts` (created)
+
+### Phase 3: Services
+- [x] Trade preview data (in-memory store, mock active/settled trades) — `lib/trades/preview-data.ts` (created)
+- [x] Trade + profile live service (preview/live dual path) — `lib/trades/service.ts` (created)
+
+### Phase 4: API routes
+- [x] Trade list + place — `app/api/trades/route.ts` (created)
+- [x] Trade get — `app/api/trades/[id]/route.ts` (created)
+- [x] Trade cancel (2s grace) — `app/api/trades/[id]/cancel/route.ts` (created)
+- [x] Profile get + patch — `app/api/me/route.ts` (created)
+- [x] Balance get — `app/api/me/balance/route.ts` (created)
+- [x] User auth guard helper — `lib/auth/assert-user-api.ts` (created)
+
+### Phase 5: SSE user stream
+- [x] SSE stream with hello, snapshot, trade, balance events — `app/api/stream/user/route.ts` (created)
+
+### Phase 6: Store + hook
+- [x] Extend Zustand store with activeTrades, balance, streamConnected, upsertTrade, setActiveTrades, setBalance — `stores/trading-shell-store.ts` (modified)
+- [x] useUserStream hook with exponential-backoff reconnect — `hooks/useUserStream.ts` (created)
+
+### Phase 7: Trade UI components
+- [x] Countdown (drift-free, pulse red at <10s) — `components/trade/Countdown.tsx` (created)
+- [x] LongShortToggle — `components/trade/LongShortToggle.tsx` (created)
+- [x] PeriodSelector — `components/trade/PeriodSelector.tsx` (created)
+- [x] AmountInput with quick amounts — `components/trade/AmountInput.tsx` (created)
+- [x] PayoutPreview — `components/trade/PayoutPreview.tsx` (created)
+- [x] OrderTicket composite — `components/trade/OrderTicket.tsx` (created)
+- [x] PositionRow — `components/trade/PositionRow.tsx` (created)
+- [x] ActivePositionsList — `components/trade/ActivePositionsList.tsx` (created)
+- [x] SettlementToast — `components/trade/SettlementToast.tsx` (created)
+- [x] BalanceHeader (flash animation on update) — `components/trade/BalanceHeader.tsx` (created)
+
+### Phase 8: Trade page
+- [x] TradeShell client component — `components/trade/TradeShell.tsx` (created)
+- [x] /trade/[symbol] server page — `app/trade/[symbol]/page.tsx` (created)
+- [x] /trade redirect to first token — `app/trade/page.tsx` (modified)
+- [x] QueryProvider added to root layout — `components/providers/QueryProvider.tsx` (created), `app/layout.tsx` (modified)
+
+### Phase 9: Rate limiting
+- [x] Upstash trade rate limiter (5/10s, graceful no-op without Redis) — `lib/rate-limit/trades.ts` (created)
+- [x] Wired into /api/trades POST — `app/api/trades/route.ts` (modified)
+
+### Phase 10: Verify
+- [x] Lint 0 errors — `pnpm lint`
+- [x] Production build passes (34 routes) — `pnpm build`
+
+**Files touched:**
+- `app/api/me/balance/route.ts` — created
+- `app/api/me/route.ts` — created
+- `app/api/stream/user/route.ts` — created
+- `app/api/trades/[id]/cancel/route.ts` — created
+- `app/api/trades/[id]/route.ts` — created
+- `app/api/trades/route.ts` — created
+- `app/layout.tsx` — modified
+- `app/trade/[symbol]/page.tsx` — created
+- `app/trade/page.tsx` — modified
+- `components/providers/QueryProvider.tsx` — created
+- `components/trade/ActivePositionsList.tsx` — created
+- `components/trade/AmountInput.tsx` — created
+- `components/trade/BalanceHeader.tsx` — created
+- `components/trade/Countdown.tsx` — created
+- `components/trade/LongShortToggle.tsx` — created
+- `components/trade/OrderTicket.tsx` — created
+- `components/trade/PayoutPreview.tsx` — created
+- `components/trade/PeriodSelector.tsx` — created
+- `components/trade/PositionRow.tsx` — created
+- `components/trade/SettlementToast.tsx` — created
+- `components/trade/TradeShell.tsx` — created
+- `hooks/useUserStream.ts` — created
+- `lib/auth/assert-user-api.ts` — created
+- `lib/rate-limit/trades.ts` — created
+- `lib/trades/preview-data.ts` — created
+- `lib/trades/service.ts` — created
+- `package.json` — modified
+- `pnpm-lock.yaml` — modified
+- `schemas/trade.ts` — created
+- `stores/trading-shell-store.ts` — modified
+- `supabase/migrations/0002_place_trade.sql` — created
+- `types/trade.ts` — created
 
 ---
 

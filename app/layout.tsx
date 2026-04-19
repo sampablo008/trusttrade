@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Manrope, Syne } from "next/font/google";
+import QueryProvider from "@/components/providers/QueryProvider";
 import { siteMetadata } from "@/lib/config/site";
 import "./globals.css";
 
@@ -27,7 +28,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="min-h-full bg-background text-foreground antialiased">
-        {children}
+        <QueryProvider>{children}</QueryProvider>
       </body>
     </html>
   );

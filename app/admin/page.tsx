@@ -88,6 +88,42 @@ export default async function AdminPage() {
                 <ArrowUpRight size={16} />
               </Link>
             </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                New module
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Chart price engine</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Freeze tokens, set drift bias, hard-set any price, import CSV replay, or pull live
+                historical candles from Binance with one click.
+              </p>
+              <Link
+                href="/admin/candles"
+                className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+              >
+                Open chart control
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                New module
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Deposit wallet ops</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Manage deposit addresses per token and network. Address edits require last-8-char
+                confirmation to prevent accidental misroutes.
+              </p>
+              <Link
+                href="/admin/wallets"
+                className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+              >
+                Open wallets
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">
