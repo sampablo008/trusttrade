@@ -85,3 +85,32 @@ export interface UpsertAdminTokenInput {
 export interface DeleteAdminTokenResult {
   id: string;
 }
+
+export interface AdminTradePeriod {
+  createdAt: string;
+  durationSeconds: number;
+  id: string;
+  isEnabled: boolean;
+  label: string;
+  maxAmountCents: number;
+  minAmountCents: number;
+  payoutBps: number;
+  updatedAt: string;
+}
+
+export interface AdminTradePeriodsResult {
+  items: AdminTradePeriod[];
+}
+
+export interface UpsertAdminTradePeriodInput {
+  durationSeconds: number;
+  isEnabled: boolean;
+  label: string;
+  maxAmountCents: number;
+  minAmountCents: number;
+  payoutBps: number;
+}
+
+export interface DeleteAdminTradePeriodResult {
+  id: string;
+}

@@ -110,3 +110,37 @@ export const upsertAdminTokenInputSchema = z.object({
 export const deleteAdminTokenResultSchema = z.object({
   id: z.string().uuid(),
 });
+
+export const adminTradePeriodSchema = z.object({
+  createdAt: z.string().datetime(),
+  durationSeconds: z.number().int().positive(),
+  id: z.string().uuid(),
+  isEnabled: z.boolean(),
+  label: z.string().min(1).max(64),
+  maxAmountCents: z.number().int().positive(),
+  minAmountCents: z.number().int().positive(),
+  payoutBps: z.number().int().positive(),
+  updatedAt: z.string().datetime(),
+});
+
+export const adminTradePeriodsResultSchema = z.object({
+  items: z.array(adminTradePeriodSchema),
+});
+
+export const upsertAdminTradePeriodInputSchema = z
+  .object({
+    durationSeconds: z.coerce.number().int().positive("Duration must be positive."),
+    isEnabled: z.boolean(),
+    label: z.string().trim().min(1, "Label is required.").max(64, "Label is too long."),
+    maxAmountCents: z.coerce.number().int().positive("Max amount must be positive."),
+    minAmountCents: z.coerce.number().int().positive("Min amount must be positive."),
+    payoutBps: z.coerce.number().int().positive("Payout must be positive."),
+  })
+  .refine((value) => value.maxAmountCents >= value.minAmountCents, {
+    message: "Max amount must be greater than or equal to min amount.",
+    path: ["maxAmountCents"],
+  });
+
+export const deleteAdminTradePeriodResultSchema = z.object({
+  id: z.string().uuid(),
+});

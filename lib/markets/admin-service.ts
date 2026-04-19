@@ -2,19 +2,34 @@ import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import {
+  createPreviewAdminTradePeriod,
   createPreviewAdminToken,
+  deletePreviewAdminTradePeriod,
   deletePreviewAdminToken,
+  listPreviewAdminTradePeriods,
   listPreviewAdminTokens,
+  updatePreviewAdminTradePeriod,
   updatePreviewAdminToken,
 } from "@/lib/markets/preview-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
+  adminTradePeriodSchema,
+  adminTradePeriodsResultSchema,
   adminTokenSchema,
   adminTokensResultSchema,
+  deleteAdminTradePeriodResultSchema,
   deleteAdminTokenResultSchema,
+  upsertAdminTradePeriodInputSchema,
   upsertAdminTokenInputSchema,
 } from "@/schemas/market";
-import type { AdminToken, AdminTokensResult, DeleteAdminTokenResult } from "@/types/market";
+import type {
+  AdminToken,
+  AdminTokensResult,
+  AdminTradePeriod,
+  AdminTradePeriodsResult,
+  DeleteAdminTokenResult,
+  DeleteAdminTradePeriodResult,
+} from "@/types/market";
 
 interface AdminTokenRow {
   base_price_cents: number | string;
@@ -32,6 +47,18 @@ interface AdminTokenRow {
   symbol: string;
   updated_at: string;
   volatility_factor: number | string;
+}
+
+interface AdminTradePeriodRow {
+  created_at: string;
+  duration_seconds: number | string;
+  id: string;
+  is_enabled: boolean;
+  label: string;
+  max_amount_cents: number | string;
+  min_amount_cents: number | string;
+  payout_bps: number | string;
+  updated_at: string;
 }
 
 const toNumber = (value: number | string | null | undefined) => {
@@ -67,8 +94,23 @@ const mapAdminTokenRow = (row: AdminTokenRow): AdminToken =>
     volatilityFactor: Number(toNumber(row.volatility_factor).toFixed(4)),
   });
 
+const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
+  adminTradePeriodSchema.parse({
+    createdAt: row.created_at,
+    durationSeconds: Math.round(toNumber(row.duration_seconds)),
+    id: row.id,
+    isEnabled: row.is_enabled,
+    label: row.label,
+    maxAmountCents: Math.round(toNumber(row.max_amount_cents)),
+    minAmountCents: Math.round(toNumber(row.min_amount_cents)),
+    payoutBps: Math.round(toNumber(row.payout_bps)),
+    updatedAt: row.updated_at,
+  });
+
 const selectAdminTokenFields =
   "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at";
+const selectAdminTradePeriodFields =
+  "id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, is_enabled, created_at, updated_at";
 
 export const listAdminTokens = async (): Promise<AdminTokensResult> => {
   if (!getOptionalServerEnv()) {
@@ -180,6 +222,122 @@ export const deleteAdminToken = async (id: string): Promise<DeleteAdminTokenResu
   }
 
   return deleteAdminTokenResultSchema.parse({
+    id: data.id,
+  });
+};
+
+export const listAdminTradePeriods = async (): Promise<AdminTradePeriodsResult> => {
+  if (!getOptionalServerEnv()) {
+    return listPreviewAdminTradePeriods();
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("trade_periods")
+    .select(selectAdminTradePeriodFields)
+    .order("duration_seconds", { ascending: true });
+
+  if (error) {
+    throw new ApiClientError(error.message, 500, "ADMIN_PERIODS_FETCH_FAILED", error);
+  }
+
+  if (!data?.length) {
+    return listPreviewAdminTradePeriods();
+  }
+
+  return adminTradePeriodsResultSchema.parse({
+    items: data.map((row) => mapAdminTradePeriodRow(row as AdminTradePeriodRow)),
+  });
+};
+
+export const createAdminTradePeriod = async (payload: unknown): Promise<AdminTradePeriod> => {
+  const input = upsertAdminTradePeriodInputSchema.parse(payload);
+
+  if (!getOptionalServerEnv()) {
+    return createPreviewAdminTradePeriod(input);
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("trade_periods")
+    .insert({
+      duration_seconds: input.durationSeconds,
+      is_enabled: input.isEnabled,
+      label: input.label,
+      max_amount_cents: input.maxAmountCents,
+      min_amount_cents: input.minAmountCents,
+      payout_bps: input.payoutBps,
+    })
+    .select(selectAdminTradePeriodFields)
+    .single();
+
+  if (error) {
+    throw new ApiClientError(error.message, 500, "ADMIN_PERIOD_CREATE_FAILED", error);
+  }
+
+  return mapAdminTradePeriodRow(data as AdminTradePeriodRow);
+};
+
+export const updateAdminTradePeriod = async (
+  id: string,
+  payload: unknown,
+): Promise<AdminTradePeriod> => {
+  const input = upsertAdminTradePeriodInputSchema.parse(payload);
+
+  if (!getOptionalServerEnv()) {
+    return updatePreviewAdminTradePeriod(id, input);
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("trade_periods")
+    .update({
+      duration_seconds: input.durationSeconds,
+      is_enabled: input.isEnabled,
+      label: input.label,
+      max_amount_cents: input.maxAmountCents,
+      min_amount_cents: input.minAmountCents,
+      payout_bps: input.payoutBps,
+    })
+    .eq("id", id)
+    .select(selectAdminTradePeriodFields)
+    .maybeSingle();
+
+  if (error) {
+    throw new ApiClientError(error.message, 500, "ADMIN_PERIOD_UPDATE_FAILED", error);
+  }
+
+  if (!data) {
+    throw new ApiClientError("Trade period not found.", 404, "TRADE_PERIOD_NOT_FOUND");
+  }
+
+  return mapAdminTradePeriodRow(data as AdminTradePeriodRow);
+};
+
+export const deleteAdminTradePeriod = async (
+  id: string,
+): Promise<DeleteAdminTradePeriodResult> => {
+  if (!getOptionalServerEnv()) {
+    return deletePreviewAdminTradePeriod(id);
+  }
+
+  const adminClient = createSupabaseAdminClient();
+  const { data, error } = await adminClient
+    .from("trade_periods")
+    .delete()
+    .eq("id", id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    throw new ApiClientError(error.message, 500, "ADMIN_PERIOD_DELETE_FAILED", error);
+  }
+
+  if (!data?.id) {
+    throw new ApiClientError("Trade period not found.", 404, "TRADE_PERIOD_NOT_FOUND");
+  }
+
+  return deleteAdminTradePeriodResultSchema.parse({
     id: data.id,
   });
 };

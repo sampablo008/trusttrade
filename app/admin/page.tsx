@@ -70,6 +70,24 @@ export default async function AdminPage() {
                 <ArrowUpRight size={16} />
               </Link>
             </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                New module
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Period config ops</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Tune durations, ticket size ranges, payout bands, and enabled states before the
+                real order ticket reads from the admin-configured period registry.
+              </p>
+              <Link
+                href="/admin/periods"
+                className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+              >
+                Open periods
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">

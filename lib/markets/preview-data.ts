@@ -12,18 +12,27 @@ import {
   upsertAdminTokenInputSchema,
 } from "@/schemas/market";
 import type {
+  AdminTradePeriod,
+  AdminTradePeriodsResult,
   AdminToken,
   AdminTokensResult,
   ChartTimeframeValue,
+  DeleteAdminTradePeriodResult,
   DeleteAdminTokenResult,
   PublicCandle,
   PublicCandlesResult,
   PublicToken,
   PublicTokensResult,
-  PublicTradePeriod,
   PublicTradePeriodsResult,
+  UpsertAdminTradePeriodInput,
   UpsertAdminTokenInput,
 } from "@/types/market";
+import {
+  adminTradePeriodSchema,
+  adminTradePeriodsResultSchema,
+  deleteAdminTradePeriodResultSchema,
+  upsertAdminTradePeriodInputSchema,
+} from "@/schemas/market";
 
 const parsePreviewAdminToken = (token: AdminToken): AdminToken => adminTokenSchema.parse(token);
 
@@ -90,62 +99,95 @@ const previewTokenRegistry = new Map<string, AdminToken>([
   ],
 ]);
 
-const previewTradePeriods: PublicTradePeriod[] = [
-  publicTradePeriodSchema.parse({
-    durationSeconds: 30,
-    id: "10000000-0000-4000-8000-000000000030",
-    isEnabled: true,
-    label: "30s",
-    maxAmountCents: 50000,
-    minAmountCents: 1000,
-    payoutBps: 18500,
-  }),
-  publicTradePeriodSchema.parse({
-    durationSeconds: 60,
-    id: "10000000-0000-4000-8000-000000000060",
-    isEnabled: true,
-    label: "60s",
-    maxAmountCents: 100000,
-    minAmountCents: 1000,
-    payoutBps: 18500,
-  }),
-  publicTradePeriodSchema.parse({
-    durationSeconds: 300,
-    id: "10000000-0000-4000-8000-000000000300",
-    isEnabled: true,
-    label: "5m",
-    maxAmountCents: 150000,
-    minAmountCents: 2500,
-    payoutBps: 18500,
-  }),
-  publicTradePeriodSchema.parse({
-    durationSeconds: 900,
-    id: "10000000-0000-4000-8000-000000000900",
-    isEnabled: true,
-    label: "15m",
-    maxAmountCents: 250000,
-    minAmountCents: 5000,
-    payoutBps: 18500,
-  }),
-  publicTradePeriodSchema.parse({
-    durationSeconds: 3600,
-    id: "10000000-0000-4000-8000-000000003600",
-    isEnabled: true,
-    label: "1h",
-    maxAmountCents: 500000,
-    minAmountCents: 10000,
-    payoutBps: 18500,
-  }),
-  publicTradePeriodSchema.parse({
-    durationSeconds: 86400,
-    id: "10000000-0000-4000-8000-000000086400",
-    isEnabled: true,
-    label: "1d",
-    maxAmountCents: 1000000,
-    minAmountCents: 25000,
-    payoutBps: 18500,
-  }),
-];
+const parsePreviewAdminTradePeriod = (period: AdminTradePeriod): AdminTradePeriod =>
+  adminTradePeriodSchema.parse(period);
+
+const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
+  [
+    "30s",
+    parsePreviewAdminTradePeriod({
+      createdAt: "2026-04-19T12:00:00.000Z",
+      durationSeconds: 30,
+      id: "10000000-0000-4000-8000-000000000030",
+      isEnabled: true,
+      label: "30s",
+      maxAmountCents: 50000,
+      minAmountCents: 1000,
+      payoutBps: 18500,
+      updatedAt: "2026-04-19T12:00:00.000Z",
+    }),
+  ],
+  [
+    "60s",
+    parsePreviewAdminTradePeriod({
+      createdAt: "2026-04-19T12:00:00.000Z",
+      durationSeconds: 60,
+      id: "10000000-0000-4000-8000-000000000060",
+      isEnabled: true,
+      label: "60s",
+      maxAmountCents: 100000,
+      minAmountCents: 1000,
+      payoutBps: 18500,
+      updatedAt: "2026-04-19T12:00:00.000Z",
+    }),
+  ],
+  [
+    "5m",
+    parsePreviewAdminTradePeriod({
+      createdAt: "2026-04-19T12:00:00.000Z",
+      durationSeconds: 300,
+      id: "10000000-0000-4000-8000-000000000300",
+      isEnabled: true,
+      label: "5m",
+      maxAmountCents: 150000,
+      minAmountCents: 2500,
+      payoutBps: 18500,
+      updatedAt: "2026-04-19T12:00:00.000Z",
+    }),
+  ],
+  [
+    "15m",
+    parsePreviewAdminTradePeriod({
+      createdAt: "2026-04-19T12:00:00.000Z",
+      durationSeconds: 900,
+      id: "10000000-0000-4000-8000-000000000900",
+      isEnabled: true,
+      label: "15m",
+      maxAmountCents: 250000,
+      minAmountCents: 5000,
+      payoutBps: 18500,
+      updatedAt: "2026-04-19T12:00:00.000Z",
+    }),
+  ],
+  [
+    "1h",
+    parsePreviewAdminTradePeriod({
+      createdAt: "2026-04-19T12:00:00.000Z",
+      durationSeconds: 3600,
+      id: "10000000-0000-4000-8000-000000003600",
+      isEnabled: true,
+      label: "1h",
+      maxAmountCents: 500000,
+      minAmountCents: 10000,
+      payoutBps: 18500,
+      updatedAt: "2026-04-19T12:00:00.000Z",
+    }),
+  ],
+  [
+    "1d",
+    parsePreviewAdminTradePeriod({
+      createdAt: "2026-04-19T12:00:00.000Z",
+      durationSeconds: 86400,
+      id: "10000000-0000-4000-8000-000000086400",
+      isEnabled: true,
+      label: "1d",
+      maxAmountCents: 1000000,
+      minAmountCents: 25000,
+      payoutBps: 18500,
+      updatedAt: "2026-04-19T12:00:00.000Z",
+    }),
+  ],
+]);
 
 const timeframeSeconds: Record<ChartTimeframeValue, number> = {
   "1s": 1,
@@ -249,7 +291,20 @@ export const getPreviewMarketTokens = (): PublicTokensResult =>
 
 export const getPreviewTradePeriods = (): PublicTradePeriodsResult =>
   publicTradePeriodsResultSchema.parse({
-    items: previewTradePeriods,
+    items: Array.from(previewTradePeriodRegistry.values())
+      .filter((period) => period.isEnabled)
+      .sort((left, right) => left.durationSeconds - right.durationSeconds)
+      .map((period) =>
+        publicTradePeriodSchema.parse({
+          durationSeconds: period.durationSeconds,
+          id: period.id,
+          isEnabled: period.isEnabled,
+          label: period.label,
+          maxAmountCents: period.maxAmountCents,
+          minAmountCents: period.minAmountCents,
+          payoutBps: period.payoutBps,
+        }),
+      ),
   });
 
 export const getPreviewCandles = (
@@ -356,6 +411,87 @@ export const deletePreviewAdminToken = (id: string): DeleteAdminTokenResult => {
   symbolSeeds.delete(existing.symbol);
 
   return deleteAdminTokenResultSchema.parse({
+    id,
+  });
+};
+
+export const listPreviewAdminTradePeriods = (): AdminTradePeriodsResult =>
+  adminTradePeriodsResultSchema.parse({
+    items: Array.from(previewTradePeriodRegistry.values()).sort(
+      (left, right) => left.durationSeconds - right.durationSeconds,
+    ),
+  });
+
+export const createPreviewAdminTradePeriod = (
+  payload: UpsertAdminTradePeriodInput,
+): AdminTradePeriod => {
+  const input = upsertAdminTradePeriodInputSchema.parse(payload);
+
+  if (previewTradePeriodRegistry.has(input.label)) {
+    throw new ApiClientError("Trade period label already exists.", 409, "TRADE_PERIOD_LABEL_TAKEN");
+  }
+
+  const now = new Date().toISOString();
+  const period = parsePreviewAdminTradePeriod({
+    createdAt: now,
+    durationSeconds: input.durationSeconds,
+    id: randomUUID(),
+    isEnabled: input.isEnabled,
+    label: input.label,
+    maxAmountCents: input.maxAmountCents,
+    minAmountCents: input.minAmountCents,
+    payoutBps: input.payoutBps,
+    updatedAt: now,
+  });
+
+  previewTradePeriodRegistry.set(period.label, period);
+
+  return period;
+};
+
+export const updatePreviewAdminTradePeriod = (
+  id: string,
+  payload: UpsertAdminTradePeriodInput,
+): AdminTradePeriod => {
+  const input = upsertAdminTradePeriodInputSchema.parse(payload);
+  const existing = Array.from(previewTradePeriodRegistry.values()).find((period) => period.id === id);
+
+  if (!existing) {
+    throw new ApiClientError("Trade period not found.", 404, "TRADE_PERIOD_NOT_FOUND");
+  }
+
+  if (existing.label !== input.label && previewTradePeriodRegistry.has(input.label)) {
+    throw new ApiClientError("Trade period label already exists.", 409, "TRADE_PERIOD_LABEL_TAKEN");
+  }
+
+  previewTradePeriodRegistry.delete(existing.label);
+
+  const period = parsePreviewAdminTradePeriod({
+    ...existing,
+    durationSeconds: input.durationSeconds,
+    isEnabled: input.isEnabled,
+    label: input.label,
+    maxAmountCents: input.maxAmountCents,
+    minAmountCents: input.minAmountCents,
+    payoutBps: input.payoutBps,
+    updatedAt: new Date().toISOString(),
+  });
+
+  previewTradePeriodRegistry.set(period.label, period);
+
+  return period;
+};
+
+export const deletePreviewAdminTradePeriod = (id: string): DeleteAdminTradePeriodResult => {
+  const existing = Array.from(previewTradePeriodRegistry.values()).find((period) => period.id === id);
+
+  if (!existing) {
+    throw new ApiClientError("Trade period not found.", 404, "TRADE_PERIOD_NOT_FOUND");
+  }
+
+  previewTradePeriodRegistry.delete(existing.label);
+
+  return deleteAdminTradePeriodResultSchema.parse({
     id,
   });
 };

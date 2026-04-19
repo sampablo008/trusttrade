@@ -1400,7 +1400,7 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Migration `0010_chart_engine.sql` — tokens extensions, candle_replay_bank, token_replay_state, candles_1m through \_1d tables
 - [x] Migration `0011_storage_buckets.sql` — all 5 buckets with mime + size limits + RLS
 - [x] Admin token CRUD: `/admin/tokens` page + `/api/admin/tokens` endpoints
-- [ ] Admin period CRUD: `/admin/periods` page + endpoints
+- [x] Admin period CRUD: `/admin/periods` page + endpoints
 - [ ] Admin wallet CRUD: `/admin/wallets` + endpoints (last-8-char confirm)
 - [ ] Admin icon upload: `/api/admin/upload/token-icon`
 - [ ] Media proxy: `/api/media/[bucket]/[...path]` Route Handler
@@ -1447,21 +1447,34 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Verify lint and production build after the admin token slice — `pnpm lint`, `pnpm build`
 - [ ] Admin periods, wallets, media proxy, and live chart streaming still remain
 
+### Phase 7: Admin period control
+- [x] Add admin trade-period schemas and preview/live CRUD service — `types/market.ts` (modified), `schemas/market.ts` (modified), `lib/markets/preview-data.ts` (modified), `lib/markets/admin-service.ts` (modified)
+- [x] Add admin trade-period CRUD Route Handlers — `app/api/admin/periods/route.ts` (created), `app/api/admin/periods/[id]/route.ts` (created)
+- [x] Build `/admin/periods` control panel and link it from the admin hub — `app/admin/periods/page.tsx` (created), `components/admin/period-control-panel.tsx` (created), `app/admin/page.tsx` (modified)
+
+### Phase 8: Verify
+- [x] Verify lint and production build after the admin period slice — `pnpm lint`, `pnpm build`
+- [ ] Wallet CRUD, icon upload, media proxy, and live chart streaming still remain
+
 **Files touched:**
 - `app/admin/page.tsx` — modified
+- `app/admin/periods/page.tsx` — created
 - `app/admin/tokens/page.tsx` — created
+- `app/api/admin/periods/[id]/route.ts` — created
+- `app/api/admin/periods/route.ts` — created
 - `app/api/admin/tokens/[id]/route.ts` — created
 - `app/api/admin/tokens/route.ts` — created
 - `app/api/candles/route.ts` — created
 - `app/api/periods/route.ts` — created
 - `app/api/tokens/route.ts` — created
 - `app/page.tsx` — modified
+- `components/admin/period-control-panel.tsx` — created
 - `components/admin/token-control-panel.tsx` — created
 - `components/home/trading-workbench.tsx` — modified
 - `components/home/trustpro-shell.tsx` — modified
 - `lib/constants/platform.ts` — modified
-- `lib/markets/admin-service.ts` — created
-- `lib/markets/preview-data.ts` — created
+- `lib/markets/admin-service.ts` — modified
+- `lib/markets/preview-data.ts` — modified
 - `lib/markets/service.ts` — created
 - `lib/utils/format.ts` — modified
 - `schemas/market.ts` — modified
