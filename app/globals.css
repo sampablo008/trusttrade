@@ -112,7 +112,36 @@ button {
   animation: pulse-border 8s ease-in-out infinite;
 }
 
-/* View Transitions — slide chart when switching tokens */
+.landing-grid {
+  background-image:
+    linear-gradient(rgba(125, 146, 184, 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 146, 184, 0.07) 1px, transparent 1px);
+  background-size: 82px 82px;
+  mask-image: radial-gradient(circle at center, black, transparent 84%);
+}
+
+.landing-orb {
+  filter: blur(56px);
+  opacity: 0.95;
+}
+
+.chart-scan::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(61, 156, 255, 0.12) 50%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  opacity: 0.9;
+  animation: chart-scan 6.5s linear infinite;
+}
+
+/* View Transitions - slide chart when switching tokens */
 ::view-transition-old(trade-chart) {
   animation: 220ms ease-in both slide-out-left;
 }
@@ -127,4 +156,14 @@ button {
 
 @keyframes slide-in-right {
   from { transform: translateX(16px); opacity: 0; }
+}
+
+@keyframes chart-scan {
+  from {
+    transform: translateY(-100%);
+  }
+
+  to {
+    transform: translateY(100%);
+  }
 }

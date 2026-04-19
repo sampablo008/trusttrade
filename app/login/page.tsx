@@ -18,16 +18,17 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         <section className="rounded-[36px] border border-border bg-surface-soft p-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-4 py-2 text-xs uppercase tracking-[0.28em] text-brand">
             <LockKeyhole size={14} />
-            Protected route scaffold
+            Trade route preview
           </div>
           <div className="mt-6 space-y-4">
             <h1 className="font-display text-5xl leading-none tracking-tight text-foreground sm:text-6xl">
-              Login shell wired for Sprint 0 route guards.
+              Trade the move while the market is still giving it.
             </h1>
             <p className="max-w-2xl text-base leading-8 text-muted">
-              This is a clean auth scaffold, not the final Supabase login flow. Use any 8+
-              character password. Put <span className="text-foreground">admin</span> in the email
-              to open the admin route preview.
+              Sign in to reach the trading desk, scan the strongest crypto pairs, and act on
+              momentum without friction. The preview flow gets you from login to the market fast,
+              with <span className="text-foreground">admin</span> in the email opening the admin
+              route preview.
             </p>
           </div>
 
@@ -36,19 +37,19 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               <div className="inline-flex rounded-full bg-up/10 p-3 text-up">
                 <ShieldCheck size={18} />
               </div>
-              <h2 className="mt-4 text-xl font-semibold text-foreground">Proxy-based redirects</h2>
+              <h2 className="mt-4 text-xl font-semibold text-foreground">Track live momentum</h2>
               <p className="mt-3 text-sm leading-7 text-muted">
-                `/trade` and `/admin` now redirect through `proxy.ts` before the route renders.
+                Watch major pairs like BTC, ETH, and SOL and be ready when price starts to break.
               </p>
             </div>
             <div className="rounded-[28px] border border-border bg-background/35 p-5">
               <div className="inline-flex rounded-full bg-warning/10 p-3 text-warning">
                 <Sparkles size={18} />
               </div>
-              <h2 className="mt-4 text-xl font-semibold text-foreground">Supabase swap ready</h2>
+              <h2 className="mt-4 text-xl font-semibold text-foreground">Get in with speed</h2>
               <p className="mt-3 text-sm leading-7 text-muted">
-                The preview cookies are isolated so the real auth provider can replace them without
-                rewriting the route map.
+                Move from sign-in to execution in seconds so your focus stays on timing,
+                direction, and conviction.
               </p>
             </div>
           </div>

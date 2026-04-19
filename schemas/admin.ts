@@ -96,6 +96,7 @@ export const adminTradeFiltersSchema = z.object({
 export const adminUserFiltersSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().nonnegative().default(0),
+  role: z.enum(["user", "admin"]).optional(),
   search: z.string().max(100).optional(),
 });
 

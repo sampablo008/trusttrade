@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-export const depositNetworkSchema = z.enum(["TRC20", "ERC20", "BEP20", "BTC"]);
 export const depositStatusSchema = z.enum(["pending", "approved", "rejected"]);
 
 export const depositSchema = z.object({
@@ -8,7 +7,7 @@ export const depositSchema = z.object({
   userId: z.string().uuid(),
   tokenId: z.string().uuid(),
   tokenSymbol: z.string(),
-  network: depositNetworkSchema,
+  network: z.string().min(1),
   amountCents: z.number().int().positive(),
   proofPath: z.string().min(1),
   txHash: z.string().nullable(),
@@ -25,8 +24,8 @@ export const depositsResultSchema = z.object({
 });
 
 export const submitDepositInputSchema = z.object({
-  tokenId: z.string().uuid(),
-  network: depositNetworkSchema,
+  tokenSymbol: z.string().min(1, "Token is required."),
+  network: z.string().min(1, "Network is required."),
   amountCents: z.number().int().positive(),
   proofPath: z.string().min(1),
   txHash: z.string().optional(),

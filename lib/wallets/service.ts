@@ -14,7 +14,7 @@ export const listPublicWallets = async (): Promise<PublicWalletAddressesResult> 
   const adminClient = createSupabaseAdminClient();
   const { data, error } = await adminClient
     .from("wallet_addresses")
-    .select("id, token_symbol, network, address, memo, min_deposit_cents")
+    .select("id, token_symbol, network, address, memo, min_deposit_cents, qr_code_path")
     .eq("is_enabled", true)
     .order("network", { ascending: true });
 
@@ -33,6 +33,7 @@ export const listPublicWallets = async (): Promise<PublicWalletAddressesResult> 
       memo: row.memo,
       minDepositCents: Number(row.min_deposit_cents),
       network: row.network,
+      qrCodePath: (row as { qr_code_path?: string | null }).qr_code_path ?? null,
       tokenSymbol: row.token_symbol,
     })),
   });

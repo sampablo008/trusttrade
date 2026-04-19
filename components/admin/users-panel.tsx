@@ -8,7 +8,10 @@ interface UsersPanelProps {
   initialData: { items: AdminUser[]; total: number };
 }
 
+type RoleTab = "user" | "admin";
+
 export default function UsersPanel({ initialData }: UsersPanelProps) {
+  const [tab, setTab] = useState<RoleTab>("user");
   const [users, setUsers] = useState<AdminUser[]>(initialData.items);
   const [total, setTotal] = useState(initialData.total);
   const [search, setSearch] = useState("");
@@ -19,24 +22,38 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [loading, setLoading] = useState(false);
   const limit = 50;
 
-  const fetchUsers = useCallback(async (q: string, off: number) => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ limit: String(limit), offset: String(off) });
-      if (q) params.set("search", q);
-      const res = await fetch(`/api/admin/users?${params}`);
-      const data = await res.json() as { items: AdminUser[]; total: number };
-      setUsers(data.items ?? []);
-      setTotal(data.total ?? 0);
-      setOffset(off);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchUsers = useCallback(
+    async (q: string, off: number, role: RoleTab) => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          limit: String(limit),
+          offset: String(off),
+          role,
+        });
+        if (q) params.set("search", q);
+        const res = await fetch(`/api/admin/users?${params}`);
+        const data = (await res.json()) as { items: AdminUser[]; total: number };
+        setUsers(data.items ?? []);
+        setTotal(data.total ?? 0);
+        setOffset(off);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    fetchUsers(search, 0);
+    fetchUsers(search, 0, tab);
+  };
+
+  const handleTab = (next: RoleTab) => {
+    if (next === tab) return;
+    setTab(next);
+    setSelectedUser(null);
+    fetchUsers(search, 0, next);
   };
 
   const handleFreeze = async (userId: string, isFrozen: boolean) => {
@@ -76,6 +93,28 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Left: user list */}
       <div className="flex flex-col gap-4">
+        <div className="inline-flex items-center gap-1 self-start rounded-full border border-border bg-background/30 p-1">
+          {(
+            [
+              { id: "user", label: "Users" },
+              { id: "admin", label: "Admins" },
+            ] as const
+          ).map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => handleTab(t.id)}
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+                tab === t.id
+                  ? "bg-foreground text-background"
+                  : "text-muted hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <form onSubmit={handleSearch} className="flex gap-3">
           <input
             value={search}
@@ -174,14 +213,14 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
           <div className="flex gap-2">
             <button
               disabled={offset === 0}
-              onClick={() => fetchUsers(search, Math.max(offset - limit, 0))}
+              onClick={() => fetchUsers(search, Math.max(offset - limit, 0), tab)}
               className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
             >
               Prev
             </button>
             <button
               disabled={offset + limit >= total}
-              onClick={() => fetchUsers(search, offset + limit)}
+              onClick={() => fetchUsers(search, offset + limit, tab)}
               className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
             >
               Next

@@ -129,15 +129,15 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
       <section className="rounded-[32px] border border-border bg-surface-soft p-6">
         <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-4 py-2 text-xs uppercase tracking-[0.26em] text-brand">
           <KeyRound size={14} />
-          Invitation gate
+          Trader invite
         </div>
         <div className="mt-5 space-y-4">
           <h2 className="font-display text-4xl tracking-tight text-foreground">
-            Signup stays locked until the code is real.
+            Access opens when the invite checks out.
           </h2>
           <p className="text-sm leading-7 text-muted">
-            Friend codes are reusable and land inside the referral tree. Admin codes are single-use
-            and create root users with no upline.
+            Use a valid referral or admin invite to unlock the desk. Referral codes place traders
+            into the network, while admin codes open internal access with no upline.
           </p>
         </div>
 
@@ -173,8 +173,8 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
         </div>
 
         <div className="mt-6 rounded-[24px] border border-border bg-background/20 p-5 text-sm leading-7 text-muted">
-          Try `REF_ATLAS` or `K7X9M2PQ4R` without Supabase env vars. Once live env is connected, the
-          same page will validate against `validate_invite`.
+          Use `REF_ATLAS` or `K7X9M2PQ4R` to preview trader onboarding without live Supabase env
+          vars. Once live env is connected, this page validates against `validate_invite`.
         </div>
       </section>
 
@@ -185,7 +185,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
               Account form
             </p>
             <h2 className="mt-2 font-display text-4xl tracking-tight text-foreground">
-              {revealForm ? "Form unlocked" : "Waiting on valid code"}
+              {revealForm ? "Build your trading account" : "Waiting on trader invite"}
             </h2>
           </div>
           <div
@@ -214,9 +214,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
                 className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
                 {...register("username", { required: true })}
               />
-              {errors.username ? (
-                <p className="text-sm text-down">{errors.username.message ?? "Username is required."}</p>
-              ) : null}
+              <UsernameChecklist username={watch("username") ?? ""} />
             </div>
 
             <div className="space-y-2">
@@ -266,8 +264,8 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
           </form>
         ) : (
           <div className="mt-8 rounded-[24px] border border-dashed border-border bg-background/20 p-6 text-sm leading-7 text-muted">
-            Type a valid invitation code first. When the code validates, the username, email, and
-            password fields reveal here.
+            Enter a valid invite code to unlock your trading account setup. Once verified, the
+            username, email, and password fields appear here.
           </div>
         )}
       </section>
@@ -275,21 +273,27 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
   );
 }
 
-const rules = [
+const passwordRules = [
   { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
   { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
   { label: "One number", test: (p: string) => /[0-9]/.test(p) },
 ];
 
-function PasswordChecklist({ password }: { password: string }) {
-  if (!password) return null;
+const usernameRules = [
+  { label: "At least 3 characters", test: (u: string) => u.length >= 3 },
+  { label: "Lowercase letters, numbers, . _ - only", test: (u: string) => /^[a-z0-9._-]+$/.test(u) },
+  { label: "Must start with a letter, number, or _", test: (u: string) => /^[a-z0-9_]/.test(u) },
+];
+
+function RuleChecklist({ value, rules }: { value: string; rules: { label: string; test: (v: string) => boolean }[] }) {
+  if (!value) return null;
   return (
     <ul className="mt-2 space-y-1">
       {rules.map((rule) => {
-        const ok = rule.test(password);
+        const ok = rule.test(value);
         return (
           <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-up" : "text-muted"}`}>
-            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${ok ? "border-up bg-up/10 text-up" : "border-border text-muted"}`}>
+            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${ok ? "border-up bg-up/10 text-up" : "border-border"}`}>
               {ok ? "✓" : ""}
             </span>
             {rule.label}
@@ -298,4 +302,12 @@ function PasswordChecklist({ password }: { password: string }) {
       })}
     </ul>
   );
+}
+
+function PasswordChecklist({ password }: { password: string }) {
+  return <RuleChecklist value={password} rules={passwordRules} />;
+}
+
+function UsernameChecklist({ username }: { username: string }) {
+  return <RuleChecklist value={username} rules={usernameRules} />;
 }

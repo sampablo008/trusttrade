@@ -1,6 +1,5 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
-import { getOptionalServerEnv } from "@/lib/env/server";
 import { getAppSession } from "@/lib/auth/session";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -22,16 +21,18 @@ export const assertAdminApi = async (): Promise<{
     throw new ApiClientError("Admin access required.", 403, "FORBIDDEN");
   }
 
-  if (!getOptionalServerEnv()) {
-    return { ...session, userId: PREVIEW_ADMIN_ID };
+  // Admin login is cookie-based; Supabase has no matching auth session.
+  // Service-role writes don't need a real user context, so use the Supabase
+  // user id only when one exists — otherwise fall back to the preview id.
+  try {
+    const client = await createSupabaseServerClient();
+    const { data } = await client.auth.getUser();
+    if (data?.user?.id) {
+      return { ...session, userId: data.user.id };
+    }
+  } catch {
+    // no supabase session available — fall through
   }
 
-  const client = await createSupabaseServerClient();
-  const { data: { user }, error } = await client.auth.getUser();
-
-  if (error || !user) {
-    throw new ApiClientError("Authentication required.", 401, "UNAUTHORIZED");
-  }
-
-  return { ...session, userId: user.id };
+  return { ...session, userId: PREVIEW_ADMIN_ID };
 };

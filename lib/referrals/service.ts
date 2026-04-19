@@ -97,7 +97,7 @@ export const getMyReferralTree = async (
   let query = admin
     .from("referral_upline")
     .select(
-      "level, user_id, ancestor_id, profiles!referral_upline_user_id_fkey(username, email, joined_at)",
+      "level, user_id, ancestor_id, profiles!referral_upline_user_id_fkey(username, email, created_at)",
       { count: "exact" },
     )
     .eq("ancestor_id", userId);
@@ -113,7 +113,7 @@ export const getMyReferralTree = async (
   const items = (data ?? []).map((row) => {
     const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
     return {
-      createdAt: (profile as { joined_at?: string })?.joined_at ?? new Date().toISOString(),
+      createdAt: (profile as { created_at?: string })?.created_at ?? new Date().toISOString(),
       level: row.level,
       refereeEmail: (profile as { email?: string })?.email ?? "",
       refereeUserId: row.user_id,

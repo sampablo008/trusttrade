@@ -117,11 +117,20 @@ export default function PortfolioShell({
   const totalNet = items.reduce((sum, t) => sum + netPnl(t), 0);
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <BarChart3 size={22} className="text-brand" />
-          <h1 className="font-display text-3xl text-foreground">Trade History</h1>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-soft text-brand">
+            <BarChart3 size={18} />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+              Trade history
+            </p>
+            <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">
+              Portfolio
+            </h1>
+          </div>
         </div>
         <button
           type="button"
@@ -274,6 +283,6 @@ export default function PortfolioShell({
           </button>
         </div>
       )}
-    </main>
+    </div>
   );
 }

@@ -11,6 +11,7 @@ export const adminWalletAddressSchema = z.object({
   memo: z.string().max(128).nullable(),
   minDepositCents: z.number().int().positive(),
   network: z.string().min(2).max(32),
+  qrCodePath: z.string().nullable().optional(),
   tokenSymbol: z.string().regex(/^[A-Z0-9]{2,12}$/),
   updatedAt: z.string().datetime(),
 });
@@ -33,6 +34,7 @@ export const upsertAdminWalletAddressInputSchema = z.object({
     .trim()
     .min(2, "Network is required.")
     .max(32, "Network name is too long."),
+  qrCodePath: z.string().nullable().optional(),
   tokenSymbol: z
     .string()
     .trim()
@@ -50,6 +52,7 @@ export const publicWalletAddressSchema = z.object({
   memo: z.string().nullable(),
   minDepositCents: z.number().int().positive(),
   network: z.string().min(2),
+  qrCodePath: z.string().nullable().optional(),
   tokenSymbol: z.string().regex(/^[A-Z0-9]{2,12}$/),
 });
 

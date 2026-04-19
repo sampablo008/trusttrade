@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ApiClientError } from "@/lib/api/client";
+import { findTopCoin } from "@/lib/markets/top-coins";
 import {
   adminTokenSchema,
   adminTokensResultSchema,
@@ -98,6 +99,38 @@ const previewTokenRegistry = new Map<string, AdminToken>([
     }),
   ],
 ]);
+
+export const updatePreviewAdminTokenIconPath = (symbol: string, iconPath: string | null): void => {
+  const key = symbol.toUpperCase();
+  const existing = previewTokenRegistry.get(key);
+  if (existing) {
+    previewTokenRegistry.set(key, { ...existing, iconPath });
+    return;
+  }
+
+  const coin = findTopCoin(key);
+  const now = new Date().toISOString();
+  previewTokenRegistry.set(
+    key,
+    parsePreviewAdminToken({
+      basePriceCents: 100,
+      createdAt: now,
+      feedSource: coin?.binanceSymbol ? "shadow" : "synthetic",
+      iconPath,
+      id: randomUUID(),
+      isEnabled: true,
+      lastPriceCents: null,
+      lastShadowPriceCents: null,
+      name: coin?.name ?? key,
+      priceOffsetCents: 0,
+      priceScale: 1,
+      shadowSymbol: coin?.binanceSymbol ? coin.binanceSymbol.toUpperCase() : null,
+      symbol: key,
+      updatedAt: now,
+      volatilityFactor: 1,
+    }),
+  );
+};
 
 const parsePreviewAdminTradePeriod = (period: AdminTradePeriod): AdminTradePeriod =>
   adminTradePeriodSchema.parse(period);

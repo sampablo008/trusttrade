@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle, CheckCircle, ArrowDownToLine } from "lucide-react";
+import { AlertCircle, CheckCircle, ArrowDownToLine, ShieldCheck, X } from "lucide-react";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { UserBalance } from "@/types/trade";
 
@@ -30,8 +30,9 @@ const PRESETS = [50, 100, 250, 500];
 export default function WithdrawForm({ balance }: Props) {
   const [submitStatus, setSubmitStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, setValue, watch, formState: { errors }, getValues, trigger } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       amountCents: 0,
@@ -43,7 +44,15 @@ export default function WithdrawForm({ balance }: Props) {
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const amountCents = watch("amountCents");
+  const tokenSymbol = watch("tokenSymbol");
+  const network = watch("network");
+  const destinationAddress = watch("destinationAddress");
   const withdrawable = balance.withdrawableCents;
+
+  const handleReviewClick = async () => {
+    const valid = await trigger();
+    if (valid) setReviewOpen(true);
+  };
 
   const onSubmit = async (data: FormData) => {
     setSubmitStatus("loading");
@@ -57,6 +66,7 @@ export default function WithdrawForm({ balance }: Props) {
 
     if (res.ok) {
       setSubmitStatus("success");
+      setReviewOpen(false);
     } else {
       const json = await res.json() as { error?: { message?: string } };
       setErrorMsg(json.error?.message ?? "Withdrawal request failed.");
@@ -212,13 +222,107 @@ export default function WithdrawForm({ balance }: Props) {
       )}
 
       <button
-        type="submit"
+        type="button"
+        onClick={handleReviewClick}
         disabled={submitStatus === "loading" || withdrawable < MIN_WITHDRAW_CENTS}
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-brand px-6 py-4 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-4 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
         <ArrowDownToLine size={16} />
-        {submitStatus === "loading" ? "Submitting…" : "Request Withdrawal"}
+        Review withdrawal
       </button>
+
+      {reviewOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-surface shadow-2xl">
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck size={16} className="text-brand" />
+                <h3 className="font-display text-base text-foreground">Review withdrawal</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewOpen(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted transition hover:border-brand hover:text-foreground"
+                aria-label="Close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-4 px-6 py-5">
+              <p className="text-xs text-muted">
+                Double-check the details. Once submitted, funds are held and the request is sent to
+                admin for review.
+              </p>
+
+              <div className="rounded-2xl border border-border bg-background/30 p-4">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  You will receive
+                </p>
+                <p className="mt-1 font-display text-3xl font-bold text-foreground tabular-nums">
+                  {formatUsdFromCents(getValues("amountCents"))}
+                </p>
+                <p className="text-xs text-muted">
+                  in {tokenSymbol} on {network}
+                </p>
+              </div>
+
+              <dl className="flex flex-col gap-2 text-sm">
+                <Row label="Token" value={tokenSymbol} />
+                <Row label="Network" value={network} />
+                <Row
+                  label="Destination"
+                  value={
+                    destinationAddress.length > 16
+                      ? `${destinationAddress.slice(0, 8)}…${destinationAddress.slice(-8)}`
+                      : destinationAddress
+                  }
+                  mono
+                />
+                <Row label="Processing fee" value="Free" />
+                <Row label="Estimated ETA" value="1-3 hours" />
+              </dl>
+
+              {errorMsg && (
+                <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
+                  <AlertCircle size={14} className="text-down" />
+                  <p className="text-xs text-down">{errorMsg}</p>
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setReviewOpen(false)}
+                  disabled={submitStatus === "loading"}
+                  className="flex-1 rounded-xl border border-border bg-background/40 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-border/80 disabled:opacity-40"
+                >
+                  Edit details
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSubmit(onSubmit)()}
+                  disabled={submitStatus === "loading"}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:opacity-40"
+                >
+                  {submitStatus === "loading" ? "Submitting…" : "Confirm & submit"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </form>
+  );
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-center justify-between border-b border-border/50 pb-2 last:border-0 last:pb-0">
+      <dt className="text-xs text-muted">{label}</dt>
+      <dd className={`text-sm font-semibold text-foreground ${mono ? "font-mono" : ""}`}>
+        {value}
+      </dd>
+    </div>
   );
 }

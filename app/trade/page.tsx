@@ -1,12 +1,8 @@
 import { redirect } from "next/navigation";
 import { assertAuthenticated } from "@/lib/auth/session";
-import { listMarketTokens } from "@/lib/markets/service";
+import { TOP_COINS } from "@/lib/markets/top-coins";
 
 export default async function TradePage() {
   await assertAuthenticated();
-
-  const { items } = await listMarketTokens();
-  const first = items[0];
-
-  redirect(`/trade/${first?.symbol ?? "BTC"}`);
+  redirect(`/trade/${TOP_COINS[0].symbol}`);
 }

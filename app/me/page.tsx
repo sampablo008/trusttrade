@@ -1,7 +1,8 @@
 import { Metadata } from "next";
+import AppShell from "@/components/layout/AppShell";
+import ProfileShell from "@/components/profile/ProfileShell";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { getProfile } from "@/lib/trades/service";
-import ProfileShell from "@/components/profile/ProfileShell";
 
 export const metadata: Metadata = {
   title: "My Profile | TrustPro",
@@ -16,5 +17,11 @@ export default async function MePage() {
     ? `/api/media/avatars/${profile.avatarPath}`
     : null;
 
-  return <ProfileShell profile={profile} avatarUrl={avatarUrl} />;
+  return (
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+        <ProfileShell profile={profile} avatarUrl={avatarUrl} />
+      </main>
+    </AppShell>
+  );
 }

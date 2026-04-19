@@ -28,25 +28,33 @@ interface WalletRow {
   memo: string | null;
   min_deposit_cents: number | string;
   network: string;
+  qr_code_path: string | null;
   token_symbol: string;
   updated_at: string;
 }
 
+const toIsoZ = (value: string): string => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toISOString();
+};
+
 const mapWalletRow = (row: WalletRow): AdminWalletAddress =>
   adminWalletAddressSchema.parse({
     address: row.address,
-    createdAt: row.created_at,
+    createdAt: toIsoZ(row.created_at),
     id: row.id,
     isEnabled: row.is_enabled,
     memo: row.memo,
     minDepositCents: Number(row.min_deposit_cents),
     network: row.network,
+    qrCodePath: row.qr_code_path,
     tokenSymbol: row.token_symbol,
-    updatedAt: row.updated_at,
+    updatedAt: toIsoZ(row.updated_at),
   });
 
 const selectWalletFields =
-  "id, token_symbol, network, address, memo, min_deposit_cents, is_enabled, created_at, updated_at";
+  "id, token_symbol, network, address, memo, min_deposit_cents, is_enabled, qr_code_path, created_at, updated_at";
 
 export const listAdminWallets = async (): Promise<AdminWalletAddressesResult> => {
   if (!getOptionalServerEnv()) {
@@ -63,12 +71,8 @@ export const listAdminWallets = async (): Promise<AdminWalletAddressesResult> =>
     throw new ApiClientError(error.message, 500, "ADMIN_WALLETS_FETCH_FAILED", error);
   }
 
-  if (!data?.length) {
-    return listPreviewAdminWallets();
-  }
-
   return adminWalletAddressesResultSchema.parse({
-    items: data.map((row) => mapWalletRow(row as WalletRow)),
+    items: (data ?? []).map((row) => mapWalletRow(row as WalletRow)),
   });
 };
 
@@ -88,6 +92,7 @@ export const createAdminWallet = async (payload: unknown): Promise<AdminWalletAd
       memo: input.memo,
       min_deposit_cents: input.minDepositCents,
       network: input.network,
+      qr_code_path: input.qrCodePath ?? null,
       token_symbol: input.tokenSymbol,
     })
     .select(selectWalletFields)
@@ -127,6 +132,7 @@ export const updateAdminWallet = async (
       memo: input.memo,
       min_deposit_cents: input.minDepositCents,
       network: input.network,
+      qr_code_path: input.qrCodePath ?? null,
       token_symbol: input.tokenSymbol,
     })
     .eq("id", id)

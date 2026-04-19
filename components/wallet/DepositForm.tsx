@@ -1,22 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import { useMemo, useState } from "react";
+import CoinIcon from "@/components/ui/CoinIcon";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Copy, CheckCircle, Upload, AlertCircle } from "lucide-react";
+import {
+  AlertCircle,
+  Check,
+  CheckCircle,
+  Copy,
+  FileImage,
+  QrCode,
+  Upload,
+  X,
+  ExternalLink,
+} from "lucide-react";
 import { compressImage } from "@/lib/media/compress";
+import { buildMediaUrl } from "@/lib/media/path";
+import { TOP_COINS } from "@/lib/markets/top-coins";
 import type { PublicWalletAddress } from "@/types/wallet";
 import type { PublicToken } from "@/types/market";
 
+const BANXA_URL = "https://checkout.banxa.com";
+
+type DepositMethod = "banxa" | "manual";
+
+const MAX_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_MIME = ["image/png", "image/jpeg", "image/webp"];
+
 const schema = z.object({
-  tokenId: z.string().uuid(),
+  tokenSymbol: z.string().min(1),
   network: z.string().min(1),
   amountCents: z.number().int().positive(),
   txHash: z.string().optional(),
 });
 
 type FormData = z.infer<typeof schema>;
+
+interface DepositableToken {
+  symbol: string;
+  name: string;
+  iconPath: string | null;
+}
 
 interface Props {
   wallets: PublicWalletAddress[];
@@ -25,30 +52,115 @@ interface Props {
 
 const AMOUNT_PRESETS = [50, 100, 200, 500];
 
+function MethodToggle({
+  method,
+  onChange,
+}: {
+  method: DepositMethod;
+  onChange: (m: DepositMethod) => void;
+}) {
+  return (
+    <div className="flex gap-2 rounded-2xl border border-border bg-background/30 p-1.5">
+      {(["banxa", "manual"] as const).map((m) => (
+        <button
+          key={m}
+          type="button"
+          onClick={() => onChange(m)}
+          className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${
+            method === m
+              ? "bg-brand text-background shadow-sm"
+              : "text-muted hover:text-foreground"
+          }`}
+        >
+          {m === "banxa" ? "Buy via Banxa" : "Manual (Crypto)"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const formatBytes = (bytes: number) => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export default function DepositForm({ wallets, tokens }: Props) {
-  const [selectedTokenId, setSelectedTokenId] = useState(tokens[0]?.id ?? "");
-  const [selectedNetwork, setSelectedNetwork] = useState("");
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "done" | "error">("idle");
-  const [proofPath, setProofPath] = useState<string | null>(null);
+  // Build depositable tokens from wallets — this includes tokens even without a tokens-table entry
+  const depositableTokens = useMemo<DepositableToken[]>(() => {
+    const uniqueSymbols = [...new Set(wallets.map((w) => w.tokenSymbol))];
+    return uniqueSymbols.map((symbol) => {
+      const dbToken = tokens.find((t) => t.symbol === symbol);
+      const coin = TOP_COINS.find((c) => c.symbol === symbol);
+      return {
+        symbol,
+        name: dbToken?.name ?? coin?.name ?? symbol,
+        iconPath: dbToken?.iconPath ?? null,
+      };
+    });
+  }, [tokens, wallets]);
+
+  const initialToken = depositableTokens[0];
+  const initialNetworks = initialToken
+    ? wallets
+        .filter((w) => w.tokenSymbol === initialToken.symbol)
+        .map((w) => w.network)
+    : [];
+  const [method, setMethod] = useState<DepositMethod>("banxa");
+  const [selectedSymbol, setSelectedSymbol] = useState(
+    initialToken?.symbol ?? "",
+  );
+  const [selectedNetwork, setSelectedNetwork] = useState(
+    initialNetworks.length === 1 ? initialNetworks[0] : "",
+  );
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const selectedToken = tokens.find((t) => t.id === selectedTokenId);
+  const selectedToken = depositableTokens.find(
+    (t) => t.symbol === selectedSymbol,
+  );
   const availableNetworks = wallets
-    .filter((w) => w.tokenSymbol === selectedToken?.symbol)
+    .filter((w) => w.tokenSymbol === selectedSymbol)
     .map((w) => w.network);
   const selectedWallet = wallets.find(
-    (w) => w.tokenSymbol === selectedToken?.symbol && w.network === selectedNetwork,
+    (w) => w.tokenSymbol === selectedSymbol && w.network === selectedNetwork,
   );
 
-  const { register, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { tokenId: selectedTokenId, network: "", amountCents: 0 },
+    defaultValues: {
+      tokenSymbol: selectedSymbol,
+      network: selectedNetwork,
+      amountCents: 0,
+    },
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const amountCents = watch("amountCents");
+
+  const pickToken = (symbol: string) => {
+    setSelectedSymbol(symbol);
+    setValue("tokenSymbol", symbol);
+
+    const networksForToken = wallets
+      .filter((w) => w.tokenSymbol === symbol)
+      .map((w) => w.network);
+    const autoNetwork =
+      networksForToken.length === 1 ? networksForToken[0] : "";
+    setSelectedNetwork(autoNetwork);
+    setValue("network", autoNetwork);
+  };
 
   const handleCopy = async () => {
     if (!selectedWallet?.address) return;
@@ -57,44 +169,82 @@ export default function DepositForm({ wallets, tokens }: Props) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploadStatus("uploading");
+    setFileError(null);
 
+    if (!ACCEPTED_MIME.includes(file.type)) {
+      setFileError("Unsupported file. Use PNG, JPEG, or WebP.");
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      setFileError("File is too large. Max 5 MB.");
+      return;
+    }
+    setProofFile(file);
+  };
+
+  const handleRemoveFile = () => {
+    setProofFile(null);
+    setFileError(null);
+  };
+
+  const uploadProof = async (file: File): Promise<string> => {
     const compressed = await compressImage(file);
     const fd = new FormData();
     fd.append("file", compressed);
-
-    const res = await fetch("/api/upload/deposit-proof", { method: "POST", body: fd });
-    if (res.ok) {
-      const data = await res.json() as { path: string };
-      setProofPath(data.path);
-      setUploadStatus("done");
-    } else {
-      setUploadStatus("error");
+    const res = await fetch("/api/upload/deposit-proof", {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) {
+      const json = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      throw new Error(json?.error?.message ?? "Screenshot upload failed.");
     }
+    const data = (await res.json()) as { path: string };
+    return data.path;
   };
 
   const onSubmit = async (data: FormData) => {
-    if (!proofPath) {
-      setErrorMsg("Please upload a deposit screenshot first.");
-      return;
-    }
-    setSubmitStatus("loading");
     setErrorMsg(null);
 
-    const res = await fetch("/api/deposits", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...data, proofPath }),
-    });
+    if (!proofFile) {
+      setFileError("Please attach a deposit screenshot.");
+      return;
+    }
 
-    if (res.ok) {
-      setSubmitStatus("success");
-    } else {
-      const json = await res.json() as { error?: { message?: string } };
-      setErrorMsg(json.error?.message ?? "Deposit submission failed.");
+    setSubmitStatus("loading");
+
+    try {
+      const proofPath = await uploadProof(proofFile);
+
+      const res = await fetch("/api/deposits", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tokenSymbol: data.tokenSymbol,
+          network: data.network,
+          amountCents: data.amountCents,
+          txHash: data.txHash,
+          proofPath,
+        }),
+      });
+
+      if (res.ok) {
+        setSubmitStatus("success");
+        return;
+      }
+
+      const json = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      setErrorMsg(json?.error?.message ?? "Deposit submission failed.");
+      setSubmitStatus("error");
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Unexpected error.");
       setSubmitStatus("error");
     }
   };
@@ -103,51 +253,255 @@ export default function DepositForm({ wallets, tokens }: Props) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-[20px] border border-border bg-surface-soft p-10 text-center">
         <CheckCircle size={40} className="text-up" />
-        <h3 className="font-display text-2xl text-foreground">Deposit submitted</h3>
+        <h3 className="font-display text-2xl text-foreground">
+          Deposit submitted
+        </h3>
         <p className="max-w-xs text-sm text-muted">
-          Your deposit is pending admin review. Your balance will update once approved.
+          Your deposit is pending admin review. Your balance will update once
+          approved.
         </p>
+      </div>
+    );
+  }
+
+  if (depositableTokens.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-border bg-background/20 p-10 text-center">
+        <AlertCircle size={28} className="text-yellow-400" />
+        <p className="text-sm font-semibold text-foreground">
+          No deposit methods configured
+        </p>
+        <p className="max-w-sm text-xs text-muted">
+          Admin hasn&apos;t added any deposit wallets yet. Please check back
+          soon.
+        </p>
+      </div>
+    );
+  }
+
+  const steps = [
+    { label: "Choose token", done: !!selectedSymbol },
+    { label: "Pick network", done: !!selectedNetwork },
+    { label: "Enter amount", done: amountCents > 0 },
+    { label: "Attach proof", done: !!proofFile },
+  ];
+
+  const isLoading = submitStatus === "loading";
+  const canSubmit =
+    !isLoading && !!selectedWallet && amountCents > 0 && !!proofFile;
+
+  if (method === "banxa") {
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Method toggle */}
+        <MethodToggle method={method} onChange={setMethod} />
+
+        {/* Token selector */}
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+            Token
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {depositableTokens.map((token) => (
+              <button
+                key={token.symbol}
+                type="button"
+                onClick={() => pickToken(token.symbol)}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition ${
+                  selectedSymbol === token.symbol
+                    ? "bg-brand text-background"
+                    : "border border-border bg-background/30 text-foreground hover:border-brand"
+                }`}
+              >
+                <CoinIcon
+                  symbol={token.symbol}
+                  iconPath={token.iconPath}
+                  size={16}
+                />
+                {token.symbol}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Network selector */}
+        {availableNetworks.length > 1 && (
+          <div className="flex flex-col gap-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Network
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {availableNetworks.map((net) => (
+                <button
+                  key={net}
+                  type="button"
+                  onClick={() => {
+                    setSelectedNetwork(net);
+                    setValue("network", net);
+                  }}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    selectedNetwork === net
+                      ? "bg-brand text-background"
+                      : "border border-border bg-background/30 text-foreground hover:border-brand"
+                  }`}
+                >
+                  {net}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Wallet address — copy before paying on Banxa */}
+        {selectedWallet ? (
+          <div className="rounded-2xl border border-brand/40 bg-brand/5 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-brand">
+              Your {selectedToken?.symbol} deposit address
+            </p>
+            <p className="mt-1.5 text-xs text-muted">
+              Copy this address and paste it as the receiving wallet inside
+              Banxa checkout below.
+            </p>
+            <div className="mt-3 flex items-start gap-4">
+              <div className="flex flex-1 items-center justify-between gap-3">
+                <code className="break-all font-mono text-sm text-foreground">
+                  {selectedWallet.address}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="shrink-0 rounded-full border border-border bg-background/30 p-2 transition hover:border-brand"
+                >
+                  {copied ? (
+                    <CheckCircle size={16} className="text-up" />
+                  ) : (
+                    <Copy size={16} className="text-muted" />
+                  )}
+                </button>
+              </div>
+            </div>
+            {selectedWallet.memo && (
+              <p className="mt-2 text-xs text-muted">
+                Memo / Tag:{" "}
+                <span className="font-mono text-foreground">
+                  {selectedWallet.memo}
+                </span>
+              </p>
+            )}
+          </div>
+        ) : (
+          <div className="rounded-xl border border-yellow-400/40 bg-yellow-400/5 px-4 py-3 text-xs text-yellow-400">
+            Select a token{availableNetworks.length > 1 ? " and network" : ""}{" "}
+            to see your deposit address.
+          </div>
+        )}
+
+        {/* Banxa CTA */}
+        <a
+          href={BANXA_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="group flex flex-col items-center gap-4 rounded-2xl border border-border bg-background/30 px-6 py-10 text-center transition hover:border-brand"
+        >
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand/10 text-brand transition group-hover:bg-brand/20">
+            <ExternalLink size={24} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <p className="text-base font-semibold text-foreground">
+              Continue to Banxa
+            </p>
+            <p className="max-w-xs text-xs text-muted">
+              Opens in a new tab. Buy crypto with card or bank transfer, then
+              send it to the address above.
+            </p>
+          </div>
+          <span className="rounded-xl bg-brand px-6 py-2.5 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition group-hover:brightness-110">
+            Open Banxa checkout →
+          </span>
+        </a>
       </div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
+      {/* Method toggle */}
+      <MethodToggle method={method} onChange={setMethod} />
+
+      {/* Progress steps */}
+      <ol className="grid grid-cols-4 gap-2">
+        {steps.map((step, i) => (
+          <li key={step.label} className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold transition ${
+                  step.done
+                    ? "border-gray-300 bg-[hsl(var(--color-up))] text-black"
+                    : "border-white/20 bg-white/6 text-muted"
+                }`}
+              >
+                {step.done ? (
+                  <Check size={12} strokeWidth={3} className="text-white" />
+                ) : (
+                  i + 1
+                )}
+              </span>
+              <span
+                className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                  step.done ? "text-foreground" : "text-muted"
+                }`}
+              >
+                {step.label}
+              </span>
+            </div>
+            <div
+              className={`h-1 w-full rounded-full transition ${
+                step.done ? "bg-[hsl(var(--color-up))]" : "bg-white/10"
+              }`}
+            />
+          </li>
+        ))}
+      </ol>
+
       {/* Token selector */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
           Token
         </label>
         <div className="flex flex-wrap gap-2">
-          {tokens.map((token) => (
+          {depositableTokens.map((token) => (
             <button
-              key={token.id}
+              key={token.symbol}
               type="button"
-              onClick={() => {
-                setSelectedTokenId(token.id);
-                setSelectedNetwork("");
-                setValue("tokenId", token.id);
-                setValue("network", "");
-              }}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                selectedTokenId === token.id
+              onClick={() => pickToken(token.symbol)}
+              className={`flex items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition ${
+                selectedSymbol === token.symbol
                   ? "bg-brand text-background"
                   : "border border-border bg-background/30 text-foreground hover:border-brand"
               }`}
             >
+              <CoinIcon
+                symbol={token.symbol}
+                iconPath={token.iconPath}
+                size={16}
+              />
               {token.symbol}
             </button>
           ))}
         </div>
-        <input type="hidden" {...register("tokenId")} />
+        <input type="hidden" {...register("tokenSymbol")} />
       </div>
 
       {/* Network selector */}
-      {availableNetworks.length > 0 && (
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-            Network
-          </label>
+      <div className="flex flex-col gap-2">
+        <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+          Network
+        </label>
+        {availableNetworks.length === 0 ? (
+          <div className="rounded-xl border border-yellow-400/40 bg-yellow-400/5 px-4 py-3 text-xs text-yellow-400">
+            No deposit network is configured for this token yet.
+          </div>
+        ) : (
           <div className="flex flex-wrap gap-2">
             {availableNetworks.map((net) => (
               <button
@@ -167,40 +521,60 @@ export default function DepositForm({ wallets, tokens }: Props) {
               </button>
             ))}
           </div>
-          <input type="hidden" {...register("network")} />
-        </div>
-      )}
+        )}
+        <input type="hidden" {...register("network")} />
+      </div>
 
-      {/* Wallet address + QR */}
+      {/* Wallet address */}
       {selectedWallet && (
         <div className="rounded-2xl border border-border bg-background/30 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-            Deposit address
-          </p>
-          <div className="mt-3 flex items-center justify-between gap-3">
-            <code className="break-all font-mono text-sm text-foreground">
-              {selectedWallet.address}
-            </code>
-            <button
-              type="button"
-              onClick={handleCopy}
-              className="shrink-0 rounded-full border border-border bg-background/30 p-2 transition hover:border-brand"
-            >
-              {copied ? (
-                <CheckCircle size={16} className="text-up" />
-              ) : (
-                <Copy size={16} className="text-muted" />
+          <div className="flex items-start gap-4">
+            {selectedWallet.qrCodePath && (
+              <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl border border-border bg-white">
+                <Image
+                  src={buildMediaUrl("token-icons", selectedWallet.qrCodePath)}
+                  alt={`${selectedToken?.symbol} QR`}
+                  fill
+                  className="object-contain p-1"
+                  unoptimized
+                />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted flex items-center gap-1.5">
+                {selectedWallet.qrCodePath && <QrCode size={11} />}
+                Deposit address
+              </p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <code className="break-all font-mono text-sm text-foreground">
+                  {selectedWallet.address}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  className="shrink-0 rounded-full border border-border bg-background/30 p-2 transition hover:border-brand"
+                >
+                  {copied ? (
+                    <CheckCircle size={16} className="text-up" />
+                  ) : (
+                    <Copy size={16} className="text-muted" />
+                  )}
+                </button>
+              </div>
+              {selectedWallet.memo && (
+                <p className="mt-2 text-xs text-muted">
+                  Memo / Tag:{" "}
+                  <span className="font-mono text-foreground">
+                    {selectedWallet.memo}
+                  </span>
+                </p>
               )}
-            </button>
+              <p className="mt-2 text-xs text-muted">
+                Min deposit: {(selectedWallet.minDepositCents / 100).toFixed(2)}{" "}
+                USD
+              </p>
+            </div>
           </div>
-          {selectedWallet.memo && (
-            <p className="mt-2 text-xs text-muted">
-              Memo / Tag: <span className="font-mono text-foreground">{selectedWallet.memo}</span>
-            </p>
-          )}
-          <p className="mt-2 text-xs text-muted">
-            Min deposit: {(selectedWallet.minDepositCents / 100).toFixed(2)} USD
-          </p>
         </div>
       )}
 
@@ -230,8 +604,14 @@ export default function DepositForm({ wallets, tokens }: Props) {
           min={0}
           step={1}
           placeholder="Enter USD amount"
+          value={amountCents ? amountCents / 100 : ""}
           className="mt-1 w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-          onChange={(e) => setValue("amountCents", Math.round(parseFloat(e.target.value) * 100) || 0)}
+          onChange={(e) =>
+            setValue(
+              "amountCents",
+              Math.round(parseFloat(e.target.value) * 100) || 0,
+            )
+          }
         />
         {errors.amountCents && (
           <p className="text-xs text-down">{errors.amountCents.message}</p>
@@ -251,41 +631,53 @@ export default function DepositForm({ wallets, tokens }: Props) {
         />
       </div>
 
-      {/* Screenshot upload */}
+      {/* Screenshot attach (no upload until submit) */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Deposit Screenshot <span className="text-down">*</span>
+          Deposit screenshot <span className="text-down">*</span>
         </label>
-        <label className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-background/20 px-6 py-8 transition hover:border-brand">
-          {uploadStatus === "idle" && (
-            <>
-              <Upload size={28} className="text-muted" />
-              <span className="text-sm text-muted">Click to upload screenshot</span>
-              <span className="text-xs text-muted">PNG, JPEG, WebP — max 5 MB</span>
-            </>
-          )}
-          {uploadStatus === "uploading" && (
-            <span className="text-sm text-brand">Uploading…</span>
-          )}
-          {uploadStatus === "done" && (
-            <>
-              <CheckCircle size={28} className="text-up" />
-              <span className="text-sm text-up">Screenshot uploaded</span>
-            </>
-          )}
-          {uploadStatus === "error" && (
-            <>
-              <AlertCircle size={28} className="text-down" />
-              <span className="text-sm text-down">Upload failed — try again</span>
-            </>
-          )}
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-        </label>
+        {proofFile ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/40 px-4 py-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand">
+              <FileImage size={16} />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col leading-tight">
+              <span className="truncate text-sm font-semibold text-foreground">
+                {proofFile.name}
+              </span>
+              <span className="text-xs text-muted">
+                {formatBytes(proofFile.size)} · will be uploaded on submit
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleRemoveFile}
+              disabled={isLoading}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border text-muted transition hover:border-down hover:text-down disabled:opacity-40"
+              aria-label="Remove file"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        ) : (
+          <label className="flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 border-dashed border-border bg-background/20 px-6 py-8 transition hover:border-brand">
+            <Upload size={28} className="text-muted" />
+            <span className="text-sm text-muted">
+              Click to attach screenshot
+            </span>
+            <span className="text-xs text-muted">
+              PNG, JPEG, WebP — max 5 MB
+            </span>
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={handleFileChange}
+              disabled={isLoading}
+            />
+          </label>
+        )}
+        {fileError && <p className="text-xs text-down">{fileError}</p>}
       </div>
 
       {errorMsg && (
@@ -297,11 +689,23 @@ export default function DepositForm({ wallets, tokens }: Props) {
 
       <button
         type="submit"
-        disabled={submitStatus === "loading" || !proofPath || !selectedWallet}
-        className="w-full rounded-full bg-brand px-6 py-4 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
+        disabled={!canSubmit}
+        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-4 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
-        {submitStatus === "loading" ? "Submitting…" : "Submit Deposit"}
+        {isLoading ? "Uploading & submitting…" : "Submit deposit"}
       </button>
+
+      {!canSubmit && !isLoading && (
+        <p className="text-center text-[11px] text-muted">
+          {!selectedWallet
+            ? "Pick a token and network to continue."
+            : amountCents <= 0
+              ? "Enter the amount you sent."
+              : !proofFile
+                ? "Attach a screenshot of your transaction."
+                : ""}
+        </p>
+      )}
     </form>
   );
 }

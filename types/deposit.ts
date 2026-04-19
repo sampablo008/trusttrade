@@ -1,12 +1,11 @@
 export type DepositStatus = "pending" | "approved" | "rejected";
-export type DepositNetwork = "TRC20" | "ERC20" | "BEP20" | "BTC";
 
 export interface Deposit {
   id: string;
   userId: string;
   tokenId: string;
   tokenSymbol: string;
-  network: DepositNetwork;
+  network: string;
   amountCents: number;
   proofPath: string;
   txHash: string | null;
@@ -18,8 +17,8 @@ export interface Deposit {
 }
 
 export interface SubmitDepositInput {
-  tokenId: string;
-  network: DepositNetwork;
+  tokenSymbol: string;
+  network: string;
   amountCents: number;
   proofPath: string;
   txHash?: string;

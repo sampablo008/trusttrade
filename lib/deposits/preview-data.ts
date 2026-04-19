@@ -63,7 +63,7 @@ export const getPreviewAdminDeposits = (): AdminDepositsResult => ({
 });
 
 export const previewSubmitDeposit = (input: {
-  tokenId: string;
+  tokenSymbol: string;
   network: string;
   amountCents: number;
   proofPath: string;
@@ -71,8 +71,8 @@ export const previewSubmitDeposit = (input: {
 }): Deposit => {
   const deposit = makeDeposit({
     id: randomUUID(),
-    tokenId: input.tokenId,
-    network: input.network as Deposit["network"],
+    tokenSymbol: input.tokenSymbol.toUpperCase(),
+    network: input.network,
     amountCents: input.amountCents,
     proofPath: input.proofPath,
     txHash: input.txHash ?? null,

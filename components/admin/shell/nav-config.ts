@@ -2,11 +2,9 @@ import {
   Activity,
   ArrowDownToLine,
   ArrowUpFromLine,
-  Coins,
   Flag,
   GitBranch,
   LayoutDashboard,
-  LineChart,
   ListChecks,
   Mail,
   Megaphone,
@@ -65,10 +63,8 @@ export const adminNav: AdminNavSection[] = [
   {
     label: "Markets",
     items: [
-      { href: "/admin/tokens", label: "Tokens", icon: Coins },
-      { href: "/admin/candles", label: "Price engine", icon: LineChart },
+      { href: "/admin/tokens", label: "Token wallets", icon: Wallet },
       { href: "/admin/periods", label: "Periods", icon: Timer },
-      { href: "/admin/wallets", label: "Wallets", icon: Wallet },
     ],
   },
   {

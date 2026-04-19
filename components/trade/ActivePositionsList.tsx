@@ -2,6 +2,7 @@
 
 import PositionRow from "@/components/trade/PositionRow";
 import { useTradingShellStore } from "@/stores/trading-shell-store";
+import { Activity } from "lucide-react";
 
 interface ActivePositionsListProps {
   onTradeExpire?: (tradeId: string) => void;
@@ -14,30 +15,36 @@ export default function ActivePositionsList({ onTradeExpire }: ActivePositionsLi
     (a, b) => new Date(a.endTime).getTime() - new Date(b.endTime).getTime(),
   );
 
-  if (sorted.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-2 rounded-[28px] border border-dashed border-border/60 bg-background/10 py-10 text-center">
-        <p className="text-sm font-semibold text-muted">No active positions</p>
-        <p className="text-xs text-muted/70">Place a trade to see it here.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-          Active positions
-        </p>
-        <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
-          {sorted.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <Activity size={13} className="text-brand" />
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+            Active positions
+          </p>
+        </div>
+        {sorted.length > 0 && (
+          <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-bold text-brand">
+            {sorted.length}
+          </span>
+        )}
       </div>
-      <div className="flex flex-col gap-2">
-        {sorted.map((trade) => (
-          <PositionRow key={trade.id} trade={trade} onExpire={onTradeExpire} />
-        ))}
-      </div>
+
+      {sorted.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/8 bg-background/10 py-10 text-center">
+          <Activity size={22} className="text-muted/30" />
+          <p className="text-sm font-semibold text-muted">No active positions</p>
+          <p className="text-xs text-muted/60">Place a trade to see it here.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {sorted.map((trade) => (
+            <PositionRow key={trade.id} trade={trade} onExpire={onTradeExpire} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

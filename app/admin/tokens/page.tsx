@@ -1,20 +1,21 @@
 import AdminPageHeader from "@/components/admin/shell/AdminPageHeader";
-import TokenControlPanel from "@/components/admin/token-control-panel";
+import TokenWalletPanel from "@/components/admin/token-wallet-panel";
 import { listAdminTokens } from "@/lib/markets/admin-service";
+import { listAdminWallets } from "@/lib/wallets/admin-service";
 
-export const metadata = { title: "Tokens — Admin" };
+export const metadata = { title: "Token Wallets — Admin" };
 
 export default async function AdminTokensPage() {
-  const tokenData = await listAdminTokens();
+  const [wallets, tokens] = await Promise.all([listAdminWallets(), listAdminTokens()]);
 
   return (
     <>
       <AdminPageHeader
-        eyebrow="Market control"
-        title="Tokens"
-        description="Manage tradable pairs, feed source, scale, offset, volatility, and visibility from one operator panel."
+        eyebrow="Deposit setup"
+        title="Token wallets"
+        description="Set the deposit address and QR code for each coin. These are shown to users during deposit."
       />
-      <TokenControlPanel initialData={tokenData} />
+      <TokenWalletPanel initialData={wallets} initialTokens={tokens} />
     </>
   );
 }

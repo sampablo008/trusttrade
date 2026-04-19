@@ -45,7 +45,7 @@ interface AdminTradeRow {
   profiles?: {
     username: string;
     email: string;
-    joined_at?: string;
+    created_at?: string;
   } | null;
 }
 
@@ -95,7 +95,7 @@ const mapAdminTradeRow = (row: AdminTradeRow): AdminTrade => {
     direction: row.direction,
     endTime: row.end_time,
     entryPriceCents: toNumber(row.entry_price_cents),
-    flags: computeFlags(row, profile?.joined_at),
+    flags: computeFlags(row, profile?.created_at),
     id: row.id,
     outcome: row.outcome ?? null,
     payoutBps: toNumber(row.payout_bps),
@@ -115,7 +115,7 @@ const mapAdminTradeRow = (row: AdminTradeRow): AdminTrade => {
 };
 
 const ADMIN_TRADE_SELECT =
-  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens(symbol), trade_periods(duration_seconds), profiles(username, email)";
+  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens(symbol), trade_periods(duration_seconds), profiles(username, email, created_at)";
 
 export const listAdminTrades = async (
   filters: AdminTradeFilters = {},

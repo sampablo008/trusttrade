@@ -6,6 +6,7 @@ export interface AdminWalletAddress {
   memo: string | null;
   minDepositCents: number;
   network: string;
+  qrCodePath?: string | null;
   tokenSymbol: string;
   updatedAt: string;
 }
@@ -20,6 +21,7 @@ export interface UpsertAdminWalletAddressInput {
   memo: string | null;
   minDepositCents: number;
   network: string;
+  qrCodePath?: string | null;
   tokenSymbol: string;
 }
 
@@ -33,6 +35,7 @@ export interface PublicWalletAddress {
   memo: string | null;
   minDepositCents: number;
   network: string;
+  qrCodePath?: string | null;
   tokenSymbol: string;
 }
 

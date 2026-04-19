@@ -1,6 +1,7 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
+import { findTopCoin } from "@/lib/markets/top-coins";
 import {
   createPreviewAdminTradePeriod,
   createPreviewAdminToken,
@@ -10,6 +11,7 @@ import {
   listPreviewAdminTokens,
   updatePreviewAdminTradePeriod,
   updatePreviewAdminToken,
+  updatePreviewAdminTokenIconPath,
 } from "@/lib/markets/preview-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
@@ -73,10 +75,16 @@ const toNumber = (value: number | string | null | undefined) => {
   return 0;
 };
 
+const toIsoZ = (value: string): string => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toISOString();
+};
+
 const mapAdminTokenRow = (row: AdminTokenRow): AdminToken =>
   adminTokenSchema.parse({
     basePriceCents: Math.round(toNumber(row.base_price_cents)),
-    createdAt: row.created_at,
+    createdAt: toIsoZ(row.created_at),
     feedSource: row.feed_source,
     iconPath: row.icon_path,
     id: row.id,
@@ -90,13 +98,13 @@ const mapAdminTokenRow = (row: AdminTokenRow): AdminToken =>
     priceScale: Number(toNumber(row.price_scale).toFixed(6)),
     shadowSymbol: row.shadow_symbol,
     symbol: row.symbol,
-    updatedAt: row.updated_at,
+    updatedAt: toIsoZ(row.updated_at),
     volatilityFactor: Number(toNumber(row.volatility_factor).toFixed(4)),
   });
 
 const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
   adminTradePeriodSchema.parse({
-    createdAt: row.created_at,
+    createdAt: toIsoZ(row.created_at),
     durationSeconds: Math.round(toNumber(row.duration_seconds)),
     id: row.id,
     isEnabled: row.is_enabled,
@@ -104,7 +112,7 @@ const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
     maxAmountCents: Math.round(toNumber(row.max_amount_cents)),
     minAmountCents: Math.round(toNumber(row.min_amount_cents)),
     payoutBps: Math.round(toNumber(row.payout_bps)),
-    updatedAt: row.updated_at,
+    updatedAt: toIsoZ(row.updated_at),
   });
 
 const selectAdminTokenFields =
@@ -127,12 +135,8 @@ export const listAdminTokens = async (): Promise<AdminTokensResult> => {
     throw new ApiClientError(error.message, 500, "ADMIN_TOKENS_FETCH_FAILED", error);
   }
 
-  if (!data?.length) {
-    return listPreviewAdminTokens();
-  }
-
   return adminTokensResultSchema.parse({
-    items: data.map((row) => mapAdminTokenRow(row as AdminTokenRow)),
+    items: (data ?? []).map((row) => mapAdminTokenRow(row as AdminTokenRow)),
   });
 };
 
@@ -203,6 +207,58 @@ export const updateAdminToken = async (id: string, payload: unknown): Promise<Ad
   }
 
   return mapAdminTokenRow(data as AdminTokenRow);
+};
+
+export const updateAdminTokenIconPath = async (
+  symbol: string,
+  iconPath: string | null,
+): Promise<void> => {
+  if (!getOptionalServerEnv()) {
+    updatePreviewAdminTokenIconPath(symbol, iconPath);
+    return;
+  }
+
+  const upperSymbol = symbol.toUpperCase();
+  const adminClient = createSupabaseAdminClient();
+
+  const { data: existing, error: lookupError } = await adminClient
+    .from("tokens")
+    .select("id")
+    .eq("symbol", upperSymbol)
+    .maybeSingle();
+
+  if (lookupError) {
+    throw new ApiClientError(lookupError.message, 500, "ADMIN_TOKEN_LOOKUP_FAILED", lookupError);
+  }
+
+  if (existing?.id) {
+    const { error } = await adminClient
+      .from("tokens")
+      .update({ icon_path: iconPath })
+      .eq("id", existing.id);
+    if (error) {
+      throw new ApiClientError(error.message, 500, "ADMIN_TOKEN_ICON_UPDATE_FAILED", error);
+    }
+    return;
+  }
+
+  const coin = findTopCoin(upperSymbol);
+  const { error } = await adminClient.from("tokens").insert({
+    base_price_cents: 100,
+    feed_source: coin?.binanceSymbol ? "shadow" : "synthetic",
+    icon_path: iconPath,
+    is_enabled: true,
+    name: coin?.name ?? upperSymbol,
+    price_offset_cents: 0,
+    price_scale: 1,
+    shadow_symbol: coin?.binanceSymbol ? coin.binanceSymbol.toUpperCase() : null,
+    symbol: upperSymbol,
+    volatility_factor: 1,
+  });
+
+  if (error) {
+    throw new ApiClientError(error.message, 500, "ADMIN_TOKEN_ICON_INSERT_FAILED", error);
+  }
 };
 
 export const deleteAdminToken = async (id: string): Promise<DeleteAdminTokenResult> => {

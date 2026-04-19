@@ -58,26 +58,8 @@ const makeSettledTrade = (outcome: "win" | "lose", overrides: Partial<UserTrade>
   };
 };
 
-// In-memory store for preview trades
-const previewActiveTrades = new Map<string, UserTrade>([
-  [
-    "preview-trade-1",
-    makeActiveTrade({
-      id: "00000000-0000-4000-8000-0000000000t1",
-      direction: "long",
-      stakeCents: 50_000,
-    }),
-  ],
-  [
-    "preview-trade-2",
-    makeActiveTrade({
-      id: "00000000-0000-4000-8000-0000000000t2",
-      direction: "short",
-      stakeCents: 25_000,
-      endTime: new Date(Date.now() + 8_000).toISOString(),
-    }),
-  ],
-]);
+// In-memory store for preview trades — starts empty, populated via previewPlaceTrade
+const previewActiveTrades = new Map<string, UserTrade>();
 
 const previewSettledTrades: UserTrade[] = [
   makeSettledTrade("win"),
@@ -85,9 +67,16 @@ const previewSettledTrades: UserTrade[] = [
   makeSettledTrade("win"),
 ];
 
-export const getPreviewActiveTrades = (): ActiveTradesResult => ({
-  items: Array.from(previewActiveTrades.values()),
-});
+export const getPreviewActiveTrades = (): ActiveTradesResult => {
+  const now = Date.now();
+  // Evict stale entries so the in-memory Map doesn't grow unbounded
+  for (const [key, trade] of previewActiveTrades) {
+    if (new Date(trade.endTime).getTime() < now) {
+      previewActiveTrades.delete(key);
+    }
+  }
+  return { items: Array.from(previewActiveTrades.values()) };
+};
 
 export const getPreviewSettledTrades = (): SettledTradesResult => ({
   items: previewSettledTrades,
@@ -133,7 +122,10 @@ export const getPreviewProfile = (): UserProfile => ({
 
 export const getPreviewBalance = (): UserBalance => {
   const balance = 184_500;
-  const locked = 75_000;
+  const locked = Array.from(previewActiveTrades.values()).reduce(
+    (sum, t) => sum + t.stakeCents,
+    0,
+  );
   const bonus = 0;
   return {
     balanceCents: balance,

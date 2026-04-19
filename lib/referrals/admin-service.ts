@@ -350,7 +350,7 @@ export const getUserReferralTreeForAdmin = async (
   const { data, error, count } = await admin
     .from("referral_upline")
     .select(
-      "level, user_id, profiles!referral_upline_user_id_fkey(username, email, joined_at)",
+      "level, user_id, profiles!referral_upline_user_id_fkey(username, email, created_at)",
       { count: "exact" },
     )
     .eq("ancestor_id", userId)
@@ -366,7 +366,7 @@ export const getUserReferralTreeForAdmin = async (
       refereeUserId: row.user_id,
       refereeUsername: (profile as { username?: string })?.username ?? "",
       refereeEmail: (profile as { email?: string })?.email ?? "",
-      createdAt: (profile as { joined_at?: string })?.joined_at ?? new Date().toISOString(),
+      createdAt: (profile as { created_at?: string })?.created_at ?? new Date().toISOString(),
     };
   });
 

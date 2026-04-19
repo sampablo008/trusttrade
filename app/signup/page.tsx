@@ -14,14 +14,15 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
       <section className="rounded-[36px] border border-border bg-surface-soft p-8">
         <div className="max-w-3xl space-y-4">
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand">
-            Sprint 0.5 invitation gate
+            Trader access invite
           </p>
           <h1 className="font-display text-5xl tracking-tight text-foreground sm:text-6xl">
-            No code. No signup.
+            Claim your desk before the next move starts.
           </h1>
           <p className="text-base leading-8 text-muted">
-            The form stays hidden until the invite is valid. Query-string refs such as
-            `?ref=REF_ATLAS` prefill the code and trigger live validation.
+            Use your invite to unlock a trading account, join the desk, and get into the market
+            fast. Query-string refs such as `?ref=REF_ATLAS` still prefill the code and trigger
+            live validation.
           </p>
         </div>
 

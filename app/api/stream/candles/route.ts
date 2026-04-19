@@ -119,7 +119,7 @@ function buildLiveStream(
       const tokenId = tokenRow.id as string;
 
       // Use a separate client for Realtime subscriptions (avoids service-role leakage)
-      const rtClient = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_ANON_KEY);
+      const rtClient = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
 
       // Subscribe to 1s candles for this token
       rtClient

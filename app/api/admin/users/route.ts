@@ -11,7 +11,12 @@ export async function GET(request: NextRequest) {
     const params = Object.fromEntries(request.nextUrl.searchParams.entries());
     const filters = adminUserFiltersSchema.parse(params);
 
-    const result = await listAdminUsers(filters.search, filters.limit, filters.offset);
+    const result = await listAdminUsers(
+      filters.search,
+      filters.limit,
+      filters.offset,
+      filters.role,
+    );
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof ApiClientError) {

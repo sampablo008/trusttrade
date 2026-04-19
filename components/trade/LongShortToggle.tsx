@@ -1,5 +1,6 @@
 "use client";
 
+import { TrendingUp, TrendingDown } from "lucide-react";
 import type { TradeDirection } from "@/types/trade";
 
 interface LongShortToggleProps {
@@ -10,38 +11,36 @@ interface LongShortToggleProps {
 
 export default function LongShortToggle({ value, onChange, disabled }: LongShortToggleProps) {
   return (
-    <div
-      className="grid grid-cols-2 rounded-2xl border border-border bg-background/40 p-1"
-      role="group"
-      aria-label="Trade direction"
-    >
+    <div className="grid grid-cols-2 gap-2" role="group" aria-label="Trade direction">
       <button
         type="button"
         disabled={disabled}
         onClick={() => onChange("long")}
         className={[
-          "rounded-xl py-2.5 text-sm font-semibold transition-all",
+          "flex flex-col items-center gap-1.5 rounded-2xl border py-3.5 text-sm font-bold transition-all",
           value === "long"
-            ? "bg-[hsl(var(--color-up))] text-black shadow-sm"
-            : "text-muted hover:text-foreground",
+            ? "border-brand/50 bg-brand/5 text-brand shadow-lg shadow-brand/10"
+            : "border-white/10 bg-background/30 text-muted hover:border-white/20 hover:text-foreground",
           disabled ? "cursor-not-allowed opacity-50" : "",
         ].join(" ")}
       >
-        ▲ Long
+        <TrendingUp size={18} />
+        Long
       </button>
       <button
         type="button"
         disabled={disabled}
         onClick={() => onChange("short")}
         className={[
-          "rounded-xl py-2.5 text-sm font-semibold transition-all",
+          "flex flex-col items-center gap-1.5 rounded-2xl border py-3.5 text-sm font-bold transition-all",
           value === "short"
-            ? "bg-[hsl(var(--color-down))] text-white shadow-sm"
-            : "text-muted hover:text-foreground",
+            ? "border-brand/50 bg-brand/5 text-brand shadow-lg shadow-brand/10"
+            : "border-white/10 bg-background/30 text-muted hover:border-white/20 hover:text-foreground",
           disabled ? "cursor-not-allowed opacity-50" : "",
         ].join(" ")}
       >
-        ▼ Short
+        <TrendingDown size={18} />
+        Short
       </button>
     </div>
   );

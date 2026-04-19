@@ -5,7 +5,7 @@ import { listAdminUsers } from "@/lib/admin/users-service";
 export const metadata = { title: "Users — Admin" };
 
 export default async function AdminUsersPage() {
-  const usersData = await listAdminUsers("", 50, 0);
+  const usersData = await listAdminUsers("", 50, 0, "user");
 
   return (
     <>

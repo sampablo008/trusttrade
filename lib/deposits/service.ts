@@ -91,9 +91,20 @@ export const submitDeposit = async (
   }
 
   const admin = createSupabaseAdminClient();
+
+  const { data: tokenRow, error: tokenErr } = await admin
+    .from("tokens")
+    .select("id")
+    .eq("symbol", input.tokenSymbol.toUpperCase())
+    .maybeSingle();
+
+  if (tokenErr || !tokenRow) {
+    throw new ApiClientError("Token not found.", 404, "TOKEN_NOT_FOUND");
+  }
+
   const { data, error } = await admin.rpc("submit_deposit", {
     p_user_id: userId,
-    p_token_id: input.tokenId,
+    p_token_id: tokenRow.id,
     p_network: input.network,
     p_amount_cents: input.amountCents,
     p_proof_path: input.proofPath,

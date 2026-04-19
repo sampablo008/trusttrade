@@ -1,20 +1,21 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import type { PublicToken } from "@/types/market";
+import CoinIcon from "@/components/ui/CoinIcon";
+import type { TopCoin } from "@/lib/markets/top-coins";
 
 interface TokenSwitcherProps {
-  tokens: PublicToken[];
+  coins: TopCoin[];
+  iconPaths?: Record<string, string | null | undefined>;
 }
 
-export default function TokenSwitcher({ tokens }: TokenSwitcherProps) {
+export default function TokenSwitcher({ coins, iconPaths = {} }: TokenSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
 
   const currentSymbol = pathname.split("/").pop()?.toUpperCase() ?? "";
 
   const navigate = (symbol: string) => {
-    // Use View Transitions API when available, fallback to regular navigation
     if ("startViewTransition" in document) {
       (document as Document & { startViewTransition: (cb: () => void) => void })
         .startViewTransition(() => { router.push(`/trade/${symbol}`); });
@@ -25,20 +26,21 @@ export default function TokenSwitcher({ tokens }: TokenSwitcherProps) {
 
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1">
-      {tokens.map((token) => {
-        const active = token.symbol.toUpperCase() === currentSymbol;
+      {coins.map((coin) => {
+        const active = coin.symbol === currentSymbol;
         return (
           <button
-            key={token.id}
+            key={coin.symbol}
             type="button"
-            onClick={() => !active && navigate(token.symbol)}
-            className={`shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition ${
+            onClick={() => !active && navigate(coin.symbol)}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               active
                 ? "bg-brand text-background"
                 : "border border-border bg-background/30 text-muted hover:border-brand hover:text-foreground"
             }`}
           >
-            {token.symbol}
+            <CoinIcon symbol={coin.symbol} iconPath={iconPaths[coin.symbol]} size={16} />
+            {coin.symbol}
           </button>
         );
       })}

@@ -93,6 +93,7 @@ export const createPreviewAdminWallet = (
     memo: input.memo,
     minDepositCents: input.minDepositCents,
     network: input.network,
+    qrCodePath: input.qrCodePath ?? null,
     tokenSymbol: input.tokenSymbol,
     updatedAt: now,
   });
@@ -133,6 +134,7 @@ export const updatePreviewAdminWallet = (
     memo: input.memo,
     minDepositCents: input.minDepositCents,
     network: input.network,
+    qrCodePath: input.qrCodePath ?? null,
     tokenSymbol: input.tokenSymbol,
     updatedAt: new Date().toISOString(),
   });

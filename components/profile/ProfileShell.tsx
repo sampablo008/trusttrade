@@ -75,8 +75,13 @@ export default function ProfileShell({ profile, avatarUrl }: ProfileShellProps) 
   );
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-3xl flex-col gap-8 px-4 py-8 sm:px-6">
-      <h1 className="font-display text-3xl text-foreground">My Profile</h1>
+    <div className="flex flex-col gap-6">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">Account</p>
+        <h1 className="mt-1 font-display text-3xl font-bold tracking-tight text-foreground">
+          My profile
+        </h1>
+      </div>
 
       {/* Avatar + identity */}
       <section className="rounded-[28px] border border-border bg-surface-soft p-6 sm:p-8">
@@ -194,6 +199,6 @@ export default function ProfileShell({ profile, avatarUrl }: ProfileShellProps) 
           </span>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

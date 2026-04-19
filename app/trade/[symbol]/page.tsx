@@ -1,11 +1,14 @@
 import { type Metadata } from "next";
 import { notFound } from "next/navigation";
+import AppShell from "@/components/layout/AppShell";
 import TradeShell from "@/components/trade/TradeShell";
 import TokenSwitcher from "@/components/trade/TokenSwitcher";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getOptionalServerEnv } from "@/lib/env/server";
-import { listCandles, listMarketTokens, listTradePeriods } from "@/lib/markets/service";
+import { TOP_COINS, findTopCoin } from "@/lib/markets/top-coins";
+import { listMarketTokens, listTradePeriods } from "@/lib/markets/service";
 import { getBalance, listActiveTrades } from "@/lib/trades/service";
+import type { PublicToken } from "@/types/market";
 
 export async function generateMetadata(
   { params }: { params: Promise<{ symbol: string }> },
@@ -19,6 +22,21 @@ export async function generateMetadata(
 
 const PREVIEW_USER_ID = "00000000-0000-4000-8000-0000000000a1";
 
+function stubToken(symbol: string, name: string): PublicToken {
+  return {
+    id: "00000000-0000-0000-0000-000000000000",
+    symbol,
+    name,
+    iconPath: null,
+    priceCents: 0,
+    dayChangePercent: 0,
+    volumeLabel: "—",
+    feedSource: "synthetic",
+    shadowOffsetPercent: 0,
+    lastPriceAt: null,
+  };
+}
+
 export default async function TradeSymbolPage({
   params,
 }: {
@@ -28,40 +46,47 @@ export default async function TradeSymbolPage({
   const { symbol } = await params;
   const upperSymbol = symbol.toUpperCase();
 
+  const coin = findTopCoin(upperSymbol);
+  if (!coin) notFound();
+
   const [tokensResult, periodsResult] = await Promise.all([
     listMarketTokens(),
     listTradePeriods(),
   ]);
 
-  const token = tokensResult.items.find((t) => t.symbol === upperSymbol);
-  if (!token) notFound();
+  const token =
+    tokensResult.items.find((t) => t.symbol === upperSymbol) ??
+    stubToken(coin.symbol, coin.name);
 
   let userId = PREVIEW_USER_ID;
   if (getOptionalServerEnv()) {
-    // In live mode, get user from Supabase — import inline to avoid polluting
-    // the server component's dependency graph with cookie-writing code
     const { createSupabaseServerClient } = await import("@/lib/supabase/server");
     const client = await createSupabaseServerClient();
     const { data: { user } } = await client.auth.getUser();
     if (user) userId = user.id;
   }
 
-  const [balance, activeTrades, initialCandles] = await Promise.all([
+  const [balance, activeTrades] = await Promise.all([
     getBalance(userId),
     listActiveTrades(userId),
-    listCandles({ symbol: upperSymbol, tf: "1m", limit: 200 }),
   ]);
 
+  const iconPaths = Object.fromEntries(
+    tokensResult.items.map((t) => [t.symbol, t.iconPath ?? null]),
+  );
+
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-      <TokenSwitcher tokens={tokensResult.items} />
-      <TradeShell
-        token={token}
-        periods={periodsResult.items}
-        initialBalance={balance}
-        initialTrades={activeTrades.items}
-        initialCandles={initialCandles}
-      />
-    </main>
+    <AppShell>
+      <main className="mx-auto flex w-full max-w-350 flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
+        <TokenSwitcher coins={TOP_COINS} iconPaths={iconPaths} />
+        <TradeShell
+          coin={coin}
+          token={token}
+          periods={periodsResult.items}
+          initialBalance={balance}
+          initialTrades={activeTrades.items}
+        />
+      </main>
+    </AppShell>
   );
 }

@@ -20,7 +20,7 @@ export default function PeriodSelector({
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Duration</p>
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-3 gap-1.5">
         {enabled.map((period) => (
           <button
             key={period.id}
@@ -28,10 +28,10 @@ export default function PeriodSelector({
             disabled={disabled}
             onClick={() => onSelect(period)}
             className={[
-              "rounded-xl border px-3 py-1.5 text-sm font-semibold transition-all",
+              "rounded-xl py-2 text-sm font-semibold transition-all",
               selectedId === period.id
-                ? "border-brand bg-brand/10 text-brand"
-                : "border-border text-muted hover:border-border/80 hover:text-foreground",
+                ? "bg-brand text-white shadow-sm shadow-brand/30"
+                : "border border-white/10 bg-background/30 text-muted hover:border-white/20 hover:text-foreground",
               disabled ? "cursor-not-allowed opacity-50" : "",
             ].join(" ")}
           >
