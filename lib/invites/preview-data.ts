@@ -10,6 +10,7 @@ import type {
   AdminInviteCode,
   AdminInviteCodesResult,
   AdminInviteSummary,
+  InviteSignupResult,
   InviteValidationResult,
   MintInviteCodesInput,
   MintInviteCodesResult,
@@ -93,6 +94,12 @@ const previewInvites = new Map<string, AdminInviteCode>([
   ],
 ]);
 
+const previewUsersByEmail = new Map<string, { email: string; userId: string; username: string }>();
+const previewUsersByUsername = new Map<
+  string,
+  { email: string; userId: string; username: string }
+>();
+
 const sortInviteCodes = (items: AdminInviteCode[]) =>
   [...items].sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 
@@ -106,6 +113,26 @@ const buildInviteSummary = (items: AdminInviteCode[]): AdminInviteSummary => ({
   userCount: items.filter((item) => item.source === "user").length,
 });
 
+const refreshPreviewInviteStatuses = () => {
+  const now = Date.now();
+
+  for (const [code, invite] of previewInvites.entries()) {
+    if (invite.status !== "active" || !invite.expiresAt) {
+      continue;
+    }
+
+    if (new Date(invite.expiresAt).getTime() <= now) {
+      previewInvites.set(
+        code,
+        createPreviewInvite({
+          ...invite,
+          status: "expired",
+        }),
+      );
+    }
+  }
+};
+
 const createPreviewCode = () => {
   let code = "";
 
@@ -117,20 +144,39 @@ const createPreviewCode = () => {
 };
 
 export const getPreviewInvite = (code: string): InviteValidationResult => {
+  refreshPreviewInviteStatuses();
+
   const normalizedCode = code.trim().toUpperCase();
   const previewInvite = previewInvites.get(normalizedCode);
 
-  if (!previewInvite || previewInvite.status !== "active") {
+  if (!previewInvite) {
     return {
       code: normalizedCode,
-      expiresAt: previewInvite?.expiresAt ?? null,
-      isSingleUse: previewInvite?.isSingleUse ?? false,
+      expiresAt: null,
+      isSingleUse: false,
       isValid: false,
       message: "Code not found in preview mode.",
       mode: "preview",
-      ownerUserId: previewInvite?.ownerUserId ?? null,
-      source: previewInvite?.source ?? null,
-      status: previewInvite?.status ?? null,
+      ownerUserId: null,
+      source: null,
+      status: null,
+    };
+  }
+
+  if (previewInvite.status !== "active") {
+    return {
+      code: normalizedCode,
+      expiresAt: previewInvite.expiresAt,
+      isSingleUse: previewInvite.isSingleUse,
+      isValid: false,
+      message:
+        previewInvite.status === "expired"
+          ? "Invite code has expired."
+          : "Invite code is not active.",
+      mode: "preview",
+      ownerUserId: previewInvite.ownerUserId,
+      source: previewInvite.source,
+      status: previewInvite.status,
     };
   }
 
@@ -151,6 +197,8 @@ export const getPreviewInvite = (code: string): InviteValidationResult => {
 };
 
 export const getPreviewInviteCodes = (): AdminInviteCodesResult => {
+  refreshPreviewInviteStatuses();
+
   const items = sortInviteCodes(Array.from(previewInvites.values()));
 
   return adminInviteCodesResultSchema.parse({
@@ -160,6 +208,8 @@ export const getPreviewInviteCodes = (): AdminInviteCodesResult => {
 };
 
 export const mintPreviewInviteCodes = (input: MintInviteCodesInput): MintInviteCodesResult => {
+  refreshPreviewInviteStatuses();
+
   const createdAt = new Date().toISOString();
   const batch = Array.from({ length: input.count }, () => {
     const invite = createPreviewInvite({
@@ -195,6 +245,8 @@ export const mintPreviewInviteCodes = (input: MintInviteCodesInput): MintInviteC
 };
 
 export const revokePreviewInvite = (code: string): RevokeInviteCodeResult => {
+  refreshPreviewInviteStatuses();
+
   const normalizedCode = code.trim().toUpperCase();
   const invite = previewInvites.get(normalizedCode);
 
@@ -221,4 +273,68 @@ export const revokePreviewInvite = (code: string): RevokeInviteCodeResult => {
     revokedAt,
     status: nextInvite.status,
   });
+};
+
+interface CreatePreviewInvitedUserInput {
+  code: string;
+  email: string;
+  username: string;
+}
+
+export const createPreviewInvitedUser = ({
+  code,
+  email,
+  username,
+}: CreatePreviewInvitedUserInput): InviteSignupResult => {
+  refreshPreviewInviteStatuses();
+
+  const normalizedCode = code.trim().toUpperCase();
+  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedUsername = username.trim().toLowerCase();
+  const invite = previewInvites.get(normalizedCode);
+
+  if (!invite) {
+    throw new ApiClientError("Invite code is not active.", 409, "CODE_INACTIVE");
+  }
+
+  if (invite.status !== "active") {
+    throw new ApiClientError(
+      invite.status === "expired" ? "Invite code has expired." : "Invite code is not active.",
+      409,
+      invite.status === "expired" ? "CODE_EXPIRED" : "CODE_INACTIVE",
+    );
+  }
+
+  if (previewUsersByEmail.has(normalizedEmail)) {
+    throw new ApiClientError("Email is already registered.", 409, "EMAIL_TAKEN");
+  }
+
+  if (previewUsersByUsername.has(normalizedUsername)) {
+    throw new ApiClientError("Username is already taken.", 409, "USERNAME_TAKEN");
+  }
+
+  const userId = randomUUID();
+  const createdUser = {
+    email: normalizedEmail,
+    userId,
+    username: normalizedUsername,
+  };
+
+  previewUsersByEmail.set(normalizedEmail, createdUser);
+  previewUsersByUsername.set(normalizedUsername, createdUser);
+
+  previewInvites.set(
+    normalizedCode,
+    createPreviewInvite({
+      ...invite,
+      lastUsedAt: new Date().toISOString(),
+      status: invite.isSingleUse ? "used" : "active",
+      usedCount: invite.usedCount + 1,
+    }),
+  );
+
+  return {
+    nextPath: "/login?next=/trade&signup=1&mode=preview",
+    userId,
+  };
 };

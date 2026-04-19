@@ -2,7 +2,16 @@ import { Suspense } from "react";
 import { LockKeyhole, ShieldCheck, Sparkles } from "lucide-react";
 import LoginForm from "@/components/auth/login-form";
 
-export default function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{
+    signup?: string;
+  }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const showSignupNotice = params.signup === "1";
+
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-8 px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
@@ -54,6 +63,12 @@ export default function LoginPage() {
               Preview sign in
             </h2>
           </div>
+
+          {showSignupNotice ? (
+            <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
+              Account created. Use the preview sign-in flow to enter the trade route.
+            </div>
+          ) : null}
 
           <div className="mt-8 rounded-[28px] border border-border bg-background/35 p-5">
             <Suspense

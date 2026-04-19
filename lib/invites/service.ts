@@ -2,7 +2,7 @@ import "server-only";
 import { PostgrestError } from "@supabase/supabase-js";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
-import { getPreviewInvite } from "@/lib/invites/preview-data";
+import { createPreviewInvitedUser, getPreviewInvite } from "@/lib/invites/preview-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import {
   inviteCodeSchema,
@@ -92,11 +92,7 @@ export const createInvitedUser = async (
   const input = invitedSignupSchema.parse(payload);
 
   if (!getOptionalServerEnv()) {
-    throw new ApiClientError(
-      "Supabase setup is still required before signup can create real users.",
-      503,
-      "SUPABASE_SETUP_REQUIRED",
-    );
+    return createPreviewInvitedUser(input);
   }
 
   const invite = await validateInviteCode(input.code);

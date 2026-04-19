@@ -21,7 +21,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${manrope.variable} ${syne.variable} h-full`}>
+    <html
+      lang="en"
+      className={`${manrope.variable} ${syne.variable} h-full`}
+      data-scroll-behavior="smooth"
+    >
       <body className="min-h-full bg-background text-foreground antialiased">
         {children}
       </body>
