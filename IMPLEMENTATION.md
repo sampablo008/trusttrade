@@ -1402,8 +1402,8 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Admin token CRUD: `/admin/tokens` page + `/api/admin/tokens` endpoints
 - [x] Admin period CRUD: `/admin/periods` page + endpoints
 - [ ] Admin wallet CRUD: `/admin/wallets` + endpoints (last-8-char confirm)
-- [ ] Admin icon upload: `/api/admin/upload/token-icon`
-- [ ] Media proxy: `/api/media/[bucket]/[...path]` Route Handler
+- [x] Admin icon upload: `/api/admin/upload/token-icon`
+- [x] Media proxy: `/api/media/[bucket]/[...path]` Route Handler
 - [x] Public reads: `/api/tokens`, `/api/periods`, `/api/candles`
 - [ ] Edge Fn: `shadow_fetch` — Binance WS subscriber, scale+offset, updates `tokens.last_shadow_price`
 - [ ] Edge Fn: `tick_candles` — 1-second cron, generates OHLC with GBM or shadow or replay
@@ -1454,32 +1454,49 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 ### Phase 8: Verify
 - [x] Verify lint and production build after the admin period slice — `pnpm lint`, `pnpm build`
-- [ ] Wallet CRUD, icon upload, media proxy, and live chart streaming still remain
+- [ ] Wallet CRUD, media slice, and live chart streaming still remained at this point
+
+### Phase 9: Media proxy and token icon upload
+- [x] Add shared media bucket schemas, typed upload results, path builder, and preview/live storage service — `types/media.ts` (created), `schemas/media.ts` (created), `lib/media/path.ts` (created), `lib/media/preview-data.ts` (created), `lib/media/service.ts` (created)
+- [x] Add token icon upload and media proxy Route Handlers — `app/api/admin/upload/token-icon/route.ts` (created), `app/api/media/[bucket]/[...path]/route.ts` (created)
+- [x] Wire token admin to upload through the storage route and preview the saved icon path — `components/admin/token-control-panel.tsx` (modified), `app/admin/tokens/page.tsx` (modified)
+
+### Phase 10: Verify
+- [x] Verify lint and production build after the media slice — `pnpm lint`, `pnpm build`
+- [ ] Wallet CRUD and live chart streaming still remain
 
 **Files touched:**
+- `IMPLEMENTATION.md` — modified
 - `app/admin/page.tsx` — modified
 - `app/admin/periods/page.tsx` — created
-- `app/admin/tokens/page.tsx` — created
+- `app/admin/tokens/page.tsx` — created, modified
 - `app/api/admin/periods/[id]/route.ts` — created
 - `app/api/admin/periods/route.ts` — created
 - `app/api/admin/tokens/[id]/route.ts` — created
 - `app/api/admin/tokens/route.ts` — created
+- `app/api/admin/upload/token-icon/route.ts` — created
 - `app/api/candles/route.ts` — created
+- `app/api/media/[bucket]/[...path]/route.ts` — created
 - `app/api/periods/route.ts` — created
 - `app/api/tokens/route.ts` — created
 - `app/page.tsx` — modified
 - `components/admin/period-control-panel.tsx` — created
-- `components/admin/token-control-panel.tsx` — created
+- `components/admin/token-control-panel.tsx` — created, modified
 - `components/home/trading-workbench.tsx` — modified
 - `components/home/trustpro-shell.tsx` — modified
 - `lib/constants/platform.ts` — modified
+- `lib/media/path.ts` — created
+- `lib/media/preview-data.ts` — created
+- `lib/media/service.ts` — created
 - `lib/markets/admin-service.ts` — modified
 - `lib/markets/preview-data.ts` — modified
 - `lib/markets/service.ts` — created
 - `lib/utils/format.ts` — modified
+- `schemas/media.ts` — created
 - `schemas/market.ts` — modified
 - `supabase/migrations/0010_chart_engine.sql` — created
 - `supabase/migrations/0011_storage_buckets.sql` — created
+- `types/media.ts` — created
 - `types/market.ts` — modified
 - `types/platform.ts` — modified
 

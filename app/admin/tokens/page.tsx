@@ -31,7 +31,8 @@ export default async function AdminTokensPage() {
             </div>
             <p className="max-w-3xl text-base leading-8 text-muted">
               Manage tradable pairs, feed source, scale, offset, volatility, and visibility from a
-              single operator panel. Icon upload lands in the next slice.
+              single operator panel. Token icons now upload through the storage proxy and stay on
+              the same server-only path as the rest of the app.
             </p>
           </div>
 

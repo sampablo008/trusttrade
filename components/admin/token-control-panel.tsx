@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Activity, PencilLine, Plus, Save, Trash2 } from "lucide-react";
-import { fetchJson } from "@/lib/api/client";
+import { Activity, ImagePlus, PencilLine, Plus, Save, Trash2 } from "lucide-react";
+import { ApiClientError, createApiEnvelopeSchema, fetchJson } from "@/lib/api/client";
+import { buildMediaUrl } from "@/lib/media/path";
 import {
   adminTokenSchema,
   deleteAdminTokenResultSchema,
   upsertAdminTokenInputSchema,
 } from "@/schemas/market";
+import { tokenIconUploadResultSchema } from "@/schemas/media";
 import type { AdminToken, AdminTokensResult, TokenFeedSource } from "@/types/market";
 
 interface TokenControlPanelProps {
@@ -61,6 +64,38 @@ const statusClasses = {
   enabled: "bg-up/10 text-up",
 } as const;
 
+const uploadTokenIcon = async (file: File, symbol: string) => {
+  const formData = new FormData();
+
+  formData.set("file", file);
+  formData.set("symbol", symbol);
+
+  const response = await fetch("/api/admin/upload/token-icon", {
+    body: formData,
+    method: "POST",
+  });
+  const payload = await response
+    .json()
+    .catch(() => ({ error: { code: "INVALID_JSON", message: "Response was not valid JSON." } }));
+  const envelope = createApiEnvelopeSchema(tokenIconUploadResultSchema).parse(payload);
+
+  if (!response.ok || envelope.error) {
+    const error = envelope.error ?? {
+      code: "TOKEN_ICON_UPLOAD_FAILED",
+      message: "Token icon upload failed.",
+      details: payload,
+    };
+
+    throw new ApiClientError(error.message, response.status, error.code, error.details);
+  }
+
+  if (!envelope.data) {
+    throw new ApiClientError("Response did not include an upload payload.", response.status);
+  }
+
+  return envelope.data;
+};
+
 export default function TokenControlPanel({ initialData }: TokenControlPanelProps) {
   "use no memo";
 
@@ -73,9 +108,15 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isUploadingIcon, startUploadTransition] = useTransition();
 
   const selectedToken = initialData.items.find((item) => item.id === selectedId) ?? null;
-  const title = isCreatingNew ? "Create token" : selectedToken ? `Edit ${selectedToken.symbol}` : "Create token";
+  const title = isCreatingNew
+    ? "Create token"
+    : selectedToken
+      ? `Edit ${selectedToken.symbol}`
+      : "Create token";
+  const iconPreviewUrl = draft.iconPath ? buildMediaUrl("token-icons", draft.iconPath) : null;
 
   const updateDraft = <K extends keyof TokenFormState>(key: K, value: TokenFormState[K]) => {
     setDraft((current) => ({
@@ -98,6 +139,32 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
     setDraft(createEmptyDraft());
     setFeedback(null);
     setErrorMessage(null);
+  };
+
+  const handleIconUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    setFeedback(null);
+    setErrorMessage(null);
+
+    startUploadTransition(async () => {
+      try {
+        const result = await uploadTokenIcon(file, draft.symbol.trim().toUpperCase());
+
+        setDraft((current) => ({
+          ...current,
+          iconPath: result.path,
+        }));
+        setFeedback("Token icon uploaded.");
+      } catch (error) {
+        setErrorMessage(error instanceof Error ? error.message : "Token icon upload failed.");
+      }
+    });
   };
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -374,16 +441,56 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
             />
           </div>
 
-          <div className="space-y-2 md:col-span-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Icon path
-            </label>
-            <input
-              value={draft.iconPath}
-              onChange={(event) => updateDraft("iconPath", event.target.value)}
-              placeholder="Upload path lands next slice"
-              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
-            />
+          <div className="grid gap-4 md:col-span-2 xl:grid-cols-[1fr_220px]">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                Icon path
+              </label>
+              <input
+                value={draft.iconPath}
+                onChange={(event) => updateDraft("iconPath", event.target.value)}
+                placeholder="btc/asset.webp"
+                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+              />
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row sm:items-center">
+                <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-full border border-brand/30 bg-brand-soft px-4 py-3 text-sm font-semibold text-brand transition hover:border-brand">
+                  <ImagePlus size={16} />
+                  {isUploadingIcon ? "Uploading..." : "Upload icon"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleIconUpload}
+                    disabled={isPending || isUploadingIcon}
+                    className="sr-only"
+                  />
+                </label>
+                <p className="text-xs uppercase tracking-[0.18em] text-muted">
+                  PNG, JPG, or WebP. Max 512 KB. SVG disabled.
+                </p>
+              </div>
+            </div>
+
+            <div className="rounded-[24px] border border-border bg-background/20 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                Icon preview
+              </p>
+              <div className="mt-4 flex min-h-[148px] items-center justify-center rounded-[20px] border border-dashed border-border bg-background/35 p-4">
+                {iconPreviewUrl ? (
+                  <Image
+                    src={iconPreviewUrl}
+                    alt={`${draft.symbol || draft.name || "Token"} icon`}
+                    className="h-20 w-20 rounded-[20px] object-contain"
+                    height={80}
+                    unoptimized
+                    width={80}
+                  />
+                ) : (
+                  <p className="max-w-[10rem] text-center text-xs uppercase tracking-[0.18em] text-muted">
+                    Upload an icon or paste a token path.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           <label className="md:col-span-2 flex items-center gap-3 rounded-[20px] border border-border bg-background/25 px-4 py-4 text-sm text-foreground">
