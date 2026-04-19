@@ -1231,9 +1231,9 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [ ] Create Supabase project (dev + prod)
 - [ ] Install Supabase CLI + link project
 - [ ] Configure local dev (`supabase start`)
-- [ ] Migration `0001_init.sql` — profiles, user_balances, transactions, tokens, trade_periods, user_trades, candles_1s, admin_actions, app_config
-- [ ] Migration `0004_rls.sql` — all policies + `is_admin()` function
-- [ ] `handle_new_user` trigger — auto profile + balance
+- [x] Migration `0001_init.sql` — profiles, user_balances, transactions, tokens, trade_periods, user_trades, candles_1s, admin_actions, app_config
+- [x] Migration `0004_rls.sql` — all policies + `is_admin()` function
+- [x] `handle_new_user` trigger — auto profile + balance
 - [x] Create `lib/supabase/server.ts` and `lib/supabase/admin.ts` with `'server-only'`
 - [x] Confirm `lib/supabase/client.ts` does **not** exist
 - [x] Middleware: auth redirect + admin guard + global rate limit
@@ -1270,8 +1270,15 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Add Playwright config and unauthenticated redirect smoke test — `playwright.config.ts` (created), `tests/e2e/auth-redirect.spec.ts` (created), `package.json` (modified), `.gitignore` (modified)
 - [x] Execute the smoke test with installed Chromium — `pnpm exec playwright install chromium`, `pnpm test:e2e`
 
+### Phase 6: Supabase schema + setup docs
+- [x] Create Sprint 0 core Supabase schema migration — `supabase/migrations/0001_init.sql` (created)
+- [x] Create RLS migration with `is_admin()` policies — `supabase/migrations/0004_rls.sql` (created)
+- [x] Create separate Supabase setup guide and runnable SQL helpers — `SUPABASE_SETUP.md` (created), `supabase/sql/110_promote_admin.sql` (created), `supabase/sql/120_verify_setup.sql` (created)
+- [ ] Project creation, CLI linking, and migration execution remain manual until the local Supabase CLI issue is fixed
+
 **Files touched:**
 - `.gitignore` — modified
+- `SUPABASE_SETUP.md` — created
 - `app/actions/auth.ts` — created
 - `app/admin/page.tsx` — created
 - `app/globals.css` — modified
@@ -1302,6 +1309,10 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - `proxy.ts` — created
 - `schemas/auth.ts` — created
 - `stores/trading-shell-store.ts` — created
+- `supabase/migrations/0001_init.sql` — created
+- `supabase/migrations/0004_rls.sql` — created
+- `supabase/sql/110_promote_admin.sql` — created
+- `supabase/sql/120_verify_setup.sql` — created
 - `tests/e2e/auth-redirect.spec.ts` — created
 - `types/platform.ts` — created
 
@@ -1311,11 +1322,11 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 **Goal.** Signup impossible without a code.
 
-- [ ] Migration `0006_invitation_codes.sql` — invitation_codes + triggers + expiry/use status
-- [ ] DB functions: `validate_invite`, `consume_invite`, `mint_invite_codes`, `revoke_invite`
-- [ ] `/signup` page with gated form (code validates live, form reveals)
-- [ ] `/api/invites/validate` GET Route Handler
-- [ ] `/api/auth/signup` POST Route Handler (create user + rollback on failure + consume_invite)
+- [x] Migration `0006_invitation_codes.sql` — invitation_codes + triggers + expiry/use status
+- [x] DB functions: `validate_invite`, `consume_invite`, `mint_invite_codes`, `revoke_invite`
+- [x] `/signup` page with gated form (code validates live, form reveals)
+- [x] `/api/invites/validate` GET Route Handler
+- [x] `/api/auth/signup` POST Route Handler (create user + rollback on failure + consume_invite)
 - [ ] `/admin/invites` page — two tabs: All Codes + Mint
 - [ ] `/api/admin/codes/mint` POST (1–1000 at once)
 - [ ] `/api/admin/codes/:code/revoke` POST
@@ -1324,6 +1335,32 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [ ] Playwright: signup without code → rejected; with valid code → account created
 
 **Exit.** No code, no account. Admin can mint and revoke. All exit criteria from §24.12 met.
+
+**Sprint 0.5 log — 2026-04-19**
+
+### Phase 1: Invitation DB layer
+- [x] Create invitation registry migration with sync trigger and expiry/use state — `supabase/migrations/0006_invitation_codes.sql` (created)
+- [x] Add invitation RPC layer for validation, consume, mint, and revoke — `supabase/migrations/0006_invitation_codes.sql` (modified in-place)
+
+### Phase 2: Invitation UX + API
+- [x] Add invite validation service with live Supabase path and preview fallback — `lib/env/server.ts` (modified), `lib/invites/preview-data.ts` (created), `lib/invites/service.ts` (created), `schemas/invites.ts` (created), `types/invites.ts` (created)
+- [x] Build `/api/invites/validate`, `/api/auth/signup`, and gated `/signup` shell — `app/api/invites/validate/route.ts` (created), `app/api/auth/signup/route.ts` (created), `components/auth/signup-form.tsx` (created), `app/signup/page.tsx` (created)
+
+### Phase 3: Verify
+- [x] Verify lint and production build after the invitation slice — `pnpm lint`, `pnpm build`
+- [ ] Admin invitation queue, revoke/mint endpoints, CSV export, and signup Playwright coverage remain for the next slice
+
+**Files touched:**
+- `app/api/auth/signup/route.ts` — created
+- `app/api/invites/validate/route.ts` — created
+- `app/signup/page.tsx` — created
+- `components/auth/signup-form.tsx` — created
+- `lib/env/server.ts` — modified
+- `lib/invites/preview-data.ts` — created
+- `lib/invites/service.ts` — created
+- `schemas/invites.ts` — created
+- `supabase/migrations/0006_invitation_codes.sql` — created
+- `types/invites.ts` — created
 
 ---
 
