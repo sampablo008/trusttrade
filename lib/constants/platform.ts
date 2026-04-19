@@ -1,40 +1,12 @@
 import type {
   ExperienceMetric,
   FlowStep,
-  MarketSnapshot,
   QueueFilter,
   ReferralMilestone,
   SecurityInvariant,
   SettlementRow,
   TimeframeOption,
 } from "@/types/platform";
-
-export const marketSnapshots: MarketSnapshot[] = [
-  {
-    symbol: "BTC",
-    name: "Bitcoin",
-    priceCents: 8445234,
-    dayChangePercent: 2.84,
-    shadowOffsetPercent: 1.18,
-    volumeLabel: "$182.4M",
-  },
-  {
-    symbol: "ETH",
-    name: "Ethereum",
-    priceCents: 284342,
-    dayChangePercent: 1.67,
-    shadowOffsetPercent: -0.64,
-    volumeLabel: "$94.7M",
-  },
-  {
-    symbol: "SOL",
-    name: "Solana",
-    priceCents: 17844,
-    dayChangePercent: -0.92,
-    shadowOffsetPercent: 0.42,
-    volumeLabel: "$38.9M",
-  },
-];
 
 export const timeframeOptions: TimeframeOption[] = [
   { label: "1s", value: "1s" },
@@ -43,6 +15,8 @@ export const timeframeOptions: TimeframeOption[] = [
   { label: "5m", value: "5m" },
   { label: "15m", value: "15m" },
   { label: "1h", value: "1h" },
+  { label: "4h", value: "4h" },
+  { label: "1d", value: "1d" },
 ];
 
 export const queueFilters: QueueFilter[] = [

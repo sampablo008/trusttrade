@@ -2,17 +2,16 @@
 
 import { motion } from "framer-motion";
 import { ArrowUpRight, CandlestickChart, CircleDollarSign, ShieldCheck } from "lucide-react";
-import {
-  experienceMetrics,
-  marketSnapshots,
-  payoutMultiplier,
-  stakeOptions,
-  timeframeOptions,
-} from "@/lib/constants/platform";
+import { experienceMetrics, payoutMultiplier, stakeOptions, timeframeOptions } from "@/lib/constants/platform";
 import { formatSignedPercent, formatUsdFromCents } from "@/lib/utils/format";
 import { useTradingShellStore } from "@/stores/trading-shell-store";
+import type { MarketSnapshot } from "@/types/platform";
 
-export default function TradingWorkbench() {
+interface TradingWorkbenchProps {
+  marketSnapshots: MarketSnapshot[];
+}
+
+export default function TradingWorkbench({ marketSnapshots }: TradingWorkbenchProps) {
   const {
     activeDirection,
     activeStakeCents,
@@ -24,9 +23,18 @@ export default function TradingWorkbench() {
     setSelectedToken,
   } = useTradingShellStore();
 
-  const activeMarket =
+  const selectedMarket =
     marketSnapshots.find((market) => market.symbol === selectedToken) ?? marketSnapshots[0];
   const projectedReturn = Math.round(activeStakeCents * payoutMultiplier);
+
+  if (!selectedMarket) {
+    return (
+      <div className="rounded-[36px] border border-border bg-surface-soft p-8 text-sm leading-7 text-muted">
+        Market feed is empty. Token reads will appear here once the preview or live market service
+        returns enabled symbols.
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-6 xl:grid-cols-[1.4fr_minmax(320px,0.95fr)]">
@@ -38,7 +46,7 @@ export default function TradingWorkbench() {
       >
         <div className="grid gap-4 md:grid-cols-3">
           {marketSnapshots.map((market, index) => {
-            const isActive = market.symbol === selectedToken;
+            const isActive = market.symbol === selectedMarket.symbol;
 
             return (
               <motion.button
@@ -87,14 +95,14 @@ export default function TradingWorkbench() {
               </div>
               <div>
                 <p className="text-sm uppercase tracking-[0.28em] text-muted">
-                  {activeMarket.name} control view
+                  {selectedMarket.name} control view
                 </p>
                 <div className="mt-3 flex flex-wrap items-end gap-3">
                   <h3 className="font-display text-5xl tracking-tight text-foreground sm:text-6xl">
-                    {formatUsdFromCents(activeMarket.priceCents)}
+                    {formatUsdFromCents(selectedMarket.priceCents)}
                   </h3>
                   <div className="mb-2 rounded-full bg-brand-soft px-3 py-1 text-sm font-semibold text-brand">
-                    Shadow {formatSignedPercent(activeMarket.shadowOffsetPercent)}
+                    Shadow {formatSignedPercent(selectedMarket.shadowOffsetPercent)}
                   </div>
                 </div>
               </div>
@@ -213,7 +221,7 @@ export default function TradingWorkbench() {
             {formatUsdFromCents(projectedReturn)}
           </p>
           <p className="mt-2 text-sm leading-6 text-muted">
-            Ticket locks {formatUsdFromCents(activeStakeCents)} for {activeMarket.symbol} on the{" "}
+            Ticket locks {formatUsdFromCents(activeStakeCents)} for {selectedMarket.symbol} on the{" "}
             {activeTimeframe} book. Settlement path follows admin decision first, expiry fallback second.
           </p>
         </div>

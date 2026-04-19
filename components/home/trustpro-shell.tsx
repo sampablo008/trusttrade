@@ -10,8 +10,13 @@ import SectionHeading from "@/components/home/section-heading";
 import SettlementQueueTable from "@/components/home/settlement-queue-table";
 import TradingWorkbench from "@/components/home/trading-workbench";
 import { moneyLoop, referralMilestones, securityInvariants } from "@/lib/constants/platform";
+import type { MarketSnapshot } from "@/types/platform";
 
-export default function TrustProShell() {
+interface TrustProShellProps {
+  marketSnapshots: MarketSnapshot[];
+}
+
+export default function TrustProShell({ marketSnapshots }: TrustProShellProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-16 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <section className="overflow-hidden rounded-[36px] border border-border bg-surface-soft px-6 py-6 shadow-[0_24px_80px_rgba(3,6,15,0.45)] sm:px-8 lg:px-10">
@@ -75,7 +80,7 @@ export default function TrustProShell() {
         </div>
       </section>
 
-      <TradingWorkbench />
+      <TradingWorkbench marketSnapshots={marketSnapshots} />
 
       <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="rounded-[36px] border border-border bg-surface-soft p-6">

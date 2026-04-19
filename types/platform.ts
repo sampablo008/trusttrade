@@ -1,7 +1,9 @@
-export type TokenSymbol = "BTC" | "ETH" | "SOL";
+import type { ChartTimeframeValue } from "@/types/market";
+
+export type TokenSymbol = string;
 export type TradeDirection = "long" | "short";
 export type QueueView = "urgent" | "flagged" | "all";
-export type TimeframeValue = "1s" | "15s" | "1m" | "5m" | "15m" | "1h";
+export type TimeframeValue = ChartTimeframeValue;
 export type SettlementStatus = "urgent" | "flagged" | "pending";
 
 export interface MarketSnapshot {

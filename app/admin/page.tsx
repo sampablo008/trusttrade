@@ -34,22 +34,42 @@ export default async function AdminPage() {
         </div>
 
         <div className="mt-8 grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-[28px] border border-border bg-background/30 p-6">
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-              Live module
-            </p>
-            <h2 className="mt-3 font-display text-3xl text-foreground">Invitation gate ops</h2>
-            <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
-              Mint root codes, inspect invite status, revoke active codes, and export the latest
-              batch from one control surface.
-            </p>
-            <Link
-              href="/admin/invites"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
-            >
-              Open invites
-              <ArrowUpRight size={16} />
-            </Link>
+          <div className="grid gap-4">
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                Live module
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Invitation gate ops</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Mint root codes, inspect invite status, revoke active codes, and export the latest
+                batch from one control surface.
+              </p>
+              <Link
+                href="/admin/invites"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open invites
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
+                New module
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Token market ops</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Create pairs, tune scale and offset, choose feed source, and disable symbols before
+                the live chart layer lands.
+              </p>
+              <Link
+                href="/admin/tokens"
+                className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+              >
+                Open tokens
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">
