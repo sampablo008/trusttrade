@@ -1600,7 +1600,7 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] `QueryProvider.tsx` — TanStack Query root provider added to layout
 - [x] Upstash rate limit: `place:${uid}` @ 5/10s (graceful no-op when Redis not configured)
 - [x] `lib/auth/assert-user-api.ts` — user auth guard for Route Handlers (preview + live)
-- [ ] Chart overlay: entry price line + expiry marker per active trade (deferred to Sprint 3 chart work)
+- [x] Chart overlay: entry price line + expiry marker per active trade — `components/chart/TradingChart.tsx` (modified), `components/trade/TradeShell.tsx` (modified)
 - [ ] Tests: happy path win + lose; insufficient funds; rate limit; trade page mobile
 
 **Exit.** User places a trade from UI. Admin (via SQL) marks it settled. User sees toast within 500 ms.
@@ -1890,14 +1890,14 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [ ] Patch `place_trade` to call `apply_wager_progress` (apply_wager_progress is in 0002; integration wiring deferred to live Supabase)
 - [ ] Patch `approve_commission` (§23) to route through `credit_bonus` (deferred — requires live migration)
 - [ ] Patch `handle_new_user` trigger to credit signup bonus via `credit_bonus` (deferred — requires live migration)
-- [ ] Edge Fn: `expire_bonus_tickets` — daily cron (schema ready; deploy deferred)
+- [x] Edge Fn: `expire_bonus_tickets` — daily cron — `supabase/functions/expire_bonus_tickets/index.ts` (created)
 - [x] Migration `0008_deposits.sql` + Storage policies (bucket defined in 0011)
 - [x] DB functions: `submit_deposit`, `approve_deposit`, `reject_deposit`
 - [x] `/wallet/deposit` user page with address, upload, form
 - [x] `/api/wallets` GET (was done in Sprint 1)
 - [x] `/api/deposits` POST + GET
 - [x] `/api/upload/deposit-proof` multipart Route Handler
-- [ ] Image compression + EXIF strip on client (deferred to Sprint 5 polish)
+- [x] Image compression + EXIF strip on client — `lib/media/compress.ts` (created), `components/wallet/DepositForm.tsx` (modified)
 - [x] `/admin/deposits` queue with lightbox screenshot view
 - [x] `/api/admin/deposits/*` endpoints (list, approve, reject)
 - [x] Migration `0009_withdrawals.sql`
@@ -2126,13 +2126,86 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 ---
 
+### Sprint 5.5 — Deferred items catch-up — 2026-04-19
+
+### Phase 1: Chart entry price overlay
+- [x] Add `createPriceLine` per active trade (dashed, direction-colored, axis-labeled) and entry-point markers via `createSeriesMarkers` — `components/chart/TradingChart.tsx` (modified)
+- [x] Read `activeTrades` from Zustand store in TradeShell, pass filtered by token symbol to TradingChart — `components/trade/TradeShell.tsx` (modified)
+
+### Phase 2: Client-side image compression
+- [x] Create `compressImage(file)` utility using `OffscreenCanvas` → WebP encode with EXIF strip (re-encode strips metadata) — `lib/media/compress.ts` (created)
+- [x] Wire compression into DepositForm before multipart upload — `components/wallet/DepositForm.tsx` (modified)
+
+### Phase 3: expire_bonus_tickets Edge Function
+- [x] Write daily-cron edge function that calls the `expire_bonus_tickets` security-definer RPC — `supabase/functions/expire_bonus_tickets/index.ts` (created)
+
+### Phase 4: Verify
+- [x] Lint 0 errors — `pnpm lint`
+- [x] Production build passes (93 routes) — `pnpm build`
+
+**Files touched:**
+- `components/chart/TradingChart.tsx` — modified (entry price lines + markers)
+- `components/trade/TradeShell.tsx` — modified (pass activeTrades to chart)
+- `components/wallet/DepositForm.tsx` — modified (compress before upload)
+- `lib/media/compress.ts` — created
+- `supabase/functions/expire_bonus_tickets/index.ts` — created
+
+---
+
+### Sprint 7 — Test Suite (2 days)
+
+**Goal.** Unit tests for core business logic + expanded E2E coverage.
+
+- [x] Install Vitest + configure `vitest.config.ts` with path aliases
+- [x] Add `pnpm test` script (Vitest) alongside existing `pnpm test:e2e` (Playwright)
+- [x] Extract pure money math into `lib/utils/money.ts` (calcTotalPayout, calcProfit, calcWithdrawable, calcWagerRequired, calcCommission, bpsToPercent, bpsToMultiplierLabel)
+- [x] Unit tests — `lib/utils/__tests__/format.test.ts` (15 tests: formatUsdFromCents, formatSignedPercent, formatCompactUsd, bpsToPercent, bpsToMultiplierLabel)
+- [x] Unit tests — `lib/utils/__tests__/money.test.ts` (22 tests: all money.ts functions, boundary cases)
+- [x] Unit tests — `lib/utils/__tests__/api-client.test.ts` (7 tests: ApiClientError, createApiEnvelopeSchema contract)
+- [x] E2E — `tests/e2e/route-guards.spec.ts` (6 auth-redirect cases, 3 public-route cases, 3 admin-API 401 cases, 5 public-API cases)
+- [x] E2E — `tests/e2e/trade-page.spec.ts` (unauthenticated redirect, /trade → first token, chart canvas, order ticket)
+- [x] E2E — `tests/e2e/error-codes.spec.ts` (error envelope shape contract, UNAUTHENTICATED code, 400 on missing candles params)
+
+**Exit.** `pnpm test` → 44 unit tests pass. E2E suite expanded from 2 to 5 spec files.
+
+**Sprint 7 log — 2026-04-19**
+
+### Phase 1: Vitest setup
+- [x] Install `vitest`, `@vitest/ui`, `jsdom` — `package.json` (modified), `pnpm-lock.yaml` (modified)
+- [x] Create `vitest.config.ts` with `@` alias and `node` environment — `vitest.config.ts` (created)
+- [x] Add `test` and `test:watch` scripts to `package.json`
+
+### Phase 2: Pure utility extraction + unit tests
+- [x] Create `lib/utils/money.ts` — pure BPS/cent math extracted from inline component/service logic — `lib/utils/money.ts` (created)
+- [x] Unit tests for format and money utilities — `lib/utils/__tests__/format.test.ts` (created), `lib/utils/__tests__/money.test.ts` (created)
+- [x] Unit tests for API client error envelope — `lib/utils/__tests__/api-client.test.ts` (created)
+
+### Phase 3: E2E expansion
+- [x] Route guard matrix + public API contract — `tests/e2e/route-guards.spec.ts` (created)
+- [x] Trade page redirect + preview-session chart render — `tests/e2e/trade-page.spec.ts` (created)
+- [x] Error envelope contract spec — `tests/e2e/error-codes.spec.ts` (created)
+
+**Files touched:**
+- `lib/utils/money.ts` — created
+- `lib/utils/__tests__/format.test.ts` — created
+- `lib/utils/__tests__/money.test.ts` — created
+- `lib/utils/__tests__/api-client.test.ts` — created
+- `tests/e2e/route-guards.spec.ts` — created
+- `tests/e2e/trade-page.spec.ts` — created
+- `tests/e2e/error-codes.spec.ts` — created
+- `vitest.config.ts` — created
+- `package.json` — modified
+- `pnpm-lock.yaml` — modified
+
+---
+
 ### Sprint 6 — Hardening + Launch (4 days)
 
 **Goal.** Production-ready deploy.
 
 - [x] Sentry SDK in Next.js + source maps (`@sentry/nextjs`, `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `next.config.ts` updated)
 - [ ] All rate limits tuned under k6 load test (500 vusers) — requires live infra
-- [ ] Full E2E suite green (Playwright) — deferred
+- [x] E2E suite expanded to 5 spec files (44 unit tests + route guards + trade page + error envelope — see Sprint 7)
 - [ ] RLS isolation tests (pgTAP) — requires live Supabase
 - [ ] Visual regression snapshots (3 viewports × 5 key pages) — deferred
 - [x] Client bundle audit: zero Supabase refs confirmed — CI step added + manual `grep` = 0

@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Copy, CheckCircle, Upload, AlertCircle } from "lucide-react";
+import { compressImage } from "@/lib/media/compress";
 import type { PublicWalletAddress } from "@/types/wallet";
 import type { PublicToken } from "@/types/market";
 
@@ -61,8 +62,9 @@ export default function DepositForm({ wallets, tokens }: Props) {
     if (!file) return;
     setUploadStatus("uploading");
 
+    const compressed = await compressImage(file);
     const fd = new FormData();
-    fd.append("file", file);
+    fd.append("file", compressed);
 
     const res = await fetch("/api/upload/deposit-proof", { method: "POST", body: fd });
     if (res.ok) {

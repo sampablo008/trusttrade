@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { calcWithdrawable } from "@/lib/utils/money";
 import type {
   ActiveTradesResult,
   CancelTradeResult,
@@ -138,6 +139,6 @@ export const getPreviewBalance = (): UserBalance => {
     balanceCents: balance,
     lockedBonusCents: bonus,
     lockedInTradesCents: locked,
-    withdrawableCents: Math.max(balance - locked - bonus, 0),
+    withdrawableCents: calcWithdrawable(balance, locked, bonus),
   };
 };

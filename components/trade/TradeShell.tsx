@@ -27,6 +27,7 @@ export default function TradeShell({
   initialCandles,
 }: TradeShellProps) {
   const { setBalance, setActiveTrades } = useTradingShellStore();
+  const activeTrades = useTradingShellStore((s) => s.activeTrades);
   const [toasts, setToasts] = useState<UserTrade[]>([]);
 
   // Seed initial state from server props
@@ -57,7 +58,11 @@ export default function TradeShell({
         </div>
 
         <div className="min-h-90 overflow-hidden rounded-[28px] border border-border bg-surface-soft lg:min-h-120">
-          <TradingChart symbol={token.symbol} initialCandles={initialCandles} />
+          <TradingChart
+            symbol={token.symbol}
+            initialCandles={initialCandles}
+            activeTrades={activeTrades.filter((t) => t.tokenSymbol === token.symbol)}
+          />
         </div>
 
         <ActivePositionsList />

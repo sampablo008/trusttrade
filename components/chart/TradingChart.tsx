@@ -3,12 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   createChart,
+  createSeriesMarkers,
   CrosshairMode,
   CandlestickSeries,
   HistogramSeries,
   ColorType,
+  LineStyle,
   type IChartApi,
   type ISeriesApi,
+  type IPriceLine,
   type CandlestickData,
   type HistogramData,
   type SeriesType,
@@ -17,10 +20,12 @@ import { useCandleStream } from "@/hooks/useCandleStream";
 import { useTickInterpolator } from "@/hooks/useTickInterpolator";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { ChartTimeframeValue, PublicCandle, PublicCandlesResult } from "@/types/market";
+import type { UserTrade } from "@/types/trade";
 
 interface TradingChartProps {
   initialCandles: PublicCandlesResult;
   symbol: string;
+  activeTrades?: UserTrade[];
 }
 
 const TIMEFRAMES: { label: string; value: ChartTimeframeValue }[] = [
@@ -63,11 +68,17 @@ function toVolumeData(candle: PublicCandle): HistogramData {
   };
 }
 
-export default function TradingChart({ initialCandles, symbol }: TradingChartProps) {
+export default function TradingChart({
+  initialCandles,
+  symbol,
+  activeTrades = [],
+}: TradingChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  // tradeId → priceline ref
+  const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
 
   const [activeTimeframe, setActiveTimeframe] = useState<ChartTimeframeValue>(
     initialCandles.timeframe,
@@ -135,11 +146,13 @@ export default function TradingChart({ initialCandles, symbol }: TradingChartPro
       }
     });
 
+    const priceLinesMap = priceLinesRef.current;
     return () => {
       chart.remove();
       chartRef.current = null;
       candleSeriesRef.current = null;
       volumeSeriesRef.current = null;
+      priceLinesMap.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -153,6 +166,51 @@ export default function TradingChart({ initialCandles, symbol }: TradingChartPro
     vs.setData(initialCandles.items.map(toVolumeData));
     chartRef.current?.timeScale().fitContent();
   }, [initialCandles]);
+
+  // Sync entry-price lines with active trades
+  useEffect(() => {
+    const cs = candleSeriesRef.current;
+    if (!cs) return;
+
+    const existing = priceLinesRef.current;
+    const incomingIds = new Set(activeTrades.map((t) => t.id));
+
+    // Remove lines for settled/removed trades
+    for (const [id, line] of existing) {
+      if (!incomingIds.has(id)) {
+        cs.removePriceLine(line);
+        existing.delete(id);
+      }
+    }
+
+    // Add lines for new active trades
+    for (const trade of activeTrades) {
+      if (existing.has(trade.id)) continue;
+      const isLong = trade.direction === "long";
+      const line = cs.createPriceLine({
+        price: trade.entryPriceCents / 100,
+        color: isLong ? COLORS.up : COLORS.down,
+        lineWidth: 1,
+        lineStyle: LineStyle.Dashed,
+        axisLabelVisible: true,
+        title: isLong ? "L" : "S",
+      });
+      existing.set(trade.id, line);
+    }
+
+    // Add entry-point markers for all active trades
+    const markers = activeTrades.map((trade) => ({
+      time: (new Date(trade.startedAt).getTime() / 1000) as CandlestickData["time"],
+      position: trade.direction === "long" ? ("belowBar" as const) : ("aboveBar" as const),
+      color: trade.direction === "long" ? COLORS.up : COLORS.down,
+      shape: "arrowUp" as const,
+      text: trade.direction === "long" ? "▲" : "▼",
+    }));
+
+    if (markers.length > 0) {
+      createSeriesMarkers(cs, markers);
+    }
+  }, [activeTrades]);
 
   const handleNewCandle = useCallback(
     (candle: PublicCandle) => {
@@ -179,13 +237,13 @@ export default function TradingChart({ initialCandles, symbol }: TradingChartPro
           </span>
         </div>
 
-        <div className="flex items-center gap-0.5 rounded-[16px] border border-border bg-background/50 p-1">
+        <div className="flex items-center gap-0.5 rounded-2xl border border-border bg-background/50 p-1">
           {TIMEFRAMES.map(({ label, value }) => (
             <button
               key={value}
               type="button"
               onClick={() => setActiveTimeframe(value)}
-              className={`rounded-[12px] px-2.5 py-1.5 text-xs font-semibold transition ${
+              className={`rounded-xl px-2.5 py-1.5 text-xs font-semibold transition ${
                 activeTimeframe === value
                   ? "bg-foreground text-background"
                   : "text-muted hover:text-foreground"
@@ -197,7 +255,7 @@ export default function TradingChart({ initialCandles, symbol }: TradingChartPro
         </div>
       </div>
 
-      <div ref={containerRef} className="h-[420px] w-full" />
+      <div ref={containerRef} className="h-105 w-full" />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { formatUsdFromCents } from "@/lib/utils/format";
+import { calcProfit, calcTotalPayout } from "@/lib/utils/money";
 
 interface PayoutPreviewProps {
   stakeCents: number;
@@ -7,8 +8,8 @@ interface PayoutPreviewProps {
 }
 
 export default function PayoutPreview({ stakeCents, payoutBps, direction }: PayoutPreviewProps) {
-  const profitCents = Math.round((stakeCents * payoutBps) / 10_000) - stakeCents;
-  const totalCents = stakeCents + profitCents;
+  const profitCents = calcProfit(stakeCents, payoutBps);
+  const totalCents = calcTotalPayout(stakeCents, payoutBps);
   const payoutPercent = ((payoutBps / 10_000) * 100 - 100).toFixed(0);
 
   return (
