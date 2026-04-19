@@ -96,3 +96,56 @@ export interface AdminTradeFilters {
   tokenId?: string;
   userId?: string;
 }
+
+export type ExpiryPolicy = "auto_lose" | "auto_win" | "void" | "leave_pending";
+
+export interface AppConfig {
+  bonusTicketTtlDays: number;
+  bonusWagerMultiplier: number;
+  expiryPolicy: ExpiryPolicy;
+  globalTradeFreezeEnabled: boolean;
+  id: number;
+  refDefaultL1Bps: number;
+  refDefaultL2Bps: number;
+  refDefaultL3Bps: number;
+  refDefaultL4Bps: number;
+  refDefaultL5Bps: number;
+  refMinDepositCents: number;
+  signupBonusCents: number;
+  withdrawFeeCents: number;
+  withdrawMinCents: number;
+}
+
+export interface UpdateAppConfigInput {
+  bonusTicketTtlDays?: number;
+  bonusWagerMultiplier?: number;
+  expiryPolicy?: ExpiryPolicy;
+  globalTradeFreezeEnabled?: boolean;
+  refDefaultL1Bps?: number;
+  refDefaultL2Bps?: number;
+  refDefaultL3Bps?: number;
+  refDefaultL4Bps?: number;
+  refDefaultL5Bps?: number;
+  refMinDepositCents?: number;
+  signupBonusCents?: number;
+  withdrawFeeCents?: number;
+  withdrawMinCents?: number;
+}
+
+export interface BusinessDashboard {
+  activeTrades: number;
+  dailyNetPnlCents: number;
+  pendingDeposits: number;
+  pendingWithdrawals: number;
+  topLosers: DashboardUser[];
+  topWinners: DashboardUser[];
+  totalExposureCents: number;
+  totalStakedTodayCents: number;
+}
+
+export interface DashboardUser {
+  netPnlCents: number;
+  totalTrades: number;
+  userId: string;
+  username: string;
+}

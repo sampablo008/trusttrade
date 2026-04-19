@@ -3,6 +3,7 @@ import { Manrope, Syne } from "next/font/google";
 import { Toaster } from "sonner";
 import QueryProvider from "@/components/providers/QueryProvider";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
+import CookieBanner from "@/components/ui/CookieBanner";
 import { siteMetadata } from "@/lib/config/site";
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default function RootLayout({
             }}
           />
           <InstallPrompt />
+          <CookieBanner />
         </QueryProvider>
       </body>
     </html>

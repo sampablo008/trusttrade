@@ -250,6 +250,41 @@ export default async function AdminPage() {
                 <ArrowUpRight size={16} />
               </Link>
             </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 6 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Business Dashboard</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Live exposure, daily house P&L, top winners and losers. Refreshes every 15 seconds.
+              </p>
+              <Link
+                href="/admin/dashboard"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open dashboard
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 6 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Global Controls</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Trade freeze, expiry policy, bonus wager multiplier, withdrawal minimums, and
+                default referral rates — all editable without redeploy.
+              </p>
+              <Link
+                href="/admin/config"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open global config
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">

@@ -1,4 +1,4 @@
-import type { AdminTrade, AdminUser, AuditLogEntry } from "@/types/admin";
+import type { AdminTrade, AdminUser, AppConfig, AuditLogEntry, BusinessDashboard } from "@/types/admin";
 
 const PREVIEW_ADMIN_ID = "00000000-0000-4000-8000-0000000000ad";
 const PREVIEW_USER_ID = "00000000-0000-4000-8000-0000000000a1";
@@ -148,3 +148,38 @@ export const previewAuditLog: AuditLogEntry[] = [
     targetType: "profiles",
   },
 ];
+
+export const previewAppConfig: AppConfig = {
+  bonusTicketTtlDays: 90,
+  bonusWagerMultiplier: 3,
+  expiryPolicy: "auto_lose",
+  globalTradeFreezeEnabled: false,
+  id: 1,
+  refDefaultL1Bps: 500,
+  refDefaultL2Bps: 300,
+  refDefaultL3Bps: 200,
+  refDefaultL4Bps: 100,
+  refDefaultL5Bps: 50,
+  refMinDepositCents: 1000,
+  signupBonusCents: 1000,
+  withdrawFeeCents: 0,
+  withdrawMinCents: 5000,
+};
+
+export const previewBusinessDashboard: BusinessDashboard = {
+  activeTrades: 14,
+  dailyNetPnlCents: 183_500,
+  pendingDeposits: 3,
+  pendingWithdrawals: 2,
+  topLosers: [
+    { netPnlCents: -45_000, totalTrades: 8, userId: "u5", username: "carlos" },
+    { netPnlCents: -32_000, totalTrades: 5, userId: "u4", username: "diana" },
+  ],
+  topWinners: [
+    { netPnlCents: 87_500, totalTrades: 12, userId: "u1", username: "alice" },
+    { netPnlCents: 54_200, totalTrades: 9, userId: "u2", username: "bob" },
+    { netPnlCents: 31_000, totalTrades: 6, userId: "u3", username: "charlie" },
+  ],
+  totalExposureCents: 780_000,
+  totalStakedTodayCents: 2_450_000,
+};
