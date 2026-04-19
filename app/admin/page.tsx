@@ -181,6 +181,42 @@ export default async function AdminPage() {
 
             <div className="rounded-[28px] border border-border bg-background/30 p-6">
               <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 4 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Deposit queue</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Review user deposit claims. Approve credits balance and fires referral commissions.
+                Reject with a reason visible to the user. Lightbox screenshot review.
+              </p>
+              <Link
+                href="/admin/deposits"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open deposits
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 4 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Withdrawal queue</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Two-phase payout flow. Review queue → approve or reject. Payout tab → paste tx hash
+                with last-8-char address confirmation before marking paid.
+              </p>
+              <Link
+                href="/admin/withdrawals"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open withdrawals
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
                 Sprint 3.5 — live
               </p>
               <h2 className="mt-3 font-display text-3xl text-foreground">Referrals</h2>

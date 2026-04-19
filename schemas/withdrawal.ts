@@ -1,0 +1,70 @@
+import { z } from "zod";
+
+export const withdrawalStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "paid",
+  "rejected",
+  "cancelled",
+]);
+
+export const withdrawalFlagSchema = z.enum([
+  "NEW_USER",
+  "LOW_TRADE_VOLUME",
+  "ADDRESS_REUSE",
+  "RAPID",
+  "POST_BONUS",
+  "FIRST_WITHDRAW",
+]);
+
+export const withdrawalSchema = z.object({
+  id: z.string().uuid(),
+  userId: z.string().uuid(),
+  amountCents: z.number().int().positive(),
+  feeCents: z.number().int().min(0),
+  netAmountCents: z.number().int().min(0),
+  tokenSymbol: z.string().min(1),
+  network: z.string().min(1),
+  destinationAddress: z.string().min(1),
+  status: withdrawalStatusSchema,
+  flags: z.array(withdrawalFlagSchema),
+  adminNote: z.string().nullable(),
+  payoutTxHash: z.string().nullable(),
+  reviewedBy: z.string().nullable(),
+  reviewedAt: z.string().nullable(),
+  paidBy: z.string().nullable(),
+  paidAt: z.string().nullable(),
+  createdAt: z.string(),
+});
+
+export const withdrawalsResultSchema = z.object({
+  items: z.array(withdrawalSchema),
+  total: z.number().int().min(0),
+});
+
+export const requestWithdrawalInputSchema = z.object({
+  amountCents: z.number().int().positive(),
+  tokenSymbol: z.string().min(1),
+  network: z.string().min(1),
+  destinationAddress: z.string().min(10, "Destination address is required."),
+});
+
+export const adminWithdrawalFiltersSchema = z.object({
+  status: withdrawalStatusSchema.optional(),
+  userId: z.string().uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
+export const adminApproveWithdrawalSchema = z.object({
+  note: z.string().optional(),
+});
+
+export const adminMarkPaidSchema = z.object({
+  txHash: z.string().min(1, "Transaction hash is required."),
+  addressConfirm: z.string().min(8),
+});
+
+export const adminRejectWithdrawalSchema = z.object({
+  note: z.string().min(1, "Rejection reason is required."),
+});
