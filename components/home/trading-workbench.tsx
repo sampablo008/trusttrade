@@ -232,13 +232,13 @@ export default function TradingWorkbench() {
           </div>
         </div>
 
-        <button
-          type="button"
+        <a
+          href="/login"
           className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 py-4 text-sm font-semibold text-background transition hover:bg-brand"
         >
           Start Sprint Build
           <ArrowUpRight size={16} />
-        </button>
+        </a>
       </motion.aside>
     </div>
   );

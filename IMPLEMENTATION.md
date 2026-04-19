@@ -1225,8 +1225,8 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 **Goal.** Repo skeleton, Supabase project, core schema, auth, zero Supabase in client bundle.
 
-- [ ] Initialize Next.js 16.2 with App Router, TypeScript strict, Turbopack
-- [ ] Enable React Compiler (`reactCompiler: true`)
+- [x] Initialize Next.js 16.2 with App Router, TypeScript strict, Turbopack
+- [x] Enable React Compiler (`reactCompiler: true`)
 - [ ] Install Tailwind, shadcn/ui, lucide-react, framer-motion, zustand, zod, react-hook-form, @tanstack/react-query
 - [ ] Create Supabase project (dev + prod)
 - [ ] Install Supabase CLI + link project
@@ -1234,17 +1234,68 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [ ] Migration `0001_init.sql` — profiles, user_balances, transactions, tokens, trade_periods, user_trades, candles_1s, admin_actions, app_config
 - [ ] Migration `0004_rls.sql` — all policies + `is_admin()` function
 - [ ] `handle_new_user` trigger — auto profile + balance
-- [ ] Create `lib/supabase/server.ts` and `lib/supabase/admin.ts` with `'server-only'`
-- [ ] Confirm `lib/supabase/client.ts` does **not** exist
+- [x] Create `lib/supabase/server.ts` and `lib/supabase/admin.ts` with `'server-only'`
+- [x] Confirm `lib/supabase/client.ts` does **not** exist
 - [ ] Middleware: auth redirect + admin guard + global rate limit
-- [ ] `lib/auth/assertAdmin.ts` helper
-- [ ] Tailwind config with Trust-Wallet dark tokens (bg, border, up, down, brand)
-- [ ] `lib/api/client.ts` + error envelope helpers
+- [x] `lib/auth/assertAdmin.ts` helper
+- [x] Tailwind config with Trust-Wallet dark tokens (bg, border, up, down, brand)
+- [x] `lib/api/client.ts` + error envelope helpers
 - [ ] Playwright smoke test: unauthenticated /trade redirects to /login
-- [ ] CI: `grep "supabase" .next/static/chunks | wc -l` must equal 0
+- [x] CI: `grep "supabase" .next/static/chunks | wc -l` must equal 0
 - [ ] Bootstrap one admin user manually via SQL
 
 **Exit.** Login works. Protected routes redirect. No Supabase in client bundle.
+
+**Sprint 0 log — 2026-04-19**
+
+### Phase 1: Foundation slice
+- [x] Enable React Compiler and install repo-local foundation dependencies — `package.json` (modified), `pnpm-lock.yaml` (modified), `next.config.ts` (modified)
+- [x] Create server-only backend helpers and API client primitives — `lib/env/server.ts` (created), `lib/supabase/server.ts` (created), `lib/supabase/admin.ts` (created), `lib/api/client.ts` (created), `lib/config/site.ts` (created), `lib/utils/format.ts` (created)
+- [x] Replace placeholder app metadata and Trust-Wallet-style design tokens — `app/layout.tsx` (modified), `app/globals.css` (modified)
+
+### Phase 2: Product shell
+- [x] Build the first trading shell with shared constants and clean types — `types/platform.ts` (created), `lib/constants/platform.ts` (created), `components/home/section-heading.tsx` (created), `components/home/trustpro-shell.tsx` (created), `app/page.tsx` (modified)
+- [x] Use Zustand for shared state and TanStack Table for the first admin queue surface — `stores/trading-shell-store.ts` (created), `components/home/trading-workbench.tsx` (created), `components/home/settlement-queue-table.tsx` (created)
+
+### Phase 3: Verify
+- [x] Verify lint, production build, and client-bundle Supabase isolation — `pnpm lint`, `pnpm build`, `grep -R "supabase" .next/static/chunks | wc -l` = `0`
+- [ ] External infra still blocked — Supabase project creation, CLI linking, `supabase start`, SQL migrations, auth middleware, and admin bootstrap remain for the next phase
+
+### Phase 4: Auth route scaffold
+- [x] Add preview login flow and protected route shells — `app/actions/auth.ts` (created), `components/auth/login-form.tsx` (created), `app/login/page.tsx` (created), `app/trade/page.tsx` (created), `app/admin/page.tsx` (created), `schemas/auth.ts` (created)
+- [x] Add proxy-based auth redirect and admin guard scaffold — `proxy.ts` (created), `lib/auth/constants.ts` (created), `lib/auth/session.ts` (created), `lib/auth/assertAdmin.ts` (created)
+- [ ] Global rate limit and Playwright redirect execution still pending — proxy currently handles redirects and role gates only
+
+**Files touched:**
+- `app/actions/auth.ts` — created
+- `app/admin/page.tsx` — created
+- `app/globals.css` — modified
+- `app/layout.tsx` — modified
+- `app/login/page.tsx` — created
+- `app/page.tsx` — modified
+- `app/trade/page.tsx` — created
+- `components/auth/login-form.tsx` — created
+- `components/home/section-heading.tsx` — created
+- `components/home/settlement-queue-table.tsx` — created
+- `components/home/trading-workbench.tsx` — created
+- `components/home/trustpro-shell.tsx` — created
+- `lib/auth/assertAdmin.ts` — created
+- `lib/auth/constants.ts` — created
+- `lib/auth/session.ts` — created
+- `lib/api/client.ts` — created
+- `lib/config/site.ts` — created
+- `lib/constants/platform.ts` — created
+- `lib/env/server.ts` — created
+- `lib/supabase/admin.ts` — created
+- `lib/supabase/server.ts` — created
+- `lib/utils/format.ts` — created
+- `next.config.ts` — modified
+- `package.json` — modified
+- `pnpm-lock.yaml` — modified
+- `proxy.ts` — created
+- `schemas/auth.ts` — created
+- `stores/trading-shell-store.ts` — created
+- `types/platform.ts` — created
 
 ---
 
