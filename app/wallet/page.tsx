@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowUpRight, ArrowDownToLine, Gift, Receipt } from "lucide-react";
+import { ArrowUpRight, ArrowDownToLine, Gift, Receipt, History } from "lucide-react";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { getBalance } from "@/lib/trades/service";
 import { listUserDeposits } from "@/lib/deposits/service";
 import { listUserWithdrawals } from "@/lib/withdrawals/service";
 import { listBonusTickets } from "@/lib/bonus/service";
+import { listTransactions } from "@/lib/transactions/service";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import BonusTicketsView from "@/components/wallet/BonusTicketsView";
 
@@ -19,11 +20,12 @@ const STATUS_COLORS: Record<string, string> = {
 export default async function WalletPage() {
   const { userId } = await assertUserApi();
 
-  const [balance, depositsResult, withdrawalsResult, bonusResult] = await Promise.all([
+  const [balance, depositsResult, withdrawalsResult, bonusResult, txResult] = await Promise.all([
     getBalance(userId),
     listUserDeposits(userId),
     listUserWithdrawals(userId),
     listBonusTickets(userId),
+    listTransactions(userId, 20, 0),
   ]);
 
   return (
@@ -170,6 +172,59 @@ export default async function WalletPage() {
           Locked bonuses must be wagered {3}× before they can be withdrawn.
         </p>
         <BonusTicketsView tickets={bonusResult.items} />
+      </section>
+
+      {/* Transaction ledger */}
+      <section className="flex flex-col gap-4 rounded-[28px] border border-border bg-surface-soft p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <History size={18} className="text-brand" />
+            <h2 className="font-display text-xl text-foreground">Transaction Ledger</h2>
+          </div>
+          <span className="text-xs text-muted">{txResult.total} total</span>
+        </div>
+
+        {txResult.items.length === 0 ? (
+          <p className="text-sm text-muted">No transactions yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border text-left text-xs font-semibold uppercase tracking-[0.2em] text-muted">
+                  <th className="py-2 pr-4">Date</th>
+                  <th className="py-2 pr-4">Kind</th>
+                  <th className="py-2 pr-4">Memo</th>
+                  <th className="py-2 text-right">Amount</th>
+                  <th className="py-2 pl-4 text-right">Balance after</th>
+                </tr>
+              </thead>
+              <tbody>
+                {txResult.items.map((tx) => (
+                  <tr key={tx.id} className="border-b border-border/50 last:border-0">
+                    <td className="py-2.5 pr-4 text-muted">
+                      {new Date(tx.createdAt).toLocaleString()}
+                    </td>
+                    <td className="py-2.5 pr-4 font-semibold capitalize text-foreground">
+                      {tx.kind.replace(/_/g, " ")}
+                    </td>
+                    <td className="py-2.5 pr-4 text-muted">{tx.memo ?? "—"}</td>
+                    <td
+                      className={`py-2.5 text-right font-semibold tabular-nums ${
+                        tx.amountCents >= 0 ? "text-up" : "text-down"
+                      }`}
+                    >
+                      {tx.amountCents >= 0 ? "+" : ""}
+                      {formatUsdFromCents(tx.amountCents)}
+                    </td>
+                    <td className="py-2.5 pl-4 text-right text-foreground tabular-nums">
+                      {formatUsdFromCents(tx.balanceAfterCents)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   );

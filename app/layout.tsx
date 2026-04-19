@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Manrope, Syne } from "next/font/google";
+import { Toaster } from "sonner";
 import QueryProvider from "@/components/providers/QueryProvider";
+import InstallPrompt from "@/components/pwa/InstallPrompt";
 import { siteMetadata } from "@/lib/config/site";
 import "./globals.css";
 
@@ -28,7 +30,21 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="min-h-full bg-background text-foreground antialiased">
-        <QueryProvider>{children}</QueryProvider>
+        <QueryProvider>
+          {children}
+          <Toaster
+            theme="dark"
+            position="bottom-right"
+            toastOptions={{
+              style: {
+                background: "var(--color-surface-soft)",
+                border: "1px solid var(--color-border)",
+                color: "var(--color-foreground)",
+              },
+            }}
+          />
+          <InstallPrompt />
+        </QueryProvider>
       </body>
     </html>
   );

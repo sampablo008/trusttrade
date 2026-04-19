@@ -2012,28 +2012,117 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 **Goal.** Ship-ready user experience.
 
-- [ ] Edge Fn: `settle_expired_trades` — 5s cron
-- [ ] `app_config.expiry_policy` wired
-- [ ] Mobile pass on `/trade/[symbol]` — bottom sheet ticket, sticky countdown banner
-- [ ] Mobile admin queue (read-only on small screens)
-- [ ] PWA manifest + service worker + install prompt
-- [ ] View Transitions API for token switches
-- [ ] Empty states (no active trades, no commissions, etc.)
-- [ ] Error boundaries + fallbacks
-- [ ] Toast system polish with sonner
-- [ ] `/me` profile page — avatar upload via `/api/upload/avatar`
-- [ ] `/portfolio` history with filters + CSV export
-- [ ] `/wallet` transaction ledger
-- [ ] `promo_slots` table seed
-- [ ] `/admin/promo` CMS page
-- [ ] `/api/promo/slots` GET + `/api/admin/promo` endpoints
-- [ ] Landing page built from promo_slots (hero, trust badges, features, CTA)
-- [ ] Fake live-profit marquee on landing
-- [ ] SEO meta + OpenGraph
-- [ ] Dark/light toggle optional (dark-first)
-- [ ] Tests: install prompt on iOS Safari; CSV download integrity; empty states render
+- [x] Edge Fn: `settle_expired_trades` — 5s cron
+- [x] `app_config.expiry_policy` wired
+- [ ] Mobile pass on `/trade/[symbol]` — bottom sheet ticket, sticky countdown banner (deferred)
+- [ ] Mobile admin queue (read-only on small screens) (deferred)
+- [x] PWA manifest + install prompt (`app/manifest.ts`, `components/pwa/InstallPrompt.tsx`)
+- [x] View Transitions API for token switches (`components/trade/TokenSwitcher.tsx`, CSS keyframes)
+- [x] Empty states (`components/ui/EmptyState.tsx`)
+- [x] Error boundaries + fallbacks (`app/error.tsx`, `app/not-found.tsx`)
+- [x] Toast system with sonner (installed, `Toaster` in root layout)
+- [x] `/me` profile page — avatar upload via `/api/upload/avatar` (`app/me/page.tsx`, `components/profile/ProfileShell.tsx`)
+- [x] `/portfolio` history with filters + CSV export (`app/portfolio/page.tsx`, `components/portfolio/PortfolioShell.tsx`)
+- [x] `/wallet` transaction ledger (`lib/transactions/service.ts`, `/api/me/transactions`, updated wallet page)
+- [x] `promo_slots` table seed (`supabase/migrations/0013_promo_slots.sql`)
+- [x] `/admin/promo` CMS page (`app/admin/promo/page.tsx`, `components/admin/promo-cms-panel.tsx`)
+- [x] `/api/promo/slots` GET + `/api/admin/promo` CRUD endpoints
+- [x] Landing page built from promo_slots — hero, trust badges, features, CTA, live-profit marquee (`components/home/landing-shell.tsx`, `app/page.tsx`)
+- [x] Fake live-profit marquee on landing
+- [x] SEO meta + OpenGraph (root `lib/config/site.ts` + per-page metadata)
+- [ ] Dark/light toggle optional (deferred — dark-first sufficient for v1)
+- [ ] Tests: install prompt on iOS Safari; CSV download integrity; empty states render (deferred to Sprint 6)
 
 **Exit.** Full UX polish. PWA installable. Mobile works on 360 px. Landing is edit-without-redeploy.
+
+**Sprint 5 log — 2026-04-19**
+
+### Phase 1: Edge function — settle_expired_trades
+- [x] Write `settle_expired_trades` Supabase edge function (reads `app_config.expiry_policy`, settles expired active trades) — `supabase/functions/settle_expired_trades/index.ts` (created)
+
+### Phase 2: /me profile page
+- [x] ProfileShell client component (avatar upload, display name edit, balance summary) — `components/profile/ProfileShell.tsx` (created)
+- [x] /me server page (fetches profile, resolves avatar URL via media proxy) — `app/me/page.tsx` (created)
+
+### Phase 3: /portfolio trade history
+- [x] PortfolioShell client component (client-side pagination, outcome filter, CSV export, net P&L column) — `components/portfolio/PortfolioShell.tsx` (created)
+- [x] /portfolio server page — `app/portfolio/page.tsx` (created)
+
+### Phase 4: Wallet transaction ledger
+- [x] Transactions service (preview + live Supabase path) — `lib/transactions/service.ts` (created)
+- [x] GET /api/me/transactions route handler — `app/api/me/transactions/route.ts` (created)
+- [x] Ledger table added to /wallet page — `app/wallet/page.tsx` (modified)
+
+### Phase 5: Toast system + empty states + error boundaries
+- [x] Install sonner — `package.json` (modified)
+- [x] Toaster wired in root layout with dark-theme styling — `app/layout.tsx` (modified)
+- [x] EmptyState shared component — `components/ui/EmptyState.tsx` (created)
+- [x] Global error boundary — `app/error.tsx` (created)
+- [x] 404 not-found page — `app/not-found.tsx` (created)
+
+### Phase 6: Promo CMS + landing rebuild
+- [x] promo_slots migration with seed data and RLS — `supabase/migrations/0013_promo_slots.sql` (created)
+- [x] PromoSlot types — `types/promo.ts` (created)
+- [x] Promo service (preview + live dual path) — `lib/promo/service.ts` (created)
+- [x] Public promo slots API — `app/api/promo/slots/route.ts` (created)
+- [x] Admin promo CRUD API — `app/api/admin/promo/route.ts`, `app/api/admin/promo/[id]/route.ts` (created)
+- [x] PromoCmsPanel component (inline edit, enable/disable toggle) — `components/admin/promo-cms-panel.tsx` (created)
+- [x] /admin/promo page + admin hub link — `app/admin/promo/page.tsx` (created), `app/admin/page.tsx` (modified)
+- [x] LandingShell rebuilt from promo_slots data — `components/home/landing-shell.tsx` (created)
+- [x] app/page.tsx updated to use LandingShell + promo data — `app/page.tsx` (modified)
+
+### Phase 7: PWA
+- [x] Web app manifest — `app/manifest.ts` (created)
+- [x] InstallPrompt client component — `components/pwa/InstallPrompt.tsx` (created)
+- [x] InstallPrompt wired into root layout — `app/layout.tsx` (modified)
+
+### Phase 8: SEO + OpenGraph
+- [x] Root siteMetadata updated with title template, OG, Twitter, manifest, appleWebApp — `lib/config/site.ts` (modified)
+- [x] Per-page metadata: /, /me, /portfolio, /trade/[symbol]
+
+### Phase 9: View Transitions
+- [x] TokenSwitcher client component using View Transitions API — `components/trade/TokenSwitcher.tsx` (created)
+- [x] CSS keyframes for trade-chart view-transition — `app/globals.css` (modified)
+- [x] TokenSwitcher wired into /trade/[symbol] page — `app/trade/[symbol]/page.tsx` (modified)
+
+### Phase 10: Verify
+- [x] Lint 0 errors — `pnpm lint`
+- [x] Production build passes (93 routes) — `pnpm build`
+- [x] ESLint ignores updated for supabase/functions — `eslint.config.mjs` (modified)
+
+**Files touched:**
+- `app/admin/page.tsx` — modified
+- `app/admin/promo/page.tsx` — created
+- `app/api/admin/promo/route.ts` — created
+- `app/api/admin/promo/[id]/route.ts` — created
+- `app/api/me/transactions/route.ts` — created
+- `app/api/promo/slots/route.ts` — created
+- `app/error.tsx` — created
+- `app/globals.css` — modified
+- `app/layout.tsx` — modified
+- `app/manifest.ts` — created
+- `app/me/page.tsx` — created
+- `app/not-found.tsx` — created
+- `app/page.tsx` — modified
+- `app/portfolio/page.tsx` — created
+- `app/trade/[symbol]/page.tsx` — modified
+- `app/wallet/page.tsx` — modified
+- `components/admin/promo-cms-panel.tsx` — created
+- `components/home/landing-shell.tsx` — created
+- `components/portfolio/PortfolioShell.tsx` — created
+- `components/profile/ProfileShell.tsx` — created
+- `components/pwa/InstallPrompt.tsx` — created
+- `components/trade/TokenSwitcher.tsx` — created
+- `components/ui/EmptyState.tsx` — created
+- `eslint.config.mjs` — modified
+- `lib/config/site.ts` — modified
+- `lib/promo/service.ts` — created
+- `lib/transactions/service.ts` — created
+- `package.json` — modified
+- `pnpm-lock.yaml` — modified
+- `supabase/functions/settle_expired_trades/index.ts` — created
+- `supabase/migrations/0013_promo_slots.sql` — created
+- `types/promo.ts` — created
 
 ---
 

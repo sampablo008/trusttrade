@@ -1,11 +1,28 @@
-import TrustProShell from "@/components/home/trustpro-shell";
+import { Metadata } from "next";
+import LandingShell from "@/components/home/landing-shell";
+import { listPromoSlots } from "@/lib/promo/service";
 import { listMarketTokens } from "@/lib/markets/service";
 
+export const metadata: Metadata = {
+  title: "TrustPro — Crypto Trading Platform",
+  description:
+    "Trade crypto long or short with live charts, instant payouts up to 85%, and a 5-level referral program. Join by invitation.",
+  openGraph: {
+    title: "TrustPro — Crypto Trading Platform",
+    description: "Trade crypto. Win big. Live charts, 85% payouts, 5-level referrals.",
+    type: "website",
+  },
+};
+
 export default async function Home() {
-  const marketData = await listMarketTokens();
+  const [promoResult, marketData] = await Promise.all([
+    listPromoSlots(true),
+    listMarketTokens(),
+  ]);
 
   return (
-    <TrustProShell
+    <LandingShell
+      slots={promoResult.items}
       marketSnapshots={marketData.items.map((token) => ({
         dayChangePercent: token.dayChangePercent,
         name: token.name,

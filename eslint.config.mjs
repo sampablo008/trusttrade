@@ -15,6 +15,8 @@ const eslintConfig = defineConfig([
     "coverage/**",
     "playwright-report/**",
     "test-results/**",
+    // Deno edge functions use ts-nocheck and Deno globals — skip lint
+    "supabase/functions/**",
   ]),
 ]);
 

@@ -232,6 +232,24 @@ export default async function AdminPage() {
                 <ArrowUpRight size={16} />
               </Link>
             </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 5 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Promo CMS</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Edit landing page hero, trust badges, and feature cards — no redeploy required.
+                Toggle slots on/off and update copy instantly.
+              </p>
+              <Link
+                href="/admin/promo"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open promo CMS
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">
