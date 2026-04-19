@@ -1,15 +1,20 @@
-import { assertAdmin } from "@/lib/auth/assertAdmin";
-import { listAdminWallets } from "@/lib/wallets/admin-service";
+import AdminPageHeader from "@/components/admin/shell/AdminPageHeader";
 import WalletControlPanel from "@/components/admin/wallet-control-panel";
+import { listAdminWallets } from "@/lib/wallets/admin-service";
+
+export const metadata = { title: "Wallets — Admin" };
 
 export default async function AdminWalletsPage() {
-  await assertAdmin();
-
   const wallets = await listAdminWallets();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <>
+      <AdminPageHeader
+        eyebrow="Deposit wallet ops"
+        title="Wallets"
+        description="Manage deposit addresses per token and network. Address edits require last-8-char confirmation to prevent accidental misroutes."
+      />
       <WalletControlPanel initialData={wallets} />
-    </main>
+    </>
   );
 }

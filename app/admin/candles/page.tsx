@@ -1,15 +1,20 @@
-import { assertAdmin } from "@/lib/auth/assertAdmin";
-import { listAdminTokens } from "@/lib/markets/admin-service";
+import AdminPageHeader from "@/components/admin/shell/AdminPageHeader";
 import CandleControllerPanel from "@/components/admin/candle-controller-panel";
+import { listAdminTokens } from "@/lib/markets/admin-service";
+
+export const metadata = { title: "Price Engine — Admin" };
 
 export default async function AdminCandlesPage() {
-  await assertAdmin();
-
   const tokens = await listAdminTokens();
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <>
+      <AdminPageHeader
+        eyebrow="Chart price engine"
+        title="Price engine"
+        description="Freeze tokens, set drift bias, hard-set any price, import CSV replay, or pull live historical candles from Binance with one click."
+      />
       <CandleControllerPanel initialTokens={tokens} />
-    </main>
+    </>
   );
 }

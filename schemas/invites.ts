@@ -35,7 +35,9 @@ export const invitedSignupSchema = z.object({
     .string()
     .trim()
     .min(8, "Use at least 8 characters.")
-    .max(128, "Password is too long."),
+    .max(128, "Password is too long.")
+    .regex(/[A-Z]/, "Include at least one uppercase letter.")
+    .regex(/[0-9]/, "Include at least one number."),
   username: z
     .string()
     .trim()

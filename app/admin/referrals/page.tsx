@@ -1,122 +1,106 @@
 import Link from "next/link";
-import { ArrowLeft, Users, ShieldAlert, Sliders, GitBranch } from "lucide-react";
-import { signOutPreview } from "@/app/actions/auth";
-import { assertAdmin } from "@/lib/auth/assertAdmin";
-import { listAdminCommissions } from "@/lib/referrals/admin-service";
-import { listAdminFlags } from "@/lib/referrals/admin-service";
+import { ArrowRight, Flag, GitBranch, ListChecks, Percent } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import AdminPageHeader from "@/components/admin/shell/AdminPageHeader";
+import { listAdminCommissions, listAdminFlags } from "@/lib/referrals/admin-service";
 
 export const metadata = { title: "Referrals — Admin" };
 
-export default async function AdminReferralsPage() {
-  const session = await assertAdmin();
+type ModuleCard = {
+  href: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  badge: string | null;
+  tone: "brand" | "warning";
+};
 
+export default async function AdminReferralsPage() {
   const [commissionsData, flagsData] = await Promise.all([
     listAdminCommissions({ status: "pending", limit: 1 }),
     listAdminFlags({ isResolved: false, limit: 1 }),
   ]);
 
-  const pendingCount = commissionsData.total;
-  const openFlags = flagsData.total;
-
-  const modules = [
+  const modules: ModuleCard[] = [
     {
       href: "/admin/referrals/queue",
-      icon: <Users size={22} className="text-brand" />,
+      icon: ListChecks,
       title: "Commission queue",
       description: "Approve or reject pending referral commissions. Bulk approve supported.",
-      badge: pendingCount > 0 ? `${pendingCount} pending` : null,
-      badgeColor: "bg-brand/10 text-brand",
+      badge: commissionsData.total > 0 ? `${commissionsData.total} pending` : null,
+      tone: "brand",
     },
     {
       href: "/admin/referrals/flags",
-      icon: <ShieldAlert size={22} className="text-orange-400" />,
+      icon: Flag,
       title: "Fraud flags",
       description: "Advisory signals — same IP, velocity, rapid chain. Resolve after review.",
-      badge: openFlags > 0 ? `${openFlags} open` : null,
-      badgeColor: "bg-orange-500/10 text-orange-400",
+      badge: flagsData.total > 0 ? `${flagsData.total} open` : null,
+      tone: "warning",
     },
     {
       href: "/admin/referrals/rates",
-      icon: <Sliders size={22} className="text-brand" />,
+      icon: Percent,
       title: "Commission rates",
       description: "Per-user bps overrides for all 5 referral levels.",
       badge: null,
-      badgeColor: "",
+      tone: "brand",
     },
     {
       href: "/admin/referrals/tree",
-      icon: <GitBranch size={22} className="text-brand" />,
+      icon: GitBranch,
       title: "Tree inspector",
       description: "Search any user and view their full upline and downline.",
       badge: null,
-      badgeColor: "",
+      tone: "brand",
     },
   ];
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-      <section className="rounded-[36px] border border-border bg-surface-soft p-8">
-        <div className="flex flex-col gap-6 border-b border-border pb-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-4">
-            <Link
-              href="/admin"
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-background/30 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-brand"
-            >
-              <ArrowLeft size={16} />
-              Back to admin
-            </Link>
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-brand">
-                Admin / Referrals
-              </p>
-              <h1 className="mt-3 font-display text-5xl tracking-tight text-foreground">
-                Referrals
-              </h1>
-            </div>
-            <p className="max-w-3xl text-base leading-8 text-muted">
-              5-level referral pyramid controls. Commission approval queue, fraud flags, per-user
-              rate overrides, and full tree inspection.
-            </p>
-          </div>
-          <form action={signOutPreview}>
-            <button
-              type="submit"
-              className="rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
-            >
-              Sign out {session.username ? `(${session.username})` : ""}
-            </button>
-          </form>
-        </div>
+    <>
+      <AdminPageHeader
+        eyebrow="Referrals"
+        title="Referral controls"
+        description="5-level pyramid controls. Commission approval queue, fraud flag review, per-user bps overrides, and full upline/downline tree inspection."
+      />
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2">
-          {modules.map((mod) => (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {modules.map((mod) => {
+          const Icon = mod.icon;
+          const badgeClass =
+            mod.tone === "warning"
+              ? "bg-warning/15 text-warning"
+              : "bg-brand/15 text-brand";
+          return (
             <Link
               key={mod.href}
               href={mod.href}
-              className="group rounded-2xl border border-border bg-background/20 p-6 transition hover:border-brand"
+              className="group flex flex-col gap-3 rounded-xl border border-border bg-surface p-5 transition hover:border-brand/40"
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    {mod.icon}
-                    <h2 className="font-bold text-foreground group-hover:text-brand">
-                      {mod.title}
-                    </h2>
-                    {mod.badge && (
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-bold ${mod.badgeColor}`}
-                      >
-                        {mod.badge}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-sm text-muted">{mod.description}</p>
-                </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface-strong text-brand">
+                  <Icon size={16} />
+                </span>
+                {mod.badge ? (
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badgeClass}`}
+                  >
+                    {mod.badge}
+                  </span>
+                ) : null}
               </div>
+              <div className="space-y-1">
+                <h2 className="text-sm font-semibold text-foreground">{mod.title}</h2>
+                <p className="text-xs leading-5 text-muted">{mod.description}</p>
+              </div>
+              <span className="mt-auto inline-flex items-center gap-1.5 text-xs font-medium text-muted transition group-hover:text-brand">
+                Open
+                <ArrowRight size={12} />
+              </span>
             </Link>
-          ))}
-        </div>
-      </section>
-    </main>
+          );
+        })}
+      </div>
+    </>
   );
 }

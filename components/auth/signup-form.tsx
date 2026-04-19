@@ -2,6 +2,7 @@
 
 import { useDeferredValue, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertTriangle, CheckCircle2, KeyRound, UserPlus } from "lucide-react";
 import { fetchJson } from "@/lib/api/client";
 import {
@@ -36,6 +37,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
     register,
     watch,
   } = useForm<SignupFormValues>({
+    resolver: zodResolver(invitedSignupSchema),
     defaultValues: {
       code: initialCode,
       email: "",
@@ -91,14 +93,6 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
   }, [deferredCode]);
 
   const onSubmit = handleSubmit((values) => {
-    const parsed = invitedSignupSchema.safeParse(values);
-
-    if (!parsed.success) {
-      setSubmitSuccess(null);
-      setSubmitError("Fix the highlighted fields first.");
-      return;
-    }
-
     if (!inviteResult?.isValid) {
       setSubmitSuccess(null);
       setSubmitError("Use a valid invite code first.");
@@ -111,7 +105,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
           "/api/auth/signup",
           inviteSignupResultSchema,
           {
-            body: JSON.stringify(parsed.data),
+            body: JSON.stringify(values),
             method: "POST",
           },
         );
@@ -127,6 +121,8 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
   });
 
   const revealForm = inviteResult?.isValid;
+
+  const pw = watch("password") ?? "";
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
@@ -252,11 +248,9 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
                 id="signup-password"
                 type="password"
                 className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
-                {...register("password", { required: true })}
+                {...register("password")}
               />
-              {errors.password ? (
-                <p className="text-sm text-down">{errors.password.message ?? "Password is required."}</p>
-              ) : null}
+              <PasswordChecklist password={pw} />
             </div>
 
             {submitError ? <p className="text-sm text-down">{submitError}</p> : null}
@@ -278,5 +272,30 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
         )}
       </section>
     </div>
+  );
+}
+
+const rules = [
+  { label: "At least 8 characters", test: (p: string) => p.length >= 8 },
+  { label: "One uppercase letter", test: (p: string) => /[A-Z]/.test(p) },
+  { label: "One number", test: (p: string) => /[0-9]/.test(p) },
+];
+
+function PasswordChecklist({ password }: { password: string }) {
+  if (!password) return null;
+  return (
+    <ul className="mt-2 space-y-1">
+      {rules.map((rule) => {
+        const ok = rule.test(password);
+        return (
+          <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-up" : "text-muted"}`}>
+            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${ok ? "border-up bg-up/10 text-up" : "border-border text-muted"}`}>
+              {ok ? "✓" : ""}
+            </span>
+            {rule.label}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
