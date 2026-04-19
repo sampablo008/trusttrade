@@ -268,10 +268,16 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
         </p>
       )}
 
+      {/* Mobile read-only notice */}
+      <div className="rounded-2xl border border-border bg-yellow-500/5 px-4 py-3 text-xs text-yellow-400 lg:hidden">
+        View-only on mobile. Use a desktop browser to settle trades.
+      </div>
+
       {/* Queue table */}
       <div className="overflow-hidden rounded-3xl border border-border">
-        <div className="max-h-[70vh] overflow-y-auto">
-          <table className="min-w-full divide-y divide-border text-left">
+        {/* Horizontal scroll on mobile so all columns are reachable */}
+        <div className="max-h-[70vh] overflow-x-auto overflow-y-auto">
+          <table className="min-w-175 w-full divide-y divide-border text-left">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr>
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
@@ -295,7 +301,7 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
                   Flags
                 </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                <th className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted lg:table-cell">
                   Actions
                 </th>
               </tr>
@@ -343,7 +349,7 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                         <span className="text-xs text-muted">{trade.userEmail}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-foreground">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-foreground">
                       {trade.tokenSymbol}/{trade.periodLabel}
                     </td>
                     <td className="px-4 py-3">
@@ -357,10 +363,10 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                         {trade.direction.toUpperCase()}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm font-semibold text-foreground">
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-foreground">
                       {formatUsdFromCents(trade.stakeCents)}
                     </td>
-                    <td className="px-4 py-3 font-mono text-xs text-muted">
+                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-muted">
                       ${(trade.entryPriceCents / 100).toLocaleString()}
                     </td>
                     <td className="px-4 py-3">
@@ -375,7 +381,8 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-3">
+                    {/* Actions — desktop only */}
+                    <td className="hidden px-4 py-3 lg:table-cell">
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={(e) => { e.stopPropagation(); settle([trade.id], "win"); }}
@@ -405,7 +412,7 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
         </div>
       </div>
 
-      <p className="text-xs text-muted">
+      <p className="hidden text-xs text-muted lg:block">
         Click to select · Shift+click range · Cmd/Ctrl+click multi · <kbd className="rounded border border-border bg-background/30 px-1.5 py-0.5 font-mono">W</kbd>/{" "}
         <kbd className="rounded border border-border bg-background/30 px-1.5 py-0.5 font-mono">L</kbd>/{" "}
         <kbd className="rounded border border-border bg-background/30 px-1.5 py-0.5 font-mono">V</kbd> to settle

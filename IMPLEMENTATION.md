@@ -2014,8 +2014,8 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 - [x] Edge Fn: `settle_expired_trades` — 5s cron
 - [x] `app_config.expiry_policy` wired
-- [ ] Mobile pass on `/trade/[symbol]` — bottom sheet ticket, sticky countdown banner (deferred)
-- [ ] Mobile admin queue (read-only on small screens) (deferred)
+- [x] Mobile pass on `/trade/[symbol]` — bottom sheet ticket (`components/trade/MobileTradeDrawer.tsx`), sticky countdown banner (`components/trade/StickyCountdownBanner.tsx`), FAB wired into `TradeShell.tsx`
+- [x] Mobile admin queue (read-only on small screens) — Actions column hidden on `<lg`, horizontal scroll, read-only notice (`components/admin/trade-queue.tsx`)
 - [x] PWA manifest + install prompt (`app/manifest.ts`, `components/pwa/InstallPrompt.tsx`)
 - [x] View Transitions API for token switches (`components/trade/TokenSwitcher.tsx`, CSS keyframes)
 - [x] Empty states (`components/ui/EmptyState.tsx`)
@@ -2149,6 +2149,32 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - `components/wallet/DepositForm.tsx` — modified (compress before upload)
 - `lib/media/compress.ts` — created
 - `supabase/functions/expire_bonus_tickets/index.ts` — created
+
+---
+
+### Sprint 5.5 — Mobile pass — 2026-04-19
+
+### Phase 1: Mobile trade drawer
+- [x] Create `MobileTradeDrawer` bottom-sheet component (backdrop, drag handle, scroll lock, Escape key, body overflow lock) — `components/trade/MobileTradeDrawer.tsx` (created)
+
+### Phase 2: Sticky countdown banner
+- [x] Create `StickyCountdownBanner` — shows most-urgent active trade on `<lg`, sticky top, count pill — `components/trade/StickyCountdownBanner.tsx` (created)
+
+### Phase 3: Wire TradeShell for mobile
+- [x] Show desktop OrderTicket only on `lg+`, floating FAB on `<lg` opens drawer, settlement toasts raised above FAB, banner wired in — `components/trade/TradeShell.tsx` (modified)
+
+### Phase 4: Admin queue mobile read-only
+- [x] Actions column `hidden` on `<lg` / `table-cell` on `lg+`, `overflow-x-auto` horizontal scroll, read-only yellow notice on small screens, keyboard hint hidden on mobile — `components/admin/trade-queue.tsx` (modified)
+
+### Phase 5: Verify
+- [x] Lint 0 errors — `pnpm lint`
+- [x] Production build passes — `pnpm build`
+
+**Files touched:**
+- `components/trade/MobileTradeDrawer.tsx` — created
+- `components/trade/StickyCountdownBanner.tsx` — created
+- `components/trade/TradeShell.tsx` — modified (FAB, drawer, banner, toast position)
+- `components/admin/trade-queue.tsx` — modified (mobile read-only, horizontal scroll)
 
 ---
 
