@@ -1782,23 +1782,102 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 **Goal.** 5-level pyramid + admin commission approval.
 
-- [ ] Migration `0005_referrals.sql` — referrals, referral_upline, referral_rates, referral_commissions, referral_flags
-- [ ] DB functions: `bind_referral`, `record_deposit`, `check_referral_fraud`
-- [ ] Wire `consume_invite` (§24) to call `bind_referral` when source=user
-- [ ] `/referrals` user page: code, share links, earnings cards, 5-level tree accordion, commission history table
-- [ ] `/api/referrals/stats` + `/tree` + `/commissions` endpoints
-- [ ] `/admin/referrals/queue` pending commissions — approve/reject/bulk
-- [ ] `/admin/referrals/rates` per-user bps overrides
-- [ ] `/admin/referrals/flags` fraud queue (dismiss/resolve)
-- [ ] `/admin/referrals/tree/:userId` upline + downline inspector
-- [ ] `/api/admin/commissions/*` endpoints
-- [ ] `/api/admin/users/:id/set-rates` endpoint
-- [ ] `/api/admin/flags/:id/resolve` endpoint
-- [ ] Bulk approve commissions
-- [ ] QR code generator for share links
+- [x] Migration `0005_referrals.sql` — referrals, referral_upline, referral_rates, referral_commissions, referral_flags
+- [x] DB functions: `bind_referral`, `record_deposit_commissions`, `check_referral_fraud`, `approve_commission`, `reject_commission`, `get_commission_bps`
+- [ ] Wire `consume_invite` (§24) to call `bind_referral` when source=user (blocked — requires live Supabase migration)
+- [x] `/referrals` user page: code, share links, earnings cards, 5-level tree accordion, commission history table
+- [x] `/api/referrals/stats` + `/tree` + `/commissions` endpoints
+- [x] `/admin/referrals/queue` pending commissions — approve/reject/bulk
+- [x] `/admin/referrals/rates` per-user bps overrides
+- [x] `/admin/referrals/flags` fraud queue (dismiss/resolve)
+- [x] `/admin/referrals/tree/:userId` upline + downline inspector
+- [x] `/api/admin/commissions/*` endpoints (list, approve, reject, bulk-approve)
+- [x] `/api/admin/users/:id/set-rates` endpoint
+- [x] `/api/admin/flags/:id/resolve` endpoint
+- [x] Bulk approve commissions
+- [x] Share links (copy, WhatsApp, Telegram, X) — QR code deferred to Sprint 5 polish
 - [ ] Tests: 5-deep chain insertion; first-deposit-only trigger; RLS — user A cannot read user B commissions; velocity + same-IP flags raised
 
 **Exit.** Bob deposits, 5 commissions appear in admin queue, Alice sees pending row, admin approves, Alice sees locked bonus ticket.
+
+**Sprint 3.5 log — 2026-04-19**
+
+### Phase 1: DB migration
+- [x] Write referrals schema (5 tables: referrals, referral_upline, referral_rates, referral_commissions, referral_flags) with full RLS — `supabase/migrations/0005_referrals.sql` (created)
+- [x] Write DB functions: `bind_referral`, `record_deposit_commissions`, `check_referral_fraud`, `approve_commission`, `reject_commission`, `get_commission_bps` — included in same migration
+
+### Phase 2: Types + schemas
+- [x] Referral types — `types/referrals.ts` (created)
+- [x] Referral Zod schemas — `schemas/referrals.ts` (created)
+
+### Phase 3: Services
+- [x] Preview data (in-memory mock referrals, commissions, flags, stats) — `lib/referrals/preview-data.ts` (created)
+- [x] User referral service (stats, tree, commissions, code) — `lib/referrals/service.ts` (created)
+- [x] Admin referral service (list, approve, reject, bulk-approve, flags, rates, tree/upline) — `lib/referrals/admin-service.ts` (created)
+
+### Phase 4: User API routes
+- [x] GET /api/referrals/stats — `app/api/referrals/stats/route.ts` (created)
+- [x] GET /api/referrals/tree — `app/api/referrals/tree/route.ts` (created)
+- [x] GET /api/referrals/commissions — `app/api/referrals/commissions/route.ts` (created)
+
+### Phase 5: Admin API routes
+- [x] GET /api/admin/commissions — `app/api/admin/commissions/route.ts` (created)
+- [x] POST /api/admin/commissions/:id/approve — `app/api/admin/commissions/[id]/approve/route.ts` (created)
+- [x] POST /api/admin/commissions/:id/reject — `app/api/admin/commissions/[id]/reject/route.ts` (created)
+- [x] POST /api/admin/commissions/bulk-approve — `app/api/admin/commissions/bulk-approve/route.ts` (created)
+- [x] GET /api/admin/flags — `app/api/admin/flags/route.ts` (created)
+- [x] POST /api/admin/flags/:id/resolve — `app/api/admin/flags/[id]/resolve/route.ts` (created)
+- [x] POST /api/admin/users/:id/set-rates — `app/api/admin/users/[id]/set-rates/route.ts` (created)
+- [x] GET /api/admin/referrals/tree/:userId — `app/api/admin/referrals/tree/[userId]/route.ts` (created)
+- [x] GET /api/admin/referrals/upline/:userId — `app/api/admin/referrals/upline/[userId]/route.ts` (created)
+
+### Phase 6: User UI
+- [x] ReferralsShell client component (stats cards, share links, tree accordion, commission table) — `components/referrals/ReferralsShell.tsx` (created)
+- [x] /referrals page — `app/referrals/page.tsx` (created)
+
+### Phase 7: Admin UI
+- [x] ReferralCommissionQueue (bulk select, approve/reject, status filter) — `components/admin/referral-commission-queue.tsx` (created)
+- [x] ReferralFlagsPanel (resolve flags, show/hide resolved) — `components/admin/referral-flags-panel.tsx` (created)
+- [x] ReferralRatesPanel (per-user bps overrides, user search) — `components/admin/referral-rates-panel.tsx` (created)
+- [x] ReferralTreeInspector (search user, view upline + downline) — `components/admin/referral-tree-inspector.tsx` (created)
+- [x] /admin/referrals hub page — `app/admin/referrals/page.tsx` (created)
+- [x] /admin/referrals/queue page — `app/admin/referrals/queue/page.tsx` (created)
+- [x] /admin/referrals/flags page — `app/admin/referrals/flags/page.tsx` (created)
+- [x] /admin/referrals/rates page — `app/admin/referrals/rates/page.tsx` (created)
+- [x] /admin/referrals/tree page — `app/admin/referrals/tree/page.tsx` (created)
+- [x] Admin hub updated with Sprint 3.5 referrals link — `app/admin/page.tsx` (modified)
+
+**Files touched:**
+- `app/admin/page.tsx` — modified
+- `app/admin/referrals/page.tsx` — created
+- `app/admin/referrals/flags/page.tsx` — created
+- `app/admin/referrals/queue/page.tsx` — created
+- `app/admin/referrals/rates/page.tsx` — created
+- `app/admin/referrals/tree/page.tsx` — created
+- `app/api/admin/commissions/route.ts` — created
+- `app/api/admin/commissions/[id]/approve/route.ts` — created
+- `app/api/admin/commissions/[id]/reject/route.ts` — created
+- `app/api/admin/commissions/bulk-approve/route.ts` — created
+- `app/api/admin/flags/route.ts` — created
+- `app/api/admin/flags/[id]/resolve/route.ts` — created
+- `app/api/admin/referrals/tree/[userId]/route.ts` — created
+- `app/api/admin/referrals/upline/[userId]/route.ts` — created
+- `app/api/admin/users/[id]/set-rates/route.ts` — created
+- `app/api/referrals/commissions/route.ts` — created
+- `app/api/referrals/stats/route.ts` — created
+- `app/api/referrals/tree/route.ts` — created
+- `app/referrals/page.tsx` — created
+- `components/admin/referral-commission-queue.tsx` — created
+- `components/admin/referral-flags-panel.tsx` — created
+- `components/admin/referral-rates-panel.tsx` — created
+- `components/admin/referral-tree-inspector.tsx` — created
+- `components/referrals/ReferralsShell.tsx` — created
+- `lib/referrals/admin-service.ts` — created
+- `lib/referrals/preview-data.ts` — created
+- `lib/referrals/service.ts` — created
+- `schemas/referrals.ts` — created
+- `supabase/migrations/0005_referrals.sql` — created
+- `types/referrals.ts` — created
 
 ---
 

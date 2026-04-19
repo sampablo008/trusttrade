@@ -178,6 +178,24 @@ export default async function AdminPage() {
                 <ArrowUpRight size={16} />
               </Link>
             </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 3.5 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Referrals</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                5-level pyramid controls. Commission approval queue, fraud flag review, per-user
+                bps overrides, and full upline/downline tree inspection.
+              </p>
+              <Link
+                href="/admin/referrals"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open referrals
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">
