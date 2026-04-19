@@ -1,0 +1,28 @@
+import { NextRequest, NextResponse } from "next/server";
+import { assertAdminApi } from "@/lib/auth/assert-admin-api";
+import { listAuditLog } from "@/lib/admin/audit-service";
+import { auditFiltersSchema } from "@/schemas/admin";
+import { ApiClientError } from "@/lib/api/client";
+
+export async function GET(request: NextRequest) {
+  try {
+    await assertAdminApi();
+
+    const params = Object.fromEntries(request.nextUrl.searchParams.entries());
+    const filters = auditFiltersSchema.parse(params);
+
+    const result = await listAuditLog(
+      filters.action,
+      filters.adminId,
+      filters.targetType,
+      filters.limit,
+      filters.offset,
+    );
+    return NextResponse.json(result);
+  } catch (err) {
+    if (err instanceof ApiClientError) {
+      return NextResponse.json({ error: { code: err.code, message: err.message } }, { status: err.status });
+    }
+    return NextResponse.json({ error: { code: "INTERNAL_ERROR", message: "Unexpected error." } }, { status: 500 });
+  }
+}

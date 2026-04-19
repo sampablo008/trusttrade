@@ -124,6 +124,60 @@ export default async function AdminPage() {
                 <ArrowUpRight size={16} />
               </Link>
             </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 3 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Settlement queue</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Live decision queue sorted by expiry. Win / Lose / Void per row, or bulk-select
+                and settle dozens at once. Keyboard shortcuts W / L / V. Expiring trades pulse red.
+              </p>
+              <Link
+                href="/admin/trades"
+                className="mt-6 inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-3 text-sm font-semibold text-background transition hover:bg-brand"
+              >
+                Open trade queue
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 3 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">User management</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Search users by email or username, view full balance breakdowns, freeze or unfreeze
+                accounts, and apply manual balance adjustments with a required audit note.
+              </p>
+              <Link
+                href="/admin/users"
+                className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+              >
+                Open users
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
+
+            <div className="rounded-[28px] border border-border bg-background/30 p-6">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                Sprint 3 — live
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-foreground">Audit log</h2>
+              <p className="mt-3 max-w-xl text-sm leading-7 text-muted">
+                Immutable record of every admin action — who, when, what, before/after JSON and
+                IP address. Filter by action type. Expand any row for the full diff.
+              </p>
+              <Link
+                href="/admin/audit"
+                className="mt-6 inline-flex items-center gap-2 rounded-full border border-border bg-background/35 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+              >
+                Open audit log
+                <ArrowUpRight size={16} />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-hidden rounded-[28px] border border-border">

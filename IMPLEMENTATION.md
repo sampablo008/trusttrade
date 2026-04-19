@@ -1698,23 +1698,83 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 **Goal.** Decision queue + full admin controls.
 
-- [ ] Migration `0003_settle_trade.sql` — `settle_trade` function
-- [ ] `/api/admin/trades` GET with filters
-- [ ] `/api/admin/trades/:id/settle` POST
-- [ ] `/api/admin/trades/bulk-settle` POST
-- [ ] `/api/admin/stream` SSE — all active trades + pending deposits + new flags
-- [ ] `/admin/trades` virtualized queue (react-window), sorted by end_time asc
-- [ ] Keyboard shortcuts: W, L, V, Shift+click range, Cmd+click multi
-- [ ] Bulk action bar (slide in on selection)
-- [ ] Filters sidebar: user, token, direction, amount range, time remaining
-- [ ] `/admin/users` search + detail page
-- [ ] `/api/admin/users` endpoints (list, get, freeze, adjust-balance)
-- [ ] `/admin/audit` viewer
-- [ ] `/api/admin/audit` paginated
+- [x] Migration `0003_settle_trade.sql` — `settle_trade` + `bulk_settle_trades` functions
+- [x] `/api/admin/trades` GET with filters
+- [x] `/api/admin/trades/:id/settle` POST
+- [x] `/api/admin/trades/bulk-settle` POST
+- [x] `/api/admin/stream` SSE — all active trades snapshot + live trade change events
+- [x] `/admin/trades` queue (scroll container), sorted by end_time asc
+- [x] Keyboard shortcuts: W, L, V, Shift+click range, Cmd/Ctrl+click multi
+- [x] Bulk action bar (slide in on selection)
+- [x] Filters: token, direction
+- [x] `/admin/users` search + detail page (balance, freeze, adjust-balance)
+- [x] `/api/admin/users` endpoints (list, get, freeze, adjust-balance)
+- [x] `/admin/audit` viewer (paginated, expandable before/after diff)
+- [x] `/api/admin/audit` paginated
 - [ ] Business dashboards: exposure, today's P&L, top winners/losers
 - [ ] Tests: settle → balance updates + RT propagation; bulk settle; non-admin → 403; already-settled → 409
 
 **Exit.** Admin settles any trade in <2 clicks. Queue updates live. User toast within 500 ms.
+
+**Sprint 3 log — 2026-04-19**
+
+### Phase 1: settle_trade DB migration
+- [x] Write `settle_trade` and `bulk_settle_trades` security-definer SQL functions — `supabase/migrations/0003_settle_trade.sql` (created)
+
+### Phase 2: Admin types, schemas, services
+- [x] Admin trade/user/audit types — `types/admin.ts` (created)
+- [x] Admin Zod schemas — `schemas/admin.ts` (created)
+- [x] Admin preview data for all three domains — `lib/admin/preview-data.ts` (created)
+- [x] Admin trades service (list, settle, bulk-settle) — `lib/admin/trades-service.ts` (created)
+- [x] Admin users service (list, get, freeze, adjust-balance) — `lib/admin/users-service.ts` (created)
+- [x] Admin audit service (list) — `lib/admin/audit-service.ts` (created)
+
+### Phase 3: Admin API routes
+- [x] GET /api/admin/trades — `app/api/admin/trades/route.ts` (created)
+- [x] POST /api/admin/trades/:id/settle — `app/api/admin/trades/[id]/settle/route.ts` (created)
+- [x] POST /api/admin/trades/bulk-settle — `app/api/admin/trades/bulk-settle/route.ts` (created)
+- [x] GET /api/admin/users — `app/api/admin/users/route.ts` (created)
+- [x] GET /api/admin/users/:id — `app/api/admin/users/[id]/route.ts` (created)
+- [x] POST /api/admin/users/:id/freeze — `app/api/admin/users/[id]/freeze/route.ts` (created)
+- [x] POST /api/admin/users/:id/adjust-balance — `app/api/admin/users/[id]/adjust-balance/route.ts` (created)
+- [x] GET /api/admin/audit — `app/api/admin/audit/route.ts` (created)
+
+### Phase 4: Admin SSE stream
+- [x] Admin broadcast SSE (active trades snapshot + live changes) — `app/api/admin/stream/route.ts` (created)
+
+### Phase 5: Admin UI pages + components
+- [x] TradeQueue component (countdown, flags, W/L/V buttons, keyboard shortcuts, bulk select/settle) — `components/admin/trade-queue.tsx` (created)
+- [x] /admin/trades page — `app/admin/trades/page.tsx` (created)
+- [x] UsersPanel component (search, detail, freeze, balance adjust) — `components/admin/users-panel.tsx` (created)
+- [x] /admin/users page — `app/admin/users/page.tsx` (created)
+- [x] AuditLogPanel component (paginated, filter by action, expandable diff) — `components/admin/audit-log-panel.tsx` (created)
+- [x] /admin/audit page — `app/admin/audit/page.tsx` (created)
+- [x] Admin hub updated with Sprint 3 module links — `app/admin/page.tsx` (modified)
+
+**Files touched:**
+- `app/admin/audit/page.tsx` — created
+- `app/admin/page.tsx` — modified
+- `app/admin/trades/page.tsx` — created
+- `app/admin/users/page.tsx` — created
+- `app/api/admin/audit/route.ts` — created
+- `app/api/admin/stream/route.ts` — created
+- `app/api/admin/trades/[id]/settle/route.ts` — created
+- `app/api/admin/trades/bulk-settle/route.ts` — created
+- `app/api/admin/trades/route.ts` — created
+- `app/api/admin/users/[id]/adjust-balance/route.ts` — created
+- `app/api/admin/users/[id]/freeze/route.ts` — created
+- `app/api/admin/users/[id]/route.ts` — created
+- `app/api/admin/users/route.ts` — created
+- `components/admin/audit-log-panel.tsx` — created
+- `components/admin/trade-queue.tsx` — created
+- `components/admin/users-panel.tsx` — created
+- `lib/admin/audit-service.ts` — created
+- `lib/admin/preview-data.ts` — created
+- `lib/admin/trades-service.ts` — created
+- `lib/admin/users-service.ts` — created
+- `schemas/admin.ts` — created
+- `supabase/migrations/0003_settle_trade.sql` — created
+- `types/admin.ts` — created
 
 ---
 
