@@ -70,7 +70,7 @@ export interface AdjustBalanceInput {
 export interface AuditLogEntry {
   action: string;
   adminEmail: string;
-  adminId: string;
+  adminId: string | null;
   afterJson: Record<string, unknown> | null;
   beforeJson: Record<string, unknown> | null;
   createdAt: string;

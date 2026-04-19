@@ -7,14 +7,14 @@ import { auditLogResultSchema } from "@/schemas/admin";
 import type { AuditLogResult } from "@/types/admin";
 
 interface AuditRow {
-  action: string;
-  admin_id: string;
-  after_json: Record<string, unknown> | null;
-  before_json: Record<string, unknown> | null;
+  action_type: string;
+  admin_user_id: string | null;
+  after_state: Record<string, unknown> | null;
+  before_state: Record<string, unknown> | null;
   created_at: string;
   id: string;
   ip_address: string | null;
-  notes: string | null;
+  note: string | null;
   target_id: string | null;
   target_type: string | null;
   profiles?: { email: string } | { email: string }[] | null;
@@ -27,15 +27,15 @@ const resolveEmail = (profiles: AuditRow["profiles"]): string => {
 };
 
 const mapAuditRow = (row: AuditRow) => ({
-  action: row.action,
+  action: row.action_type,
   adminEmail: resolveEmail(row.profiles),
-  adminId: row.admin_id,
-  afterJson: row.after_json ?? null,
-  beforeJson: row.before_json ?? null,
+  adminId: row.admin_user_id,
+  afterJson: row.after_state ?? null,
+  beforeJson: row.before_state ?? null,
   createdAt: row.created_at,
   id: row.id,
   ipAddress: row.ip_address ?? null,
-  notes: row.notes ?? null,
+  notes: row.note ?? null,
   targetId: row.target_id ?? null,
   targetType: row.target_type ?? null,
 });
@@ -63,12 +63,12 @@ export const listAuditLog = async (
   let query = admin
     .from("admin_actions")
     .select(
-      "id, admin_id, action, target_type, target_id, before_json, after_json, notes, ip_address, created_at, profiles(email)",
+      "id, admin_user_id, action_type, target_type, target_id, before_state, after_state, note, ip_address, created_at, profiles(email)",
       { count: "exact" },
     );
 
-  if (action) query = query.eq("action", action);
-  if (adminId) query = query.eq("admin_id", adminId);
+  if (action) query = query.eq("action_type", action);
+  if (adminId) query = query.eq("admin_user_id", adminId);
   if (targetType) query = query.eq("target_type", targetType);
 
   const { data, error, count } = await query

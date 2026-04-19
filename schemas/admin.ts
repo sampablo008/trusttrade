@@ -66,7 +66,7 @@ export const adjustBalanceInputSchema = z.object({
 export const auditLogEntrySchema = z.object({
   action: z.string(),
   adminEmail: z.string(),
-  adminId: z.string().uuid(),
+  adminId: z.string().uuid().nullable(),
   afterJson: z.record(z.string(), z.unknown()).nullable(),
   beforeJson: z.record(z.string(), z.unknown()).nullable(),
   createdAt: z.string(),

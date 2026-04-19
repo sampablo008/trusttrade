@@ -18,7 +18,7 @@ export const inviteValidationQuerySchema = z.object({
 
 export const inviteValidationResultSchema = z.object({
   code: z.string(),
-  expiresAt: z.string().datetime().nullable(),
+  expiresAt: z.string().datetime({ offset: true }).nullable(),
   isSingleUse: z.boolean(),
   isValid: z.boolean(),
   message: z.string(),
@@ -53,15 +53,15 @@ export const inviteSignupResultSchema = z.object({
 
 export const adminInviteCodeSchema = z.object({
   code: inviteCodeSchema,
-  createdAt: z.string().datetime(),
+  createdAt: z.string().datetime({ offset: true }),
   createdByAdminId: z.string().uuid().nullable(),
-  expiresAt: z.string().datetime().nullable(),
+  expiresAt: z.string().datetime({ offset: true }).nullable(),
   isSingleUse: z.boolean(),
-  lastUsedAt: z.string().datetime().nullable(),
+  lastUsedAt: z.string().datetime({ offset: true }).nullable(),
   mode: inviteModeSchema,
   note: z.string().max(240).nullable(),
   ownerUserId: z.string().uuid().nullable(),
-  revokedAt: z.string().datetime().nullable(),
+  revokedAt: z.string().datetime({ offset: true }).nullable(),
   source: inviteSourceSchema,
   status: inviteStatusSchema,
   usedCount: z.number().int().nonnegative(),
@@ -84,7 +84,7 @@ export const adminInviteCodesResultSchema = z.object({
 
 export const mintInviteCodesInputSchema = z.object({
   count: z.coerce.number().int().min(1, "Mint at least one code.").max(1000, "Max batch is 1000."),
-  expiresAt: z.string().datetime().nullable(),
+  expiresAt: z.string().datetime({ offset: true }).nullable(),
   note: z
     .string()
     .trim()
@@ -94,8 +94,8 @@ export const mintInviteCodesInputSchema = z.object({
 
 export const mintedInviteCodeSchema = z.object({
   code: inviteCodeSchema,
-  createdAt: z.string().datetime(),
-  expiresAt: z.string().datetime().nullable(),
+  createdAt: z.string().datetime({ offset: true }),
+  expiresAt: z.string().datetime({ offset: true }).nullable(),
   mode: inviteModeSchema,
   note: z.string().nullable(),
 });
@@ -108,6 +108,6 @@ export const mintInviteCodesResultSchema = z.object({
 export const revokeInviteCodeResultSchema = z.object({
   code: inviteCodeSchema,
   mode: inviteModeSchema,
-  revokedAt: z.string().datetime(),
+  revokedAt: z.string().datetime({ offset: true }),
   status: inviteStatusSchema,
 });

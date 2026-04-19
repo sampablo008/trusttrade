@@ -155,7 +155,7 @@ export default function AuditLogPanel({ initialData }: AuditLogPanelProps) {
                           </div>
                           <div className="mt-3 flex gap-4 text-xs text-muted">
                             <span>
-                              <span className="font-semibold">Admin ID:</span> {entry.adminId}
+                              <span className="font-semibold">Admin ID:</span> {entry.adminId ?? "—"}
                             </span>
                             {entry.ipAddress && (
                               <span>

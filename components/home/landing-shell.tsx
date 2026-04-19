@@ -167,6 +167,41 @@ const dashboardSignals = [
   },
 ];
 
+const traderTestimonials = [
+  {
+    handle: "@atlasflow",
+    highlight: "Caught the breakout early",
+    quote:
+      "The desk keeps the market readable. I can scan momentum, pick direction, and commit before the move gets crowded.",
+    result: "+18.4% week",
+    tone: "from-brand via-[#69c0ff] to-up",
+  },
+  {
+    handle: "@solgrid",
+    highlight: "Execution feels immediate",
+    quote:
+      "I stopped bouncing between tabs. The payout framing, market pressure, and wallet flow sit in one clean surface that actually pushes me to trade.",
+    result: "24/7 active",
+    tone: "from-[#0f9a6f] via-up to-[#8affcb]",
+  },
+  {
+    handle: "@hedgeline",
+    highlight: "Clean enough for repeat trades",
+    quote:
+      "It feels more like a control room than a promo funnel. That matters when you want confidence before locking a position.",
+    result: "5-level referrals",
+    tone: "from-warning via-[#ffb74a] to-brand",
+  },
+  {
+    handle: "@voltpulse",
+    highlight: "Friction dropped hard",
+    quote:
+      "Signup, funding, and execution feel connected. New users get to the desk fast, and that speed translates into more actual trading activity.",
+    result: "<2m wallet flow",
+    tone: "from-[#d9658b] via-warning to-brand",
+  },
+];
+
 const marqueeTransition = {
   duration: 26,
   ease: "linear",
@@ -902,6 +937,150 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   </div>
                 </motion.article>
               ))}
+            </div>
+          </div>
+        </SectionFrame>
+
+        <SectionFrame
+          className="overflow-hidden"
+          eyebrow="Trader proof"
+          title="Real momentum needs visible social proof."
+          description="Testimonials should feel like they are moving through the same market current as the rest of the page: alive, directional, and confident enough to make the next user step in."
+        >
+          <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
+            <motion.div
+              className="relative overflow-hidden rounded-[30px] border border-border/80 bg-[linear-gradient(165deg,rgba(8,15,29,0.94),rgba(16,34,63,0.78))] p-6"
+              initial={{ opacity: 0, y: 22 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ amount: 0.3, once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <motion.div
+                animate={
+                  reduceMotion
+                    ? undefined
+                    : {
+                        scale: [1, 1.08, 1],
+                        x: ["-4%", "6%", "-4%"],
+                        y: ["0%", "5%", "0%"],
+                      }
+                }
+                className="absolute right-[-5rem] top-[-4rem] h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(61,156,255,0.36)_0%,rgba(61,156,255,0.08)_42%,transparent_72%)] blur-xl"
+                transition={{ duration: 10, ease: "easeInOut", repeat: Number.POSITIVE_INFINITY }}
+              />
+
+              <div className="relative z-10">
+                <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
+                  Sentiment pulse
+                </p>
+                <h3 className="mt-3 max-w-md text-3xl font-semibold tracking-tight text-foreground">
+                  The landing page now carries trader energy past the hero.
+                </h3>
+                <p className="mt-4 max-w-md text-sm leading-7 text-muted">
+                  These quotes are staged like active desk chatter, not static endorsements. The
+                  motion keeps social proof present without turning it into a loud carousel.
+                </p>
+
+                <div className="mt-8 grid gap-3">
+                  {[
+                    { label: "Confidence lift", value: "92%" },
+                    { label: "Repeat intent", value: "High" },
+                    { label: "Referral pull", value: "Compounding" },
+                  ].map((signal, index) => (
+                    <motion.div
+                      key={signal.label}
+                      className="flex items-center justify-between rounded-[20px] border border-border/70 bg-surface px-4 py-4"
+                      initial={{ opacity: 0, x: -16 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ amount: 0.5, once: true }}
+                      transition={{ delay: 0.08 + index * 0.08, duration: 0.45 }}
+                      whileHover={reduceMotion ? undefined : { x: 4 }}
+                    >
+                      <span className="text-sm text-muted">{signal.label}</span>
+                      <span className="text-sm font-semibold text-foreground">{signal.value}</span>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            <div className="relative overflow-hidden rounded-[30px] border border-border/80 bg-[linear-gradient(180deg,rgba(7,14,27,0.92),rgba(11,21,39,0.86))] p-4 sm:p-5">
+              <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-[#08111d] via-[#08111d]/80 to-transparent" />
+              <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-[#08111d] via-[#08111d]/80 to-transparent" />
+
+              <div className="space-y-4">
+                {[0, 1].map((row) => (
+                  <div key={row} className="overflow-hidden">
+                    <motion.div
+                      animate={
+                        reduceMotion
+                          ? undefined
+                          : { x: row === 0 ? ["0%", "-50%"] : ["-50%", "0%"] }
+                      }
+                      className="flex min-w-max gap-4"
+                      transition={{
+                        duration: row === 0 ? 28 : 32,
+                        ease: "linear",
+                        repeat: Number.POSITIVE_INFINITY,
+                      }}
+                    >
+                      {Array.from({ length: 2 }).flatMap((_, cloneIndex) =>
+                        traderTestimonials.map((testimonial, index) => (
+                          <motion.article
+                            key={`${row}-${cloneIndex}-${testimonial.handle}`}
+                            className="w-[320px] shrink-0 rounded-[26px] border border-border/75 bg-surface/95 p-5 shadow-[0_16px_60px_rgba(3,8,20,0.24)] backdrop-blur"
+                            initial={{ opacity: 0, y: 20 }}
+                            whileInView={{ opacity: 1, y: 0 }}
+                            viewport={{ amount: 0.2, once: true }}
+                            transition={{ delay: index * 0.06, duration: 0.45 }}
+                            whileHover={reduceMotion ? undefined : { y: -8, rotate: row === 0 ? -1 : 1 }}
+                          >
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-brand">
+                                  {testimonial.handle}
+                                </p>
+                                <h3 className="mt-3 text-xl font-semibold text-foreground">
+                                  {testimonial.highlight}
+                                </h3>
+                              </div>
+                              <div
+                                className={`rounded-full bg-gradient-to-r ${testimonial.tone} px-3 py-1 text-xs font-semibold text-background`}
+                              >
+                                {testimonial.result}
+                              </div>
+                            </div>
+
+                            <p className="mt-5 text-sm leading-7 text-muted">
+                              “{testimonial.quote}”
+                            </p>
+
+                            <div className="mt-6 flex items-center gap-2">
+                              {Array.from({ length: 5 }).map((_, starIndex) => (
+                                <motion.span
+                                  key={`${testimonial.handle}-${starIndex}`}
+                                  animate={
+                                    reduceMotion
+                                      ? undefined
+                                      : { opacity: [0.55, 1, 0.55], y: [0, -1, 0] }
+                                  }
+                                  className="h-2.5 w-2.5 rounded-full bg-brand"
+                                  transition={{
+                                    delay: starIndex * 0.08,
+                                    duration: 1.8,
+                                    ease: "easeInOut",
+                                    repeat: Number.POSITIVE_INFINITY,
+                                  }}
+                                />
+                              ))}
+                            </div>
+                          </motion.article>
+                        )),
+                      )}
+                    </motion.div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </SectionFrame>

@@ -115,7 +115,7 @@ const mapAdminTradeRow = (row: AdminTradeRow): AdminTrade => {
 };
 
 const ADMIN_TRADE_SELECT =
-  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens(symbol), trade_periods(duration_seconds), profiles(username, email, created_at)";
+  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens(symbol), trade_periods(duration_seconds), profiles!user_trades_user_id_fkey(username, email, created_at)";
 
 export const listAdminTrades = async (
   filters: AdminTradeFilters = {},
