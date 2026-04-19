@@ -1236,11 +1236,11 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [ ] `handle_new_user` trigger — auto profile + balance
 - [x] Create `lib/supabase/server.ts` and `lib/supabase/admin.ts` with `'server-only'`
 - [x] Confirm `lib/supabase/client.ts` does **not** exist
-- [ ] Middleware: auth redirect + admin guard + global rate limit
+- [x] Middleware: auth redirect + admin guard + global rate limit
 - [x] `lib/auth/assertAdmin.ts` helper
 - [x] Tailwind config with Trust-Wallet dark tokens (bg, border, up, down, brand)
 - [x] `lib/api/client.ts` + error envelope helpers
-- [ ] Playwright smoke test: unauthenticated /trade redirects to /login
+- [x] Playwright smoke test: unauthenticated /trade redirects to /login
 - [x] CI: `grep "supabase" .next/static/chunks | wc -l` must equal 0
 - [ ] Bootstrap one admin user manually via SQL
 
@@ -1264,9 +1264,14 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 ### Phase 4: Auth route scaffold
 - [x] Add preview login flow and protected route shells — `app/actions/auth.ts` (created), `components/auth/login-form.tsx` (created), `app/login/page.tsx` (created), `app/trade/page.tsx` (created), `app/admin/page.tsx` (created), `schemas/auth.ts` (created)
 - [x] Add proxy-based auth redirect and admin guard scaffold — `proxy.ts` (created), `lib/auth/constants.ts` (created), `lib/auth/session.ts` (created), `lib/auth/assertAdmin.ts` (created)
-- [ ] Global rate limit and Playwright redirect execution still pending — proxy currently handles redirects and role gates only
+
+### Phase 5: Proxy rate limit + smoke test
+- [x] Add proxy-safe global rate limit scaffold and response headers — `lib/rate-limit/proxy.ts` (created), `proxy.ts` (modified)
+- [x] Add Playwright config and unauthenticated redirect smoke test — `playwright.config.ts` (created), `tests/e2e/auth-redirect.spec.ts` (created), `package.json` (modified), `.gitignore` (modified)
+- [x] Execute the smoke test with installed Chromium — `pnpm exec playwright install chromium`, `pnpm test:e2e`
 
 **Files touched:**
+- `.gitignore` — modified
 - `app/actions/auth.ts` — created
 - `app/admin/page.tsx` — created
 - `app/globals.css` — modified
@@ -1286,15 +1291,18 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - `lib/config/site.ts` — created
 - `lib/constants/platform.ts` — created
 - `lib/env/server.ts` — created
+- `lib/rate-limit/proxy.ts` — created
 - `lib/supabase/admin.ts` — created
 - `lib/supabase/server.ts` — created
 - `lib/utils/format.ts` — created
 - `next.config.ts` — modified
 - `package.json` — modified
 - `pnpm-lock.yaml` — modified
+- `playwright.config.ts` — created
 - `proxy.ts` — created
 - `schemas/auth.ts` — created
 - `stores/trading-shell-store.ts` — created
+- `tests/e2e/auth-redirect.spec.ts` — created
 - `types/platform.ts` — created
 
 ---
