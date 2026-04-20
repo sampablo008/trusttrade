@@ -20,27 +20,37 @@ interface PeriodFormState {
   durationSeconds: string;
   isEnabled: boolean;
   label: string;
-  maxAmountCents: string;
-  minAmountCents: string;
-  payoutBps: string;
+  maxAmountDollars: string;
+  minAmountDollars: string;
+  payoutPercent: string;
 }
+
+const formatPercentFromBps = (bps: number) => {
+  const percent = bps / 100;
+  return Number.isInteger(percent) ? String(percent) : percent.toFixed(2);
+};
+
+const formatDollarsFromCents = (cents: number) => {
+  const dollars = cents / 100;
+  return Number.isInteger(dollars) ? String(dollars) : dollars.toFixed(2);
+};
 
 const createEmptyDraft = (): PeriodFormState => ({
   durationSeconds: "60",
   isEnabled: true,
   label: "",
-  maxAmountCents: "100000",
-  minAmountCents: "1000",
-  payoutBps: "18500",
+  maxAmountDollars: "1000",
+  minAmountDollars: "10",
+  payoutPercent: "185",
 });
 
 const mapPeriodToDraft = (period: AdminTradePeriod): PeriodFormState => ({
   durationSeconds: String(period.durationSeconds),
   isEnabled: period.isEnabled,
   label: period.label,
-  maxAmountCents: String(period.maxAmountCents),
-  minAmountCents: String(period.minAmountCents),
-  payoutBps: String(period.payoutBps),
+  maxAmountDollars: formatDollarsFromCents(period.maxAmountCents),
+  minAmountDollars: formatDollarsFromCents(period.minAmountCents),
+  payoutPercent: formatPercentFromBps(period.payoutBps),
 });
 
 const formatDuration = (seconds: number) => {
@@ -107,13 +117,30 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
     setFeedback(null);
     setErrorMessage(null);
 
+    const percentValue = Number(draft.payoutPercent);
+    if (!Number.isFinite(percentValue) || percentValue <= 0) {
+      setErrorMessage("Payout percent must be a positive number.");
+      return;
+    }
+
+    const minDollars = Number(draft.minAmountDollars);
+    const maxDollars = Number(draft.maxAmountDollars);
+    if (!Number.isFinite(minDollars) || minDollars <= 0) {
+      setErrorMessage("Min amount must be a positive number.");
+      return;
+    }
+    if (!Number.isFinite(maxDollars) || maxDollars <= 0) {
+      setErrorMessage("Max amount must be a positive number.");
+      return;
+    }
+
     const parsed = upsertAdminTradePeriodInputSchema.safeParse({
       durationSeconds: draft.durationSeconds,
       isEnabled: draft.isEnabled,
       label: draft.label,
-      maxAmountCents: draft.maxAmountCents,
-      minAmountCents: draft.minAmountCents,
-      payoutBps: draft.payoutBps,
+      maxAmountCents: Math.round(maxDollars * 100),
+      minAmountCents: Math.round(minDollars * 100),
+      payoutBps: Math.round(percentValue * 100),
     });
 
     if (!parsed.success) {
@@ -301,38 +328,56 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
 
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Min amount cents
+              Min amount ($)
             </label>
-            <input
-              inputMode="numeric"
-              value={draft.minAmountCents}
-              onChange={(event) => updateDraft("minAmountCents", event.target.value)}
-              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted">
+                $
+              </span>
+              <input
+                inputMode="decimal"
+                value={draft.minAmountDollars}
+                onChange={(event) => updateDraft("minAmountDollars", event.target.value)}
+                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 pl-8 text-sm text-foreground outline-none transition focus:border-brand"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Max amount cents
+              Max amount ($)
             </label>
-            <input
-              inputMode="numeric"
-              value={draft.maxAmountCents}
-              onChange={(event) => updateDraft("maxAmountCents", event.target.value)}
-              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
-            />
+            <div className="relative">
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm text-muted">
+                $
+              </span>
+              <input
+                inputMode="decimal"
+                value={draft.maxAmountDollars}
+                onChange={(event) => updateDraft("maxAmountDollars", event.target.value)}
+                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 pl-8 text-sm text-foreground outline-none transition focus:border-brand"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Payout bps
+              Payout %
             </label>
-            <input
-              inputMode="numeric"
-              value={draft.payoutBps}
-              onChange={(event) => updateDraft("payoutBps", event.target.value)}
-              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
-            />
+            <div className="relative">
+              <input
+                inputMode="decimal"
+                value={draft.payoutPercent}
+                onChange={(event) => updateDraft("payoutPercent", event.target.value)}
+                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 pr-10 text-sm text-foreground outline-none transition focus:border-brand"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted">
+                %
+              </span>
+            </div>
+            <p className="text-xs text-muted">
+              Total return on stake. 185% means a $100 stake pays $185.
+            </p>
           </div>
 
           <label className="md:col-span-2 flex items-center gap-3 rounded-[20px] border border-border bg-background/25 px-4 py-4 text-sm text-foreground">

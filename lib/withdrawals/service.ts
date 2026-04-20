@@ -1,4 +1,5 @@
 import "server-only";
+import { verifyWithdrawalPin } from "@/lib/account/pin-service";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -88,6 +89,8 @@ export const requestWithdrawal = async (
   userId: string,
   input: RequestWithdrawalInput,
 ): Promise<Withdrawal> => {
+  await verifyWithdrawalPin(userId, input.withdrawalPin);
+
   if (!getOptionalServerEnv()) {
     return previewRequestWithdrawal(input);
   }

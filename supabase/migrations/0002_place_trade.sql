@@ -22,12 +22,12 @@ declare
   v_trade public.user_trades;
 begin
   -- Load app config
-  select trading_frozen, rate_limit_per_10s
+  select global_trade_freeze, rate_limit_per_10s
   into v_config
   from public.app_config
   limit 1;
 
-  if v_config.trading_frozen then
+  if v_config.global_trade_freeze then
     raise exception 'TRADING_FROZEN' using hint = 'Trading is currently disabled.';
   end if;
 

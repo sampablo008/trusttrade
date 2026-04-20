@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { ApiClientError } from "@/lib/api/client";
+import { issueSignupVerification } from "@/lib/auth/email-verification-service";
 import {
   adminInviteCodeSchema,
   adminInviteCodesResultSchema,
@@ -285,7 +286,7 @@ export const createPreviewInvitedUser = ({
   code,
   email,
   username,
-}: CreatePreviewInvitedUserInput): InviteSignupResult => {
+}: CreatePreviewInvitedUserInput): Promise<InviteSignupResult> | InviteSignupResult => {
   refreshPreviewInviteStatuses();
 
   const normalizedCode = code.trim().toUpperCase();
@@ -333,8 +334,11 @@ export const createPreviewInvitedUser = ({
     }),
   );
 
-  return {
-    nextPath: "/login?next=/trade&signup=1&mode=preview",
-    userId,
-  };
+  return (async (): Promise<InviteSignupResult> => {
+    await issueSignupVerification({ email: normalizedEmail, userId }).catch(() => undefined);
+    return {
+      nextPath: `/verify-email?email=${encodeURIComponent(normalizedEmail)}&mode=preview`,
+      userId,
+    };
+  })();
 };

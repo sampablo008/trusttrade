@@ -297,12 +297,8 @@ export const listAdminTradePeriods = async (): Promise<AdminTradePeriodsResult> 
     throw new ApiClientError(error.message, 500, "ADMIN_PERIODS_FETCH_FAILED", error);
   }
 
-  if (!data?.length) {
-    return listPreviewAdminTradePeriods();
-  }
-
   return adminTradePeriodsResultSchema.parse({
-    items: data.map((row) => mapAdminTradePeriodRow(row as AdminTradePeriodRow)),
+    items: (data ?? []).map((row) => mapAdminTradePeriodRow(row as AdminTradePeriodRow)),
   });
 };
 

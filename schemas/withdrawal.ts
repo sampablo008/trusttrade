@@ -47,6 +47,10 @@ export const requestWithdrawalInputSchema = z.object({
   tokenSymbol: z.string().min(1),
   network: z.string().min(1),
   destinationAddress: z.string().min(10, "Destination address is required."),
+  withdrawalPin: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Enter your 6-digit withdrawal PIN."),
 });
 
 export const adminWithdrawalFiltersSchema = z.object({

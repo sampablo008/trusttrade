@@ -7,6 +7,7 @@ export interface AppSession {
   isAdmin: boolean;
   isAuthenticated: boolean;
   role: AuthRole | null;
+  userId: string | null;
   username: string | null;
 }
 
@@ -17,11 +18,13 @@ export const getAppSession = async (): Promise<AppSession> => {
   const role: AuthRole | null =
     roleValue === "admin" || roleValue === "user" ? roleValue : null;
   const username = cookieStore.get(authCookieNames.user)?.value ?? null;
+  const userId = cookieStore.get(authCookieNames.userId)?.value ?? null;
 
   return {
     isAdmin: isAuthenticated && role === "admin",
     isAuthenticated,
     role,
+    userId,
     username,
   };
 };

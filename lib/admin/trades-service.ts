@@ -7,6 +7,7 @@ import {
   adminTradeListResultSchema,
   adminTradeSchema,
   bulkSettleInputSchema,
+  forceTradeOutcomeInputSchema,
   settleTradeInputSchema,
 } from "@/schemas/admin";
 import type {
@@ -27,6 +28,7 @@ const toNumber = (v: number | string | bigint | null | undefined): number => {
 };
 
 interface AdminTradeRow {
+  admin_forced_outcome: "win" | "lose" | "void" | null;
   direction: "long" | "short";
   end_time: string;
   entry_price_cents: number | string | bigint;
@@ -92,6 +94,7 @@ const mapAdminTradeRow = (row: AdminTradeRow): AdminTrade => {
   const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles;
 
   return adminTradeSchema.parse({
+    adminForcedOutcome: row.admin_forced_outcome ?? null,
     direction: row.direction,
     endTime: row.end_time,
     entryPriceCents: toNumber(row.entry_price_cents),
@@ -115,7 +118,7 @@ const mapAdminTradeRow = (row: AdminTradeRow): AdminTrade => {
 };
 
 const ADMIN_TRADE_SELECT =
-  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens(symbol), trade_periods(duration_seconds), profiles!user_trades_user_id_fkey(username, email, created_at)";
+  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, admin_forced_outcome, started_at, end_time, tokens(symbol), trade_periods(duration_seconds), profiles!user_trades_user_id_fkey(username, email, created_at)";
 
 export const listAdminTrades = async (
   filters: AdminTradeFilters = {},
@@ -197,6 +200,52 @@ export const settleTrade = async (
 
   const row = data as AdminTradeRow;
   return mapAdminTradeRow(row);
+};
+
+export const forceTradeOutcome = async (
+  tradeId: string,
+  input: unknown,
+  adminId: string,
+): Promise<AdminTrade> => {
+  const parsed = forceTradeOutcomeInputSchema.parse(input);
+
+  if (!getOptionalServerEnv()) {
+    const trade = previewAdminTrades.find((t) => t.id === tradeId);
+    if (!trade) throw new ApiClientError("Trade not found.", 404, "TRADE_NOT_FOUND");
+    const forced = { ...trade, adminForcedOutcome: parsed.outcome };
+    return adminTradeSchema.parse(forced);
+  }
+
+  const admin = createSupabaseAdminClient();
+  const { data, error } = await admin.rpc("force_trade_outcome", {
+    p_admin_id: adminId,
+    p_outcome: parsed.outcome,
+    p_reason: parsed.reason ?? null,
+    p_trade_id: tradeId,
+  });
+
+  if (error) {
+    const msg = error.message ?? "Force outcome failed.";
+    const code = msg.includes("TRADE_NOT_FOUND") ? "TRADE_NOT_FOUND"
+      : msg.includes("TRADE_NOT_ACTIVE") ? "TRADE_NOT_ACTIVE"
+      : "INTERNAL_ERROR";
+    const status = code === "TRADE_NOT_FOUND" ? 404 : code === "TRADE_NOT_ACTIVE" ? 409 : 500;
+    throw new ApiClientError(msg, status, code, error);
+  }
+
+  // RPC returns a user_trades row; refetch with joins so the admin UI gets
+  // username/email/token symbol without a second mapping path.
+  const { data: joined, error: joinErr } = await admin
+    .from("user_trades")
+    .select(ADMIN_TRADE_SELECT)
+    .eq("id", (data as { id: string }).id)
+    .maybeSingle();
+
+  if (joinErr || !joined) {
+    throw new ApiClientError(joinErr?.message ?? "Force outcome row missing.", 500, "INTERNAL_ERROR", joinErr);
+  }
+
+  return mapAdminTradeRow(joined as unknown as AdminTradeRow);
 };
 
 export const bulkSettleTrades = async (

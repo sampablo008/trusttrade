@@ -2,12 +2,16 @@ import Link from "next/link";
 import { ArrowLeft, ShieldCheck, Zap } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import WithdrawForm from "@/components/wallet/WithdrawForm";
+import { hasWithdrawalPin } from "@/lib/account/pin-service";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { getBalance } from "@/lib/trades/service";
 
 export default async function WithdrawPage() {
   const { userId } = await assertUserApi();
-  const balance = await getBalance(userId);
+  const [balance, pinSet] = await Promise.all([
+    getBalance(userId),
+    hasWithdrawalPin(userId),
+  ]);
 
   return (
     <AppShell>
@@ -44,7 +48,7 @@ export default async function WithdrawPage() {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <section className="rounded-[28px] border border-border bg-surface-soft p-6 sm:p-8">
-            <WithdrawForm balance={balance} />
+            <WithdrawForm balance={balance} hasWithdrawalPin={pinSet} />
           </section>
 
           <aside className="flex flex-col gap-4 rounded-[28px] border border-border bg-surface-soft p-6">

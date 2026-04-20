@@ -1,16 +1,18 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Zap } from "lucide-react";
+import { toast } from "sonner";
 import ActivePositionsList from "@/components/trade/ActivePositionsList";
 import MarketStatsBar from "@/components/trade/MarketStatsBar";
 import MobileTradeDrawer from "@/components/trade/MobileTradeDrawer";
 import OrderTicket from "@/components/trade/OrderTicket";
-import SettlementToast from "@/components/trade/SettlementToast";
 import StickyCountdownBanner from "@/components/trade/StickyCountdownBanner";
 import LiveBinanceChart from "@/components/chart/LiveBinanceChart";
+import { useSettlementPoll } from "@/hooks/useSettlementPoll";
 import { useUserStream } from "@/hooks/useUserStream";
 import { useTradingShellStore } from "@/stores/trading-shell-store";
+import { formatUsdFromCents } from "@/lib/utils/format";
 import type { TopCoin } from "@/lib/markets/top-coins";
 import type { PublicToken, PublicTradePeriod } from "@/types/market";
 import type { UserBalance, UserTrade } from "@/types/trade";
@@ -23,6 +25,9 @@ interface TradeShellProps {
   initialTrades: UserTrade[];
 }
 
+const profitCentsOf = (t: UserTrade) =>
+  Math.round((t.stakeCents * t.payoutBps) / 10_000) - t.stakeCents;
+
 export default function TradeShell({
   coin,
   token,
@@ -31,8 +36,8 @@ export default function TradeShell({
   initialTrades,
 }: TradeShellProps) {
   const { setBalance, setActiveTrades } = useTradingShellStore();
-  const [toasts, setToasts] = useState<UserTrade[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const notifiedRef = useRef<Set<string>>(new Set());
 
   const initialized = useTradingShellStore((s) => s.balance !== null);
   if (!initialized) {
@@ -41,10 +46,32 @@ export default function TradeShell({
   }
 
   const handleSettlement = useCallback((trade: UserTrade) => {
-    setToasts((prev) => [...prev, trade]);
+    if (notifiedRef.current.has(trade.id)) return;
+    notifiedRef.current.add(trade.id);
+
+    const pair = `${trade.tokenSymbol} ${trade.direction === "long" ? "Long" : "Short"}`;
+    const stake = formatUsdFromCents(trade.stakeCents);
+
+    if (trade.outcome === "win") {
+      toast.success("Trade Won", {
+        description: `${pair} · +${formatUsdFromCents(profitCentsOf(trade))} profit`,
+        id: trade.id,
+      });
+    } else if (trade.outcome === "void") {
+      toast("Trade Voided", {
+        description: `${pair} · Stake refunded ${stake}`,
+        id: trade.id,
+      });
+    } else {
+      toast.error("Trade Lost", {
+        description: `${pair} · Stake ${stake}`,
+        id: trade.id,
+      });
+    }
   }, []);
 
   useUserStream(handleSettlement);
+  const pollSettlement = useSettlementPoll(handleSettlement);
 
   return (
     <div className="flex h-full flex-col gap-4">
@@ -58,7 +85,7 @@ export default function TradeShell({
             <LiveBinanceChart binanceSymbol={coin.binanceSymbol} />
           </div>
 
-          <ActivePositionsList />
+          <ActivePositionsList onTradeExpire={pollSettlement} />
         </div>
 
         <div className="hidden w-full lg:block lg:w-88 lg:shrink-0">
@@ -83,16 +110,6 @@ export default function TradeShell({
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />
-
-      <div className="pointer-events-none fixed bottom-20 right-4 z-50 flex flex-col items-end gap-2 sm:bottom-6 sm:right-6">
-        {toasts.map((t) => (
-          <SettlementToast
-            key={t.id}
-            trade={t}
-            onDismiss={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))}
-          />
-        ))}
-      </div>
     </div>
   );
 }

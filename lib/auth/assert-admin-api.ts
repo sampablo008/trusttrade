@@ -1,7 +1,7 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getAppSession } from "@/lib/auth/session";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getOptionalServerEnv } from "@/lib/env/server";
 
 const PREVIEW_ADMIN_ID = "00000000-0000-4000-8000-0000000000ad";
 
@@ -21,18 +21,23 @@ export const assertAdminApi = async (): Promise<{
     throw new ApiClientError("Admin access required.", 403, "FORBIDDEN");
   }
 
-  // Admin login is cookie-based; Supabase has no matching auth session.
-  // Service-role writes don't need a real user context, so use the Supabase
-  // user id only when one exists — otherwise fall back to the preview id.
-  try {
-    const client = await createSupabaseServerClient();
-    const { data } = await client.auth.getUser();
-    if (data?.user?.id) {
-      return { ...session, userId: data.user.id };
-    }
-  } catch {
-    // no supabase session available — fall through
+  if (session.userId) {
+    return {
+      isAdmin: session.isAdmin,
+      isAuthenticated: session.isAuthenticated,
+      userId: session.userId,
+      username: session.username,
+    };
   }
 
-  return { ...session, userId: PREVIEW_ADMIN_ID };
+  if (!getOptionalServerEnv()) {
+    return {
+      isAdmin: session.isAdmin,
+      isAuthenticated: session.isAuthenticated,
+      userId: PREVIEW_ADMIN_ID,
+      username: session.username,
+    };
+  }
+
+  throw new ApiClientError("Session missing user id.", 401, "UNAUTHORIZED");
 };

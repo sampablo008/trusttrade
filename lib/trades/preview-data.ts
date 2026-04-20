@@ -19,6 +19,7 @@ const makeActiveTrade = (overrides: Partial<UserTrade> = {}): UserTrade => {
   const now = new Date();
   const endTime = new Date(now.getTime() + 45_000);
   return {
+    adminForcedOutcome: null,
     direction: "long",
     endTime: endTime.toISOString(),
     entryPriceCents: 8_445_234,
@@ -40,6 +41,7 @@ const makeActiveTrade = (overrides: Partial<UserTrade> = {}): UserTrade => {
 const makeSettledTrade = (outcome: "win" | "lose", overrides: Partial<UserTrade> = {}): UserTrade => {
   const past = new Date(Date.now() - 3_600_000);
   return {
+    adminForcedOutcome: null,
     direction: outcome === "win" ? "long" : "short",
     endTime: new Date(past.getTime() + 60_000).toISOString(),
     entryPriceCents: 8_400_000,

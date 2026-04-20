@@ -11,6 +11,7 @@ import {
   previewPlaceTrade,
 } from "@/lib/trades/preview-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { applyBalanceAdjustment } from "@/lib/transactions/adjust-balance";
 import {
   activeTradesResultSchema,
   cancelTradeResultSchema,
@@ -245,16 +246,14 @@ export const cancelTrade = async (
     throw new ApiClientError(updateError.message, 500, "CANCEL_FAILED", updateError);
   }
 
-  // Refund stake
-  // Best-effort refund — the DB trigger handles balance rollback if this RPC doesn't exist yet
-  await admin
-    .rpc("apply_balance_adjustment", {
-      p_delta_cents: trade.stake_cents as number,
-      p_memo: "Trade cancelled (grace window)",
-      p_unlock_trades_cents: trade.stake_cents as number,
-      p_user_id: userId,
-    })
-    .then(() => null, () => null);
+  // Refund stake. Keep this best-effort so a cancel can still complete even if
+  // the balance ledger path is temporarily unavailable.
+  await applyBalanceAdjustment(admin, {
+    deltaCents: trade.stake_cents as number,
+    memo: "Trade cancelled (grace window)",
+    unlockTradesCents: trade.stake_cents as number,
+    userId,
+  }).then(() => null, () => null);
 
   return cancelTradeResultSchema.parse({ id: tradeId });
 };

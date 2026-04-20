@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useState } from "react";
 import type { AuditLogEntry } from "@/types/admin";
 
 const ACTION_COLORS: Record<string, string> = {
@@ -96,9 +96,8 @@ export default function AuditLogPanel({ initialData }: AuditLogPanelProps) {
               )}
               {!loading &&
                 entries.map((entry) => (
-                  <>
+                  <Fragment key={entry.id}>
                     <tr
-                      key={entry.id}
                       onClick={() => setExpanded((prev) => (prev === entry.id ? null : entry.id))}
                       className="cursor-pointer transition-colors hover:bg-surface/60"
                     >
@@ -129,7 +128,7 @@ export default function AuditLogPanel({ initialData }: AuditLogPanelProps) {
                       <td className="px-4 py-3 text-sm text-muted">{entry.notes}</td>
                     </tr>
                     {expanded === entry.id && (
-                      <tr key={`${entry.id}-detail`} className="bg-surface/40">
+                      <tr className="bg-surface/40">
                         <td colSpan={5} className="px-6 py-4">
                           <div className="grid gap-3 lg:grid-cols-2">
                             {entry.beforeJson && (
@@ -166,7 +165,7 @@ export default function AuditLogPanel({ initialData }: AuditLogPanelProps) {
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 ))}
             </tbody>
           </table>

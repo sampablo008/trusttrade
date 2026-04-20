@@ -2,16 +2,26 @@
 
 import { useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, User, Mail, AtSign, Wallet, TrendingUp, Lock } from "lucide-react";
+import { Camera, User, Mail, AtSign, Wallet, TrendingUp, Lock, ShieldAlert } from "lucide-react";
+import ChangePasswordForm from "@/components/profile/change-password-form";
+import WithdrawalPinForm from "@/components/profile/withdrawal-pin-form";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { UserProfile } from "@/types/trade";
 
 interface ProfileShellProps {
   profile: UserProfile;
   avatarUrl: string | null;
+  hasWithdrawalPin: boolean;
+  emailVerified: boolean;
 }
 
-export default function ProfileShell({ profile, avatarUrl }: ProfileShellProps) {
+export default function ProfileShell({
+  profile,
+  avatarUrl,
+  hasWithdrawalPin,
+  emailVerified,
+}: ProfileShellProps) {
+  const [pinSet, setPinSet] = useState(hasWithdrawalPin);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [displayName, setDisplayName] = useState(profile.displayName ?? "");
@@ -197,6 +207,43 @@ export default function ProfileShell({ profile, avatarUrl }: ProfileShellProps) 
           <span className="font-display text-2xl text-up">
             {formatUsdFromCents(withdrawable)}
           </span>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-border bg-surface-soft p-6 sm:p-8">
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+            Security
+          </p>
+          <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+            Account security
+          </h2>
+          <p className="text-sm leading-6 text-muted">
+            Manage the password you use to sign in and the PIN that authorizes every
+            withdrawal.
+          </p>
+        </div>
+
+        {!emailVerified ? (
+          <div className="mt-5 flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/10 px-4 py-3">
+            <ShieldAlert size={16} className="mt-0.5 shrink-0 text-warning" />
+            <div className="text-xs text-warning">
+              Your email is not verified yet. Check your inbox for the code we sent —
+              some features are limited until you verify.
+            </div>
+          </div>
+        ) : null}
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <div className="rounded-[20px] border border-border bg-background/30 p-5">
+            <ChangePasswordForm />
+          </div>
+          <div className="rounded-[20px] border border-border bg-background/30 p-5">
+            <WithdrawalPinForm
+              hasPin={pinSet}
+              onStateChange={(next) => setPinSet(next)}
+            />
+          </div>
         </div>
       </section>
     </div>

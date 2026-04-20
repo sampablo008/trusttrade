@@ -2317,6 +2317,52 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 
 ---
 
+### Sprint 8 — Account Security (email OTP + PIN) — 2026-04-20
+
+**Goal.** Production-grade user-security surface: email-verified signup, self-serve password reset, change password, withdrawal PIN gate, and fully branded transactional emails.
+
+- [x] Phase 1: Foundation (Resend + React Email + bcryptjs + OTP table)
+- [x] Phase 2: Change password (`/api/me/password`, `ChangePasswordForm`, Supabase admin update)
+- [x] Phase 3: Forgot password OTP flow (`/forgot-password`, `/reset-password`, resend endpoint)
+- [x] Phase 4: Signup email verification (OTP issued at signup, `/verify-email`, login gate)
+- [x] Phase 5: Withdrawal PIN (set/change UI, bcrypt hash, PIN gate in `requestWithdrawal`)
+
+**Security model additions:**
+- OTP codes are 6-digit, stored as SHA-256 hashes in `verification_codes` with 10-min expiry and single-use consumption via security-definer RPC (`consume_verification_code`).
+- Withdrawal PIN stored as bcrypt hash (cost 10) on `profiles.withdrawal_pin_hash`; `verifyWithdrawalPin()` runs before every `request_withdrawal` RPC.
+- Forgot-password API never leaks account existence (always returns `ok: true`).
+- All security-sensitive actions send a confirmation email (password changed, PIN set/changed) with request IP + timestamp.
+
+**Files touched:**
+- `supabase/migrations/0022_user_security.sql` — created
+- `package.json`, `pnpm-lock.yaml` — modified (added `resend`, `@react-email/components`, `@react-email/render`, `bcryptjs`)
+- `lib/env/server.ts` — modified (email + app env groups)
+- `schemas/account.ts`, `schemas/password-reset.ts` — created
+- `types/account.ts`, `types/otp.ts` — created
+- `lib/supabase/anon.ts` — created
+- `lib/otp/service.ts`, `lib/otp/preview-data.ts` — created
+- `lib/email/client.ts`, `lib/email/send.ts` — created
+- `lib/email/templates/{base,welcome,verify-email,password-reset,password-changed,pin-set,login-code}.tsx` — created
+- `lib/account/profile-lookup.ts`, `lib/account/password-service.ts`, `lib/account/pin-service.ts` — created
+- `lib/auth/password-reset-service.ts`, `lib/auth/email-verification-service.ts` — created
+- `lib/invites/service.ts`, `lib/invites/preview-data.ts` — modified (email_confirm:false + OTP issue)
+- `lib/withdrawals/service.ts` — modified (PIN verify gate)
+- `schemas/withdrawal.ts`, `types/withdrawal.ts` — modified (withdrawalPin field)
+- `app/actions/auth.ts` — modified (verify-email redirect for unverified logins)
+- `app/api/me/password/route.ts`, `app/api/me/withdrawal-pin/route.ts`, `app/api/me/security/route.ts` — created
+- `app/api/auth/forgot-password/route.ts`, `app/api/auth/reset-password/route.ts`, `app/api/auth/verify-email/route.ts`, `app/api/auth/resend-code/route.ts` — created
+- `app/forgot-password/page.tsx`, `app/reset-password/page.tsx`, `app/verify-email/page.tsx` — created
+- `app/me/page.tsx`, `app/login/page.tsx`, `app/wallet/withdraw/page.tsx` — modified
+- `components/auth/auth-card.tsx`, `components/auth/forgot-password-form.tsx`, `components/auth/reset-password-form.tsx`, `components/auth/verify-email-form.tsx` — created
+- `components/auth/login-form.tsx` — modified (forgot link)
+- `components/profile/ProfileShell.tsx` — modified (Security section)
+- `components/profile/change-password-form.tsx`, `components/profile/withdrawal-pin-form.tsx` — created
+- `components/wallet/WithdrawForm.tsx` — modified (PIN capture in review modal + PIN-not-set guard)
+
+**Exit.** Typecheck passes (`tsc --noEmit`), lint clean on all new/modified files, preview mode works without Resend (codes logged to console), live mode sends real branded emails through Resend.
+
+---
+
 ### Post-launch backlog (out of scope for v1)
 
 - Real on-chain deposit sweeping (auto-credit via hot wallet watcher)
@@ -2368,7 +2414,16 @@ NEXT_PUBLIC_SENTRY_DSN=
 
 # App
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
+APP_URL=https://yourdomain.com
+APP_NAME=TrustPro
+APP_SUPPORT_EMAIL=support@yourdomain.com
 ADMIN_SEED_EMAIL=
+
+# Transactional email (Resend) — required for:
+#   verify-email OTP, welcome email, password-reset OTP,
+#   password-changed notice, PIN set/changed notice
+RESEND_API_KEY=re_...
+EMAIL_FROM="TrustPro <noreply@yourdomain.com>"
 ```
 
 ### 13.2 Essential commands

@@ -25,6 +25,11 @@ export interface SettleTradeInput {
   reason?: string;
 }
 
+export interface ForceTradeOutcomeInput {
+  outcome: TradeOutcome;
+  reason?: string;
+}
+
 export interface BulkSettleInput {
   outcome: TradeOutcome;
   reason?: string;
@@ -67,6 +72,22 @@ export interface AdjustBalanceInput {
   note: string;
 }
 
+export interface AdminTransaction {
+  amountCents: number;
+  balanceAfterCents: number;
+  createdAt: string;
+  id: string;
+  kind: string;
+  memo: string | null;
+  referenceId: string | null;
+  userId: string;
+}
+
+export interface AdminTransactionListResult {
+  items: AdminTransaction[];
+  total: number;
+}
+
 export interface AuditLogEntry {
   action: string;
   adminEmail: string;
@@ -95,6 +116,11 @@ export interface AdminTradeFilters {
   status?: TradeStatus;
   tokenId?: string;
   userId?: string;
+}
+
+export interface AdminTransactionFilters {
+  limit?: number;
+  offset?: number;
 }
 
 export type ExpiryPolicy = "auto_lose" | "auto_win" | "void" | "leave_pending";

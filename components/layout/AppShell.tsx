@@ -12,18 +12,7 @@ interface AppShellProps {
 
 export default async function AppShell({ children }: AppShellProps) {
   const session = await assertAuthenticated();
-
-  let userId: string | null = null;
-  if (getOptionalServerEnv()) {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    const client = await createSupabaseServerClient();
-    try {
-      const { data: { user } } = await client.auth.getUser();
-      if (user) userId = user.id;
-    } catch {
-      // no supabase session — cookie login only
-    }
-  }
+  const userId = session.userId;
 
   const emptyProfile: UserProfile = {
     avatarPath: null,

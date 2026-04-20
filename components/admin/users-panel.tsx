@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import BalanceHistoryDrawer from "@/components/admin/balance-history-drawer";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { AdminUser } from "@/types/admin";
 
@@ -20,6 +21,8 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [adjustDelta, setAdjustDelta] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
   const [loading, setLoading] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const limit = 50;
 
   const fetchUsers = useCallback(
@@ -84,6 +87,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
     if (data.user) {
       setUsers((prev) => prev.map((u) => (u.userId === data.user.userId ? data.user : u)));
       setSelectedUser(data.user);
+      setHistoryRefreshKey((k) => k + 1);
     }
     setAdjustDelta("");
     setAdjustNote("");
@@ -236,13 +240,22 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
         ) : (
           <div className="flex flex-col gap-5">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                User detail
-              </p>
-              <h2 className="mt-2 text-2xl font-semibold text-foreground">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                  User detail
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setHistoryOpen(true)}
+                  className="shrink-0 rounded-full bg-brand/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand transition hover:bg-brand/25"
+                >
+                  Balance history →
+                </button>
+              </div>
+              <h2 className="mt-2 truncate text-2xl font-semibold text-foreground">
                 {selectedUser.username}
               </h2>
-              <p className="mt-0.5 text-sm text-muted">{selectedUser.email}</p>
+              <p className="mt-0.5 truncate text-sm text-muted">{selectedUser.email}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-sm">
@@ -320,6 +333,21 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
           </div>
         )}
       </div>
+
+      <BalanceHistoryDrawer
+        isOpen={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        refreshKey={historyRefreshKey}
+        user={
+          selectedUser
+            ? {
+                email: selectedUser.email,
+                userId: selectedUser.userId,
+                username: selectedUser.username,
+              }
+            : null
+        }
+      />
     </div>
   );
 }

@@ -38,6 +38,7 @@ export interface RequestWithdrawalInput {
   tokenSymbol: string;
   network: string;
   destinationAddress: string;
+  withdrawalPin: string;
 }
 
 export interface WithdrawalsResult {

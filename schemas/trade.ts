@@ -5,6 +5,7 @@ export const tradeStatusSchema = z.enum(["active", "settled", "cancelled"]);
 export const tradeOutcomeSchema = z.enum(["win", "lose", "void"]);
 
 export const userTradeSchema = z.object({
+  adminForcedOutcome: tradeOutcomeSchema.nullable().default(null),
   direction: tradeDirectionSchema,
   endTime: z.string(),
   entryPriceCents: z.number().int().positive(),

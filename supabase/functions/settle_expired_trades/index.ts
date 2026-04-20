@@ -14,40 +14,27 @@ serve(async () => {
     .eq("id", 1)
     .maybeSingle();
 
-  const policy: string = (config as { expiry_policy?: string } | null)?.expiry_policy ?? "auto_lose";
+  const policy: string =
+    (config as { expiry_policy?: string } | null)?.expiry_policy ?? "auto_lose";
 
-  if (policy === "leave_pending") {
-    return new Response(JSON.stringify({ settled: 0, policy }), {
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  // `leave_pending` → only trades with admin_forced_outcome settle (null default).
+  const defaultOutcome: string | null =
+    policy === "auto_win" ? "win"
+    : policy === "auto_lose" ? "lose"
+    : policy === "void" ? "void"
+    : null;
 
-  const { data: expired, error } = await supabase
-    .from("user_trades")
-    .select("id")
-    .eq("status", "active")
-    .lt("end_time", new Date().toISOString())
-    .limit(500);
+  const { data, error } = await supabase.rpc("settle_due_trades", {
+    p_default_outcome: defaultOutcome,
+    p_user_id: null,
+    p_limit: 500,
+  });
 
   if (error) {
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
   }
 
-  const tradeIds: string[] = (expired ?? []).map((r: { id: string }) => r.id);
-  let settled = 0;
-
-  for (const id of tradeIds) {
-    const { error: settleErr } = await supabase.rpc("settle_trade", {
-      p_trade_id: id,
-      p_outcome: policy === "auto_win" ? "win" : policy === "void" ? "void" : "lose",
-      p_admin_id: null,
-      p_reason: `auto_${policy}`,
-    });
-
-    if (!settleErr) settled++;
-  }
-
-  return new Response(JSON.stringify({ settled, policy, total: tradeIds.length }), {
+  return new Response(JSON.stringify({ settled: data ?? 0, policy }), {
     headers: { "Content-Type": "application/json" },
   });
 });

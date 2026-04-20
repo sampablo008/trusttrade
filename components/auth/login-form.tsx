@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signInPreview } from "@/app/actions/auth";
 import type { LoginActionState } from "@/schemas/auth";
@@ -37,12 +38,20 @@ export default function LoginForm() {
       </div>
 
       <div className="space-y-2">
-        <label
-          className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-          htmlFor="password"
-        >
-          Password
-        </label>
+        <div className="flex items-center justify-between">
+          <label
+            className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
+            htmlFor="password"
+          >
+            Password
+          </label>
+          <Link
+            href="/forgot-password"
+            className="text-[11px] font-semibold uppercase tracking-[0.24em] text-brand transition hover:text-foreground"
+          >
+            Forgot?
+          </Link>
+        </div>
         <input
           required
           id="password"

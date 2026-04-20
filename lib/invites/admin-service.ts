@@ -1,5 +1,5 @@
 import "server-only";
-import { PostgrestError } from "@supabase/supabase-js";
+import { randomUUID } from "node:crypto";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import {
@@ -38,18 +38,6 @@ interface AdminInviteRow {
   used_count: number | null;
 }
 
-interface MintInviteRow {
-  code: string | null;
-  expires_at: string | null;
-  note: string | null;
-}
-
-interface RevokeInviteRow {
-  code: string | null;
-  revoked_at: string | null;
-  status: "active" | "used" | "revoked" | "expired" | null;
-}
-
 const buildInviteSummary = (items: AdminInviteCode[]) => ({
   activeCount: items.filter((item) => item.status === "active").length,
   adminCount: items.filter((item) => item.source === "admin").length,
@@ -60,19 +48,8 @@ const buildInviteSummary = (items: AdminInviteCode[]) => ({
   userCount: items.filter((item) => item.source === "user").length,
 });
 
-const mapInviteMutationError = (error: PostgrestError) => {
-  if (error.code === "42501") {
-    throw new ApiClientError("Admin access required.", 403, "FORBIDDEN", error);
-  }
-
-  const detail = typeof error.details === "string" ? error.details : "";
-
-  if (detail === "INVITE_REVOKE_FAILED") {
-    throw new ApiClientError("Invite code could not be revoked.", 409, "INVITE_REVOKE_FAILED", error);
-  }
-
-  throw new ApiClientError(error.message, 500, "INVITE_ADMIN_ACTION_FAILED", error);
-};
+const generateInviteCode = () =>
+  randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase();
 
 const mapAdminInviteRow = (row: AdminInviteRow): AdminInviteCode =>
   adminInviteCodeSchema.parse({
@@ -125,28 +102,50 @@ export const mintAdminInviteCodes = async (payload: unknown): Promise<MintInvite
   }
 
   const adminClient = createSupabaseAdminClient();
-  const { data, error } = await adminClient.rpc("mint_invite_codes", {
-    p_count: input.count,
-    p_expires_at: input.expiresAt,
-    p_note: input.note,
-  });
+  const batch: MintInviteCodesResult["batch"] = [];
+  const maxAttempts = input.count * 5;
+  let attempts = 0;
 
-  if (error) {
-    mapInviteMutationError(error);
+  while (batch.length < input.count) {
+    if (attempts >= maxAttempts) {
+      throw new ApiClientError(
+        "Could not generate unique invite codes.",
+        500,
+        "INVITE_MINT_FAILED",
+      );
+    }
+
+    attempts += 1;
+
+    const { data, error } = await adminClient
+      .from("invitation_codes")
+      .insert({
+        code: generateInviteCode(),
+        expires_at: input.expiresAt,
+        is_single_use: true,
+        note: input.note,
+        source: "admin",
+        status: "active",
+      })
+      .select("code, created_at, expires_at, note")
+      .single();
+
+    if (error) {
+      if (error.code === "23505") {
+        continue;
+      }
+
+      throw new ApiClientError(error.message, 500, "INVITE_MINT_FAILED", error);
+    }
+
+    batch.push({
+      code: data.code ?? "",
+      createdAt: data.created_at ?? new Date().toISOString(),
+      expiresAt: data.expires_at,
+      mode: "live",
+      note: data.note,
+    });
   }
-
-  const createdAt = new Date().toISOString();
-  const batch = (Array.isArray(data) ? data : []).map((row) => {
-    const typedRow = row as MintInviteRow;
-
-    return {
-      code: typedRow.code,
-      createdAt,
-      expiresAt: typedRow.expires_at,
-      mode: "live" as const,
-      note: typedRow.note,
-    };
-  });
 
   return mintInviteCodesResultSchema.parse({
     batch,
@@ -162,20 +161,35 @@ export const revokeInviteCode = async (rawCode: string): Promise<RevokeInviteCod
   }
 
   const adminClient = createSupabaseAdminClient();
-  const { data, error } = await adminClient.rpc("revoke_invite", {
-    p_code: code,
-  });
+  const revokedAt = new Date().toISOString();
+
+  const { data, error } = await adminClient
+    .from("invitation_codes")
+    .update({
+      revoked_at: revokedAt,
+      status: "revoked",
+    })
+    .eq("code", code)
+    .neq("status", "used")
+    .select("code, revoked_at, status")
+    .maybeSingle();
 
   if (error) {
-    mapInviteMutationError(error);
+    throw new ApiClientError(error.message, 500, "INVITE_REVOKE_FAILED", error);
   }
 
-  const row = Array.isArray(data) ? (data[0] as RevokeInviteRow | undefined) : undefined;
+  if (!data) {
+    throw new ApiClientError(
+      "Invite code could not be revoked.",
+      409,
+      "INVITE_REVOKE_FAILED",
+    );
+  }
 
   return revokeInviteCodeResultSchema.parse({
-    code: row?.code ?? code,
+    code: data.code ?? code,
     mode: "live",
-    revokedAt: row?.revoked_at ?? new Date().toISOString(),
-    status: row?.status ?? "revoked",
+    revokedAt: data.revoked_at ?? revokedAt,
+    status: data.status ?? "revoked",
   });
 };

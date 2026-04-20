@@ -1,6 +1,7 @@
 import "server-only";
 import { PostgrestError } from "@supabase/supabase-js";
 import { ApiClientError } from "@/lib/api/client";
+import { issueSignupVerification } from "@/lib/auth/email-verification-service";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { createPreviewInvitedUser, getPreviewInvite } from "@/lib/invites/preview-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -102,9 +103,10 @@ export const createInvitedUser = async (
   }
 
   const adminClient = createSupabaseAdminClient();
+  const email = input.email.toLowerCase();
   const createUserResult = await adminClient.auth.admin.createUser({
-    email: input.email.toLowerCase(),
-    email_confirm: true,
+    email,
+    email_confirm: false,
     password: input.password,
     user_metadata: {
       display_name: input.username,
@@ -151,8 +153,10 @@ export const createInvitedUser = async (
       );
     }
 
+    await issueSignupVerification({ email, userId: createdUser.id });
+
     return {
-      nextPath: "/login?next=/trade&signup=1",
+      nextPath: `/verify-email?email=${encodeURIComponent(email)}`,
       userId: createdUser.id,
     };
   } catch (error) {

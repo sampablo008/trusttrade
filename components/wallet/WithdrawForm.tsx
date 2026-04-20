@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { AlertCircle, CheckCircle, ArrowDownToLine, ShieldCheck, X } from "lucide-react";
+import { AlertCircle, CheckCircle, ArrowDownToLine, ShieldCheck, X, Lock } from "lucide-react";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { UserBalance } from "@/types/trade";
 
@@ -23,14 +24,16 @@ type FormData = z.infer<typeof schema>;
 
 interface Props {
   balance: UserBalance;
+  hasWithdrawalPin: boolean;
 }
 
 const PRESETS = [50, 100, 250, 500];
 
-export default function WithdrawForm({ balance }: Props) {
+export default function WithdrawForm({ balance, hasWithdrawalPin }: Props) {
   const [submitStatus, setSubmitStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [withdrawalPin, setWithdrawalPin] = useState("");
 
   const { register, handleSubmit, setValue, watch, formState: { errors }, getValues, trigger } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -51,17 +54,27 @@ export default function WithdrawForm({ balance }: Props) {
 
   const handleReviewClick = async () => {
     const valid = await trigger();
-    if (valid) setReviewOpen(true);
+    if (valid) {
+      setWithdrawalPin("");
+      setErrorMsg(null);
+      setReviewOpen(true);
+    }
   };
 
-  const onSubmit = async (data: FormData) => {
+  const submitWithPin = async () => {
+    if (!/^\d{6}$/.test(withdrawalPin)) {
+      setErrorMsg("Enter your 6-digit withdrawal PIN.");
+      return;
+    }
+
     setSubmitStatus("loading");
     setErrorMsg(null);
 
+    const data = getValues();
     const res = await fetch("/api/withdrawals", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, withdrawalPin }),
     });
 
     if (res.ok) {
@@ -86,9 +99,29 @@ export default function WithdrawForm({ balance }: Props) {
     );
   }
 
+  if (!hasWithdrawalPin) {
+    return (
+      <div className="flex flex-col items-center gap-4 rounded-[20px] border border-border bg-surface-soft p-10 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-soft text-brand">
+          <Lock size={22} />
+        </div>
+        <h3 className="font-display text-xl text-foreground">Set a withdrawal PIN first</h3>
+        <p className="max-w-sm text-sm text-muted">
+          For your security, every withdrawal requires a 6-digit PIN. Set one from your
+          profile to continue.
+        </p>
+        <Link
+          href="/me"
+          className="mt-2 inline-flex items-center justify-center rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-background transition hover:opacity-90"
+        >
+          Set withdrawal PIN
+        </Link>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-6">
-      {/* Balance breakdown */}
+    <form onSubmit={handleSubmit(() => undefined)} className="flex flex-col gap-6">
       <div className="rounded-2xl border border-border bg-background/30 p-5">
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
           Balance breakdown
@@ -115,7 +148,6 @@ export default function WithdrawForm({ balance }: Props) {
         </div>
       </div>
 
-      {/* Amount */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
           Amount (USD)
@@ -158,7 +190,6 @@ export default function WithdrawForm({ balance }: Props) {
         )}
       </div>
 
-      {/* Token + network row */}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
@@ -188,7 +219,6 @@ export default function WithdrawForm({ balance }: Props) {
         </div>
       </div>
 
-      {/* Destination address */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
           Destination Address
@@ -214,7 +244,7 @@ export default function WithdrawForm({ balance }: Props) {
         </div>
       )}
 
-      {errorMsg && (
+      {errorMsg && !reviewOpen && (
         <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-4 py-3">
           <AlertCircle size={16} className="text-down" />
           <p className="text-sm text-down">{errorMsg}</p>
@@ -283,6 +313,29 @@ export default function WithdrawForm({ balance }: Props) {
                 <Row label="Estimated ETA" value="1-3 hours" />
               </dl>
 
+              <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/30 px-4 py-4">
+                <label
+                  htmlFor="withdrawalPin"
+                  className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted"
+                >
+                  Confirm with 6-digit withdrawal PIN
+                </label>
+                <input
+                  id="withdrawalPin"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="off"
+                  pattern="\d{6}"
+                  maxLength={6}
+                  autoFocus
+                  value={withdrawalPin}
+                  onChange={(event) =>
+                    setWithdrawalPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  className="rounded-xl border border-border bg-background/40 px-4 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none focus:border-brand"
+                />
+              </div>
+
               {errorMsg && (
                 <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
                   <AlertCircle size={14} className="text-down" />
@@ -301,7 +354,7 @@ export default function WithdrawForm({ balance }: Props) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleSubmit(onSubmit)()}
+                  onClick={submitWithPin}
                   disabled={submitStatus === "loading"}
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:opacity-40"
                 >

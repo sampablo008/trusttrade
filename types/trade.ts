@@ -3,6 +3,7 @@ export type TradeStatus = "active" | "settled" | "cancelled";
 export type TradeOutcome = "win" | "lose" | "void";
 
 export interface UserTrade {
+  adminForcedOutcome: TradeOutcome | null;
   direction: TradeDirection;
   endTime: string;
   entryPriceCents: number;

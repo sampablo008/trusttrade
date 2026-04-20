@@ -1,10 +1,23 @@
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { getAppSession } from "@/lib/auth/session";
 import { getBalance, listActiveTrades } from "@/lib/trades/service";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 const PREVIEW_USER_ID = "00000000-0000-4000-8000-0000000000a1";
 const HEARTBEAT_INTERVAL_MS = 25_000;
+const SETTLE_TICK_MS = 1_000;
+
+type ExpiryPolicy = "auto_lose" | "auto_win" | "void" | "leave_pending";
+
+const policyToDefaultOutcome = (policy: ExpiryPolicy | null | undefined) => {
+  switch (policy) {
+    case "auto_win": return "win";
+    case "auto_lose": return "lose";
+    case "void": return "void";
+    default: return null;
+  }
+};
 
 function encodeEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -61,6 +74,7 @@ export async function GET() {
 
       // Live mode: subscribe to Realtime
       let unsubscribe: (() => void) | null = null;
+      let settleTimer: ReturnType<typeof setInterval> | null = null;
 
       if (getOptionalServerEnv()) {
         const client = await createSupabaseServerClient();
@@ -91,6 +105,39 @@ export async function GET() {
         unsubscribe = () => {
           client.removeChannel(channel).catch(() => null);
         };
+
+        // Inline settler: every tick, settle this user's own expired active
+        // trades so settlement fires within ~1s of end_time without waiting
+        // for the global pg_cron job. settle_due_trades respects forced
+        // outcomes and the global expiry_policy.
+        const admin = createSupabaseAdminClient();
+        let settleInFlight = false;
+
+        const tick = async () => {
+          if (settleInFlight) return;
+          settleInFlight = true;
+          try {
+            const { data: configRow } = await admin
+              .from("app_config")
+              .select("expiry_policy")
+              .eq("id", 1)
+              .maybeSingle();
+
+            const policy = (configRow as { expiry_policy?: ExpiryPolicy } | null)?.expiry_policy ?? "auto_lose";
+
+            await admin.rpc("settle_due_trades", {
+              p_default_outcome: policyToDefaultOutcome(policy),
+              p_user_id: userId,
+              p_limit: 50,
+            });
+          } catch {
+            // Swallow; Realtime + next tick will recover.
+          } finally {
+            settleInFlight = false;
+          }
+        };
+
+        settleTimer = setInterval(tick, SETTLE_TICK_MS);
       }
 
       // Preview mode: push a simulated trade settlement after 8s for demo
@@ -111,6 +158,7 @@ export async function GET() {
       // Cleanup on disconnect
       return () => {
         clearInterval(heartbeatTimer);
+        if (settleTimer) clearInterval(settleTimer);
         if (previewTimer) clearTimeout(previewTimer);
         if (unsubscribe) unsubscribe();
         controller.close();

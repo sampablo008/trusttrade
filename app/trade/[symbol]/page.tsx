@@ -42,7 +42,7 @@ export default async function TradeSymbolPage({
 }: {
   params: Promise<{ symbol: string }>;
 }) {
-  await assertAuthenticated();
+  const session = await assertAuthenticated();
   const { symbol } = await params;
   const upperSymbol = symbol.toUpperCase();
 
@@ -58,18 +58,15 @@ export default async function TradeSymbolPage({
     tokensResult.items.find((t) => t.symbol === upperSymbol) ??
     stubToken(coin.symbol, coin.name);
 
-  let userId = PREVIEW_USER_ID;
-  if (getOptionalServerEnv()) {
-    const { createSupabaseServerClient } = await import("@/lib/supabase/server");
-    const client = await createSupabaseServerClient();
-    const { data: { user } } = await client.auth.getUser();
-    if (user) userId = user.id;
-  }
+  const userId =
+    session.userId ?? (getOptionalServerEnv() ? null : PREVIEW_USER_ID);
 
-  const [balance, activeTrades] = await Promise.all([
-    getBalance(userId),
-    listActiveTrades(userId),
-  ]);
+  const [balance, activeTrades] = userId
+    ? await Promise.all([getBalance(userId), listActiveTrades(userId)])
+    : [
+        { balanceCents: 0, lockedInTradesCents: 0, lockedBonusCents: 0, withdrawableCents: 0 },
+        { items: [] },
+      ];
 
   const iconPaths = Object.fromEntries(
     tokensResult.items.map((t) => [t.symbol, t.iconPath ?? null]),

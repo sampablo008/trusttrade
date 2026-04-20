@@ -5,12 +5,16 @@ import LoginForm from "@/components/auth/login-form";
 interface LoginPageProps {
   searchParams: Promise<{
     signup?: string;
+    reset?: string;
+    verified?: string;
   }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
   const showSignupNotice = params.signup === "1";
+  const showResetNotice = params.reset === "1";
+  const showVerifiedNotice = params.verified === "1";
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-8 px-4 py-10 sm:px-6 lg:px-8">
@@ -68,6 +72,18 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           {showSignupNotice ? (
             <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
               Account created. Use the preview sign-in flow to enter the trade route.
+            </div>
+          ) : null}
+
+          {showResetNotice ? (
+            <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
+              Password updated. Sign in with your new password.
+            </div>
+          ) : null}
+
+          {showVerifiedNotice ? (
+            <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
+              Email verified. Sign in to start trading.
             </div>
           ) : null}
 

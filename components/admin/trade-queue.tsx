@@ -37,6 +37,7 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
   const [filterDirection, setFilterDirection] = useState<"all" | "long" | "short">("all");
   const [filterToken, setFilterToken] = useState("all");
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [settleError, setSettleError] = useState<string | null>(null);
   const lastClickIdx = useRef<number>(-1);
 
   // Tick countdown every second
@@ -61,15 +62,28 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
       });
 
       es.addEventListener("trade", (e) => {
-        const updated = JSON.parse((e as MessageEvent).data) as Partial<AdminTrade> & { id: string };
+        const raw = JSON.parse((e as MessageEvent).data) as Record<string, unknown> & {
+          id: string;
+          status?: string;
+        };
+        // Realtime row payload is snake_case; normalise the columns we read.
+        const patch: Partial<AdminTrade> & { id: string } = {
+          id: raw.id,
+          ...(raw.status ? { status: raw.status as AdminTrade["status"] } : {}),
+          ...("admin_forced_outcome" in raw
+            ? { adminForcedOutcome: raw.admin_forced_outcome as AdminTrade["adminForcedOutcome"] }
+            : {}),
+          ...("outcome" in raw ? { outcome: raw.outcome as AdminTrade["outcome"] } : {}),
+        };
+
         setTrades((prev) => {
-          const idx = prev.findIndex((t) => t.id === updated.id);
-          if (updated.status === "settled" || updated.status === "cancelled") {
-            return prev.filter((t) => t.id !== updated.id);
+          const idx = prev.findIndex((t) => t.id === patch.id);
+          if (patch.status === "settled" || patch.status === "cancelled") {
+            return prev.filter((t) => t.id !== patch.id);
           }
           if (idx === -1) return prev;
           const next = [...prev];
-          next[idx] = { ...next[idx], ...updated };
+          next[idx] = { ...next[idx], ...patch };
           return next.sort((a, b) => a.timeRemainingMs - b.timeRemainingMs);
         });
       });
@@ -92,25 +106,71 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
 
   const settle = useCallback(
     async (ids: string[], outcome: "win" | "lose" | "void") => {
-      if (ids.length === 1) {
-        const [id] = ids;
-        await fetch(`/api/admin/trades/${id}/settle`, {
+      setSettleError(null);
+
+      // Split: active trades (end_time in future) → force-outcome (keep visible,
+      // stamp the locked badge); already-expired → immediate settle (remove).
+      const now = Date.now();
+      const tradeById = new Map(trades.map((t) => [t.id, t] as const));
+      const forceIds: string[] = [];
+      const settleIds: string[] = [];
+      for (const id of ids) {
+        const t = tradeById.get(id);
+        if (!t) continue;
+        if (new Date(t.endTime).getTime() > now) forceIds.push(id);
+        else settleIds.push(id);
+      }
+
+      await Promise.all(
+        forceIds.map(async (id) => {
+          const res = await fetch(`/api/admin/trades/${id}/force-outcome`, {
+            body: JSON.stringify({ outcome }),
+            headers: { "Content-Type": "application/json" },
+            method: "POST",
+          });
+          if (!res.ok) {
+            const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+            setSettleError(body?.error?.message ?? `Force failed (${res.status}).`);
+            return;
+          }
+          setTrades((prev) =>
+            prev.map((t) => (t.id === id ? { ...t, adminForcedOutcome: outcome } : t)),
+          );
+        }),
+      );
+
+      if (settleIds.length === 1) {
+        const [id] = settleIds;
+        const res = await fetch(`/api/admin/trades/${id}/settle`, {
           body: JSON.stringify({ outcome }),
           headers: { "Content-Type": "application/json" },
           method: "POST",
         });
+        if (!res.ok) {
+          const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+          setSettleError(body?.error?.message ?? `Settle failed (${res.status}).`);
+          return;
+        }
         setTrades((prev) => prev.filter((t) => t.id !== id));
-      } else {
-        await fetch("/api/admin/trades/bulk-settle", {
-          body: JSON.stringify({ outcome, tradeIds: ids }),
+      } else if (settleIds.length > 1) {
+        const res = await fetch("/api/admin/trades/bulk-settle", {
+          body: JSON.stringify({ outcome, tradeIds: settleIds }),
           headers: { "Content-Type": "application/json" },
           method: "POST",
         });
-        setTrades((prev) => prev.filter((t) => !ids.includes(t.id)));
+        if (!res.ok) {
+          const body = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+          setSettleError(body?.error?.message ?? `Bulk settle failed (${res.status}).`);
+          return;
+        }
+        const body = await res.json().catch(() => null) as { settled?: string[] } | null;
+        const settledIds = body?.settled ?? settleIds;
+        setTrades((prev) => prev.filter((t) => !settledIds.includes(t.id)));
       }
+
       setSelected(new Set());
     },
-    [],
+    [trades],
   );
 
   // Keyboard shortcuts: W / L / V
@@ -168,6 +228,17 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
 
   return (
     <div className="flex flex-col gap-4">
+      {settleError && (
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#f6465d]/30 bg-[#f6465d]/10 px-4 py-3 text-sm text-[#f6465d]">
+          <span>{settleError}</span>
+          <button
+            onClick={() => setSettleError(null)}
+            className="text-xs font-semibold uppercase tracking-wider text-[#f6465d]/80 transition hover:text-[#f6465d]"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
@@ -319,6 +390,13 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                 const isFocused = focused === trade.id;
                 const remainingMs = new Date(trade.endTime).getTime() - nowMs;
                 const isUrgent = remainingMs < 15_000;
+                const forced = trade.adminForcedOutcome;
+                const forcedStyle =
+                  forced === "win"
+                    ? "bg-[#0ecb81]/15 text-[#0ecb81] border border-[#0ecb81]/40"
+                    : forced === "lose"
+                    ? "bg-[#f6465d]/15 text-[#f6465d] border border-[#f6465d]/40"
+                    : "bg-muted/20 text-muted border border-muted/40";
 
                 return (
                   <tr
@@ -371,6 +449,14 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-1">
+                        {forced ? (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${forcedStyle}`}
+                            title="Admin has pre-set this trade's outcome. It settles at end_time."
+                          >
+                            LOCKED · {forced.toUpperCase()}
+                          </span>
+                        ) : null}
                         {trade.flags.map((flag) => (
                           <span
                             key={flag}

@@ -30,7 +30,10 @@ export default function RootLayout({
       className={`${manrope.variable} ${syne.variable} h-full`}
       data-scroll-behavior="smooth"
     >
-      <body className="min-h-full bg-background text-foreground antialiased">
+      <body
+        className="min-h-full bg-background text-foreground antialiased"
+        suppressHydrationWarning
+      >
         <QueryProvider>
           {children}
           <Toaster

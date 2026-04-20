@@ -26,6 +26,11 @@ export const settleTradeInputSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const forceTradeOutcomeInputSchema = z.object({
+  outcome: tradeOutcomeSchema,
+  reason: z.string().max(500).optional(),
+});
+
 export const bulkSettleInputSchema = z.object({
   outcome: tradeOutcomeSchema,
   reason: z.string().max(500).optional(),
@@ -63,6 +68,22 @@ export const adjustBalanceInputSchema = z.object({
   note: z.string().min(3).max(500),
 });
 
+export const adminTransactionSchema = z.object({
+  amountCents: z.number().int(),
+  balanceAfterCents: z.number().int(),
+  createdAt: z.string(),
+  id: z.string(),
+  kind: z.string(),
+  memo: z.string().nullable(),
+  referenceId: z.string().nullable(),
+  userId: z.string(),
+});
+
+export const adminTransactionListResultSchema = z.object({
+  items: z.array(adminTransactionSchema),
+  total: z.number().int().nonnegative(),
+});
+
 export const auditLogEntrySchema = z.object({
   action: z.string(),
   adminEmail: z.string(),
@@ -98,6 +119,11 @@ export const adminUserFiltersSchema = z.object({
   offset: z.coerce.number().int().nonnegative().default(0),
   role: z.enum(["user", "admin"]).optional(),
   search: z.string().max(100).optional(),
+});
+
+export const adminTransactionFiltersSchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(20),
+  offset: z.coerce.number().int().nonnegative().default(0),
 });
 
 export const auditFiltersSchema = z.object({

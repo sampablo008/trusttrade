@@ -1,6 +1,7 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { applyBalanceAdjustment } from "@/lib/transactions/adjust-balance";
 import {
   adjustBalanceInputSchema,
   adminUserListResultSchema,
@@ -57,6 +58,22 @@ const mapUserRow = (row: UserRow, stats?: { total: number; stake: number }): Adm
     userId: row.user_id,
     username: row.username,
   });
+
+const ensureUserBalanceRow = async (
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  userId: string,
+) => {
+  const { error } = await admin.from("user_balances").insert({
+    balance_cents: 0,
+    locked_bonus_cents: 0,
+    locked_in_trades_cents: 0,
+    user_id: userId,
+  });
+
+  if (error && error.code !== "23505") {
+    throw new ApiClientError(error.message, 500, "BALANCE_ROW_ENSURE_FAILED", error);
+  }
+};
 
 export const listAdminUsers = async (
   search = "",
@@ -154,14 +171,14 @@ export const adjustBalance = async (
   const parsed = adjustBalanceInputSchema.parse(input) as AdjustBalanceInput;
 
   const admin = createSupabaseAdminClient();
-  const { error } = await admin.rpc("apply_balance_adjustment", {
-    p_delta_cents: parsed.deltaCents,
-    p_memo: parsed.note,
-    p_unlock_trades_cents: 0,
-    p_user_id: userId,
-  });
+  await ensureUserBalanceRow(admin, userId);
 
-  if (error) throw new ApiClientError(error.message, 500, "BALANCE_ADJUST_FAILED", error);
+  await applyBalanceAdjustment(admin, {
+    deltaCents: parsed.deltaCents,
+    memo: parsed.note,
+    unlockTradesCents: 0,
+    userId,
+  });
 
   await admin.from("admin_actions").insert({
     action_type: "adjust_balance",
