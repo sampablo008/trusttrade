@@ -45,8 +45,10 @@ export async function POST(request: Request) {
         { status: error.status },
       );
     }
+    console.error("[/api/trades POST] place_trade failed", error);
+    const message = error instanceof Error ? error.message : "Failed to place trade.";
     return Response.json(
-      { error: { code: "PLACE_TRADE_FAILED", message: "Failed to place trade." } },
+      { error: { code: "PLACE_TRADE_FAILED", message } },
       { status: 500 },
     );
   }

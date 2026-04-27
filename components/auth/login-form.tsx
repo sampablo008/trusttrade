@@ -29,7 +29,7 @@ export default function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="ops.admin@trustpro.dev"
+          placeholder="you@trustpro.dev"
           className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
         />
         {state.errors?.email?.length ? (
@@ -72,7 +72,7 @@ export default function LoginForm() {
         disabled={pending}
         className="inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-4 text-sm font-semibold text-background transition hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {pending ? "Opening control room..." : "Open control room"}
+        {pending ? "Signing in..." : "Sign in"}
       </button>
     </form>
   );

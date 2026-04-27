@@ -8,6 +8,7 @@ import {
 
 export interface LoginCodeEmailProps {
   appName: string;
+  appUrl?: string | null;
   supportEmail?: string | null;
   code: string;
   expiresInMinutes: number;
@@ -16,6 +17,7 @@ export interface LoginCodeEmailProps {
 
 const LoginCodeEmail = ({
   appName,
+  appUrl,
   supportEmail,
   code,
   expiresInMinutes,
@@ -23,27 +25,30 @@ const LoginCodeEmail = ({
 }: LoginCodeEmailProps) => (
   <BaseLayout
     appName={appName}
+    appUrl={appUrl}
     supportEmail={supportEmail}
     previewText={`Your ${appName} sign-in code is ${code}.`}
   >
     <PrimaryHeading>Your sign-in code</PrimaryHeading>
     <BodyText>
-      Use the 6-digit code below to finish signing in to {appName}.
+      Use the 6-digit code below to finish signing in to your {appName}{" "}
+      trading desk.
     </BodyText>
 
     <CodeBlock code={code} />
 
     <MutedText>
       This code expires in {expiresInMinutes} minutes.
-      {requestIp ? ` Request originated from IP ${requestIp}.` : ""}
-      If you did not try to sign in, ignore this email and consider
-      rotating your password.
+      {requestIp ? ` Request originated from IP ${requestIp}.` : ""} If you did
+      not try to sign in, ignore this email and consider rotating your
+      password.
     </MutedText>
   </BaseLayout>
 );
 
 LoginCodeEmail.PreviewProps = {
   appName: "TrustPro",
+  appUrl: "https://trustpro.dev",
   supportEmail: "support@trustpro.dev",
   code: "519204",
   expiresInMinutes: 10,

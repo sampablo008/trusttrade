@@ -126,18 +126,18 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
-      <section className="rounded-[32px] border border-border bg-surface-soft p-6">
-        <div className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-4 py-2 text-xs uppercase tracking-[0.26em] text-brand">
+      <section className="flex flex-col rounded-[32px] border border-border bg-surface-soft p-6">
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-4 py-2 text-xs uppercase tracking-[0.26em] text-brand">
           <KeyRound size={14} />
-          Trader invite
+          Step 1 of 2
         </div>
         <div className="mt-5 space-y-4">
           <h2 className="font-display text-4xl tracking-tight text-foreground">
-            Access opens when the invite checks out.
+            Start with your invite code.
           </h2>
           <p className="text-sm leading-7 text-muted">
-            Use a valid referral or admin invite to unlock the desk. Referral codes place traders
-            into the network, while admin codes open internal access with no upline.
+            TrustPro is invite-only. Paste the code your referrer sent you — we&apos;ll check it
+            live and unlock the next step as soon as it&apos;s valid.
           </p>
         </div>
 
@@ -146,11 +146,11 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
             className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
             htmlFor="signup-code"
           >
-            Invitation code
+            Invite code
           </label>
           <input
             id="signup-code"
-            placeholder="REF_ATLAS or K7X9M2PQ4R"
+            placeholder="Paste your invite code"
             className="mt-3 w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
             {...register("code")}
           />
@@ -172,20 +172,23 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
           </div>
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-border bg-background/20 p-5 text-sm leading-7 text-muted">
-          Use `REF_ATLAS` or `K7X9M2PQ4R` to preview trader onboarding without live Supabase env
-          vars. Once live env is connected, this page validates against `validate_invite`.
+        <div className="mt-auto rounded-[24px] border border-border bg-background/20 p-5 text-sm leading-7 text-muted">
+          <p className="font-semibold text-foreground">Don&apos;t have an invite yet?</p>
+          <p className="mt-1">
+            TrustPro is invite-only. Ask the trader who referred you for a fresh code, or reach
+            out to our team and we&apos;ll help you find one.
+          </p>
         </div>
       </section>
 
-      <section className="rounded-[32px] border border-border bg-surface-soft p-6">
+      <section className="flex flex-col rounded-[32px] border border-border bg-surface-soft p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-muted">
-              Account form
+              Step 2 of 2
             </p>
             <h2 className="mt-2 font-display text-4xl tracking-tight text-foreground">
-              {revealForm ? "Build your trading account" : "Waiting on trader invite"}
+              {revealForm ? "Set up your account" : "Your details, after the code"}
             </h2>
           </div>
           <div
@@ -263,9 +266,9 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
             </button>
           </form>
         ) : (
-          <div className="mt-8 rounded-[24px] border border-dashed border-border bg-background/20 p-6 text-sm leading-7 text-muted">
-            Enter a valid invite code to unlock your trading account setup. Once verified, the
-            username, email, and password fields appear here.
+          <div className="mt-8 flex flex-1 items-center rounded-[24px] border border-dashed border-border bg-background/20 p-6 text-sm leading-7 text-muted">
+            Enter a valid invite code on the left. Once it checks out, you&apos;ll pick a
+            username, email, and password here — and you&apos;re in.
           </div>
         )}
       </section>

@@ -32,7 +32,7 @@ interface TradingShellState {
 
 export const useTradingShellStore = create<TradingShellState>((set) => ({
   activeDirection: "long",
-  activeStakeCents: 25_000,
+  activeStakeCents: 0,
   activeTimeframe: "1m",
   queueView: "urgent",
   selectedToken: "BTC",

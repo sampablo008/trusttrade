@@ -94,12 +94,18 @@ export const approveAdminDeposit = async (
   depositId: string,
   adminUserId: string,
   note?: string,
+  amountCents?: number,
 ): Promise<Deposit> => {
   if (!getOptionalServerEnv()) {
     const all = getPreviewAdminDeposits();
     const d = all.items.find((x) => x.id === depositId);
     if (!d) throw new ApiClientError("Deposit not found.", 404, "DEPOSIT_NOT_FOUND");
-    return { ...d, status: "approved", adminNote: note ?? null };
+    return {
+      ...d,
+      status: "approved",
+      adminNote: note ?? null,
+      amountCents: amountCents ?? d.amountCents,
+    };
   }
 
   const admin = createSupabaseAdminClient();
@@ -107,6 +113,7 @@ export const approveAdminDeposit = async (
     p_deposit_id: depositId,
     p_admin_user_id: adminUserId,
     p_note: note ?? null,
+    p_amount_cents: amountCents ?? null,
   });
 
   if (error) {

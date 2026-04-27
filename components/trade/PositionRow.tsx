@@ -66,10 +66,8 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
       className={[
         "relative overflow-hidden rounded-2xl border p-4 transition-all duration-500",
         isUrgent
-          ? "border-down/50 bg-down/5 shadow-sm shadow-down/10"
-          : isLong
-          ? "border-up/20 bg-up/[0.03]"
-          : "border-down/20 bg-down/[0.03]",
+          ? "border-brand/50 bg-brand/6 shadow-sm shadow-brand/10"
+          : "border-brand/20 bg-brand/3",
       ].join(" ")}
     >
       {/* Header */}
@@ -79,11 +77,7 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
           <div
             className={[
               "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl",
-              isUrgent
-                ? "bg-down/15 text-down"
-                : isLong
-                ? "bg-up/10 text-up"
-                : "bg-down/10 text-down",
+              isUrgent ? "bg-brand/20 text-brand" : "bg-brand/10 text-brand",
             ].join(" ")}
           >
             {isLong ? <TrendingUp size={16} strokeWidth={2.5} /> : <TrendingDown size={16} strokeWidth={2.5} />}
@@ -92,12 +86,7 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-foreground">{trade.tokenSymbol}</span>
-              <span
-                className={[
-                  "rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide",
-                  isLong ? "bg-up/10 text-up" : "bg-down/10 text-down",
-                ].join(" ")}
-              >
+              <span className="rounded-md bg-brand/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-brand">
                 {isLong ? "Long" : "Short"}
               </span>
             </div>
@@ -117,10 +106,10 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
 
         {/* Right: payout */}
         <div className="flex shrink-0 flex-col items-end">
-          <span className="text-sm font-bold text-up">
+          <span className="text-sm font-bold text-brand">
             {formatUsdFromCents(payout)}
           </span>
-          <span className="text-[10px] font-semibold text-up/60">
+          <span className="text-[10px] font-semibold text-brand/60">
             +{formatUsdFromCents(profit)}&nbsp;({profitPct}%)
           </span>
         </div>
@@ -132,7 +121,7 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
           <div
             className={[
               "absolute inset-y-0 left-0 rounded-full transition-[width] duration-1000",
-              isUrgent ? "bg-down" : isLong ? "bg-up/70" : "bg-down/70",
+              isUrgent ? "bg-brand" : "bg-brand/70",
             ].join(" ")}
             style={{ width: `${progress}%` }}
           />
@@ -140,7 +129,7 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
         <span
           className={[
             "min-w-[52px] text-right font-mono text-xs font-bold tabular-nums",
-            isExpired ? "text-muted" : isUrgent ? "animate-pulse text-down" : "text-foreground/80",
+            isExpired ? "text-muted" : isUrgent ? "animate-pulse text-brand" : "text-foreground/80",
           ].join(" ")}
         >
           {isExpired ? "Settling…" : formatMs(remainingMs)}

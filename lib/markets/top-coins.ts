@@ -15,7 +15,7 @@ export const TOP_COINS: TopCoin[] = [
   { symbol: "AVAX", name: "Avalanche", binanceSymbol: "avaxusdt" },
   { symbol: "LINK", name: "Chainlink", binanceSymbol: "linkusdt" },
   { symbol: "TON",  name: "Toncoin",   binanceSymbol: "tonusdt"  },
-  { symbol: "USDT", name: "Tether",    binanceSymbol: "usdtusdc" },
+  { symbol: "USDT", name: "Tether",    binanceSymbol: "usdcusdt" },
   { symbol: "USDC", name: "USD Coin",  binanceSymbol: "usdcusdt" },
 ];
 

@@ -57,6 +57,7 @@ export const sendVerificationCodeEmail = async (params: {
     replyTo: b.supportEmail ?? undefined,
     react: createElement(VerifyEmail, {
       appName: b.appName,
+      appUrl: b.appUrl,
       supportEmail: b.supportEmail,
       code: params.code,
       expiresInMinutes: params.expiresInMinutes,
@@ -77,6 +78,7 @@ export const sendPasswordResetCodeEmail = async (params: {
     replyTo: b.supportEmail ?? undefined,
     react: createElement(PasswordResetEmail, {
       appName: b.appName,
+      appUrl: b.appUrl,
       supportEmail: b.supportEmail,
       code: params.code,
       expiresInMinutes: params.expiresInMinutes,
@@ -97,6 +99,7 @@ export const sendPasswordChangedEmail = async (params: {
     replyTo: b.supportEmail ?? undefined,
     react: createElement(PasswordChangedEmail, {
       appName: b.appName,
+      appUrl: b.appUrl,
       supportEmail: b.supportEmail,
       changedAt: formatUtc(params.changedAtIso),
       requestIp: params.requestIp ?? null,
@@ -121,6 +124,7 @@ export const sendPinActivityEmail = async (params: {
     replyTo: b.supportEmail ?? undefined,
     react: createElement(PinSetEmail, {
       appName: b.appName,
+      appUrl: b.appUrl,
       supportEmail: b.supportEmail,
       action: params.action,
       actionAt: formatUtc(params.actionAtIso),
@@ -142,6 +146,7 @@ export const sendLoginCodeEmail = async (params: {
     replyTo: b.supportEmail ?? undefined,
     react: createElement(LoginCodeEmail, {
       appName: b.appName,
+      appUrl: b.appUrl,
       supportEmail: b.supportEmail,
       code: params.code,
       expiresInMinutes: params.expiresInMinutes,

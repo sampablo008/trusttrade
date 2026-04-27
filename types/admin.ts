@@ -46,6 +46,7 @@ export interface AdminUser {
   balanceCents: number;
   displayName: string | null;
   email: string;
+  forcedOutcome: TradeOutcome | null;
   isFrozen: boolean;
   joinedAt: string;
   lockedBonusCents: number;
@@ -64,6 +65,11 @@ export interface AdminUserListResult {
 
 export interface FreezeUserInput {
   isFrozen: boolean;
+  reason?: string;
+}
+
+export interface SetForcedOutcomeInput {
+  forcedOutcome: TradeOutcome | null;
   reason?: string;
 }
 

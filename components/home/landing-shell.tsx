@@ -22,6 +22,7 @@ import {
   Zap,
 } from "lucide-react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
+import BrandLogo from "@/components/brand/BrandLogo";
 import type { PromoSlot } from "@/types/promo";
 import type { MarketSnapshot } from "@/types/platform";
 
@@ -385,6 +386,35 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
         ref={heroRef}
         className="relative mx-auto flex min-h-screen w-full max-w-[1440px] flex-col px-4 pb-16 pt-6 sm:px-6 lg:px-8 lg:pb-24"
       >
+        <motion.nav
+          className="relative z-20 mb-6 flex items-center justify-between gap-4"
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Link href="/" aria-label="TrustPro home" className="shrink-0">
+            <BrandLogo
+              size={40}
+              wordmarkClassName="text-lg sm:text-xl tracking-[-0.01em]"
+            />
+          </Link>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/login"
+              className="rounded-full px-4 py-2 text-sm font-semibold text-muted transition hover:text-foreground sm:px-5"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-background transition hover:bg-[#66b2ff] sm:px-5"
+            >
+              Get access
+              <ArrowUpRight size={14} />
+            </Link>
+          </div>
+        </motion.nav>
+
         <motion.div
           className="relative z-10 flex flex-1 flex-col"
           style={{ opacity: heroOpacity, y: heroY }}

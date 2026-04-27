@@ -40,6 +40,7 @@ export const adminDepositFiltersSchema = z.object({
 
 export const adminApproveDepositSchema = z.object({
   note: z.string().optional(),
+  amountCents: z.number().int().positive().optional(),
 });
 
 export const adminRejectDepositSchema = z.object({

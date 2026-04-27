@@ -1,50 +1,52 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { loadIdentityByEmail } from "@/lib/account/profile-lookup";
-import {
-  sendVerificationCodeEmail,
-  sendWelcomeEmail,
-} from "@/lib/email/send";
-import { getOptionalServerEnv } from "@/lib/env/server";
-import {
-  consumeVerificationCode,
-  issueVerificationCode,
-} from "@/lib/otp/service";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { sendWelcomeEmail } from "@/lib/email/send";
+import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import {
   resendCodeInputSchema,
   verifyEmailInputSchema,
 } from "@/schemas/password-reset";
-
-const OTP_TTL_SECONDS = 10 * 60;
-const OTP_TTL_MINUTES = OTP_TTL_SECONDS / 60;
 
 export const issueSignupVerification = async (params: {
   email: string;
   userId: string;
 }) => {
   const email = params.email.trim().toLowerCase();
-  const { code } = await issueVerificationCode({
+  const anon = createSupabaseAnonClient();
+  const { error } = await anon.auth.signInWithOtp({
     email,
-    purpose: "email_verification",
-    userId: params.userId,
-    ttlSeconds: OTP_TTL_SECONDS,
+    options: { shouldCreateUser: false },
   });
-
-  await sendVerificationCodeEmail({
-    to: email,
-    code,
-    expiresInMinutes: OTP_TTL_MINUTES,
-  }).catch((err) => {
-    console.error("[verify-email] failed to send code", err);
-  });
+  if (error) {
+    throw new ApiClientError(
+      error.message,
+      500,
+      "OTP_ISSUE_FAILED",
+      error,
+    );
+  }
 };
 
 export const verifyEmail = async (payload: unknown): Promise<{ ok: true }> => {
   const input = verifyEmailInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
+  const code = input.code.trim();
 
-  await consumeVerificationCode(email, "email_verification", input.code);
+  const anon = createSupabaseAnonClient();
+  const { data, error } = await anon.auth.verifyOtp({
+    email,
+    token: code,
+    type: "email",
+  });
+  if (error || !data.user) {
+    throw new ApiClientError(
+      "Invalid or expired code.",
+      400,
+      "CODE_INVALID",
+      error ?? undefined,
+    );
+  }
 
   const identity = await loadIdentityByEmail(email);
   if (!identity) {
@@ -53,21 +55,6 @@ export const verifyEmail = async (payload: unknown): Promise<{ ok: true }> => {
       404,
       "ACCOUNT_NOT_FOUND",
     );
-  }
-
-  if (getOptionalServerEnv()) {
-    const admin = createSupabaseAdminClient();
-    const { error } = await admin.auth.admin.updateUserById(identity.userId, {
-      email_confirm: true,
-    });
-    if (error) {
-      throw new ApiClientError(
-        error.message,
-        500,
-        "EMAIL_CONFIRM_FAILED",
-        error,
-      );
-    }
   }
 
   await sendWelcomeEmail({
@@ -90,23 +77,22 @@ export const resendVerificationCode = async (
   // Avoid enumeration: always return ok.
   if (!identity) return { ok: true };
 
-  if (input.purpose === "email_verification" && identity.emailVerified) {
-    return { ok: true };
-  }
-
-  const { code } = await issueVerificationCode({
-    email,
-    purpose: input.purpose,
-    userId: identity.userId,
-    ttlSeconds: OTP_TTL_SECONDS,
-  });
-
   if (input.purpose === "email_verification") {
-    await sendVerificationCodeEmail({
-      to: email,
-      code,
-      expiresInMinutes: OTP_TTL_MINUTES,
-    }).catch((err) => console.error("[resend] verify email failed", err));
+    if (identity.emailVerified) return { ok: true };
+    const anon = createSupabaseAnonClient();
+    const { error } = await anon.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (error) {
+      console.error("[resend] verify email failed", error);
+    }
+  } else if (input.purpose === "password_reset") {
+    const anon = createSupabaseAnonClient();
+    const { error } = await anon.auth.resetPasswordForEmail(email);
+    if (error) {
+      console.error("[resend] password reset failed", error);
+    }
   }
 
   return { ok: true };

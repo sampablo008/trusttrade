@@ -1,20 +1,19 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { ApiClientError } from "@/lib/api/client";
+import { NextRequest, NextResponse } from "next/server";
 import { assertAdminApi } from "@/lib/auth/assert-admin-api";
-import { approveAdminDeposit } from "@/lib/deposits/admin-service";
-import { adminApproveDepositSchema } from "@/schemas/deposit";
+import { setForcedOutcome } from "@/lib/admin/users-service";
+import { ApiClientError } from "@/lib/api/client";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { userId } = await assertAdminApi();
+    const session = await assertAdminApi();
     const { id } = await params;
-    const body = await request.json().catch(() => ({}));
-    const { note, amountCents } = adminApproveDepositSchema.parse(body);
-    const deposit = await approveAdminDeposit(id, userId, note, amountCents);
-    return NextResponse.json({ deposit });
+    const body = await request.json();
+
+    const user = await setForcedOutcome(id, body, session.userId);
+    return NextResponse.json({ user });
   } catch (err) {
     if (err instanceof ApiClientError) {
       return NextResponse.json(

@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { signOutPreview } from "@/app/actions/auth";
+import BrandLogo from "@/components/brand/BrandLogo";
 import { formatUsdFromCents } from "@/lib/utils/format";
 
 interface AppHeaderNavProps {
@@ -49,13 +50,8 @@ export default function AppHeaderNav({
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-350 items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/trade/BTC" className="flex items-center gap-2">
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-linear-to-br from-brand to-[hsl(var(--color-up))] shadow-lg shadow-brand/30">
-            <span className="font-display text-sm font-bold text-background">T</span>
-          </div>
-          <span className="hidden font-display text-base font-semibold tracking-tight text-foreground sm:block">
-            TrustPro
-          </span>
+        <Link href="/trade/BTC" aria-label="TrustPro home">
+          <BrandLogo size={32} wordmarkClassName="hidden sm:block" />
         </Link>
 
         {/* Desktop nav */}

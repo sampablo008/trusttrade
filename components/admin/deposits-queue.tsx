@@ -25,6 +25,9 @@ export default function DepositsQueue({ initialDeposits }: Props) {
   const [deposits, setDeposits] = useState<Deposit[]>(initialDeposits);
   const [statusFilter, setStatusFilter] = useState<DepositStatus | "all">("pending");
   const [lightboxPath, setLightboxPath] = useState<string | null>(null);
+  const [approveTarget, setApproveTarget] = useState<Deposit | null>(null);
+  const [approveAmount, setApproveAmount] = useState("");
+  const [approveNote, setApproveNote] = useState("");
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [busy, setBusy] = useState<Set<string>>(new Set());
@@ -44,16 +47,45 @@ export default function DepositsQueue({ initialDeposits }: Props) {
       return next;
     });
 
-  const handleApprove = async (id: string) => {
+  const openApprove = (deposit: Deposit) => {
+    setApproveTarget(deposit);
+    setApproveAmount((deposit.amountCents / 100).toFixed(2));
+    setApproveNote("");
+    setError(null);
+  };
+
+  const closeApprove = () => {
+    setApproveTarget(null);
+    setApproveAmount("");
+    setApproveNote("");
+  };
+
+  const handleApprove = async () => {
+    if (!approveTarget) return;
+    const parsed = Number.parseFloat(approveAmount);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setError("Enter an amount greater than zero.");
+      return;
+    }
+    const amountCents = Math.round(parsed * 100);
+    const id = approveTarget.id;
     toggleBusy(id, true);
     setError(null);
-    const res = await fetch(`/api/admin/deposits/${id}/approve`, { method: "POST", body: JSON.stringify({}) });
+    const res = await fetch(`/api/admin/deposits/${id}/approve`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amountCents,
+        note: approveNote.trim() || undefined,
+      }),
+    });
     toggleBusy(id, false);
     if (res.ok) {
-      const data = await res.json() as { deposit: Deposit };
+      const data = (await res.json()) as { deposit: Deposit };
       setDepositStatus(id, data.deposit);
+      closeApprove();
     } else {
-      const json = await res.json() as { error?: { message?: string } };
+      const json = (await res.json()) as { error?: { message?: string } };
       setError(json.error?.message ?? "Approve failed.");
     }
   };
@@ -174,7 +206,7 @@ export default function DepositsQueue({ initialDeposits }: Props) {
                     {deposit.status === "pending" && (
                       <>
                         <button
-                          onClick={() => handleApprove(deposit.id)}
+                          onClick={() => openApprove(deposit)}
                           disabled={busy.has(deposit.id)}
                           title="Approve"
                           className="rounded-full border border-up/40 bg-up/10 p-1.5 text-up transition hover:bg-up/20 disabled:opacity-40"
@@ -212,6 +244,65 @@ export default function DepositsQueue({ initialDeposits }: Props) {
               alt="Deposit proof"
               className="max-h-[85vh] w-auto object-contain"
             />
+          </div>
+        </div>
+      )}
+
+      {/* Approve modal */}
+      {approveTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur">
+          <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
+            <h3 className="font-display text-2xl text-foreground">Approve deposit</h3>
+            <p className="mt-2 text-sm text-muted">
+              Confirm the amount to credit to the user&apos;s balance. Submitted:{" "}
+              <span className="font-semibold text-foreground">
+                {formatUsdFromCents(approveTarget.amountCents)}
+              </span>
+              .
+            </p>
+
+            <label className="mt-5 block text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Amount (USD)
+            </label>
+            <div className="mt-2 flex items-center gap-2 rounded-[12px] border border-border bg-background/30 px-4 py-3">
+              <span className="text-sm text-muted">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={approveAmount}
+                onChange={(e) => setApproveAmount(e.target.value)}
+                className="flex-1 bg-transparent text-sm text-foreground outline-none"
+              />
+            </div>
+
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Internal note (optional)
+            </label>
+            <textarea
+              value={approveNote}
+              onChange={(e) => setApproveNote(e.target.value)}
+              rows={2}
+              placeholder="Visible in the user's deposit history."
+              className="mt-2 w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
+            />
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={handleApprove}
+                disabled={busy.has(approveTarget.id)}
+                className="flex-1 rounded-full bg-up px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
+              >
+                {busy.has(approveTarget.id) ? "Approving…" : "Approve & credit"}
+              </button>
+              <button
+                onClick={closeApprove}
+                disabled={busy.has(approveTarget.id)}
+                className="flex-1 rounded-full border border-border bg-background/30 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand disabled:opacity-40"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

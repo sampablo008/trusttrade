@@ -42,6 +42,7 @@ export const adminUserSchema = z.object({
   balanceCents: z.number().int().nonnegative(),
   displayName: z.string().nullable(),
   email: z.string().email(),
+  forcedOutcome: tradeOutcomeSchema.nullable(),
   isFrozen: z.boolean(),
   joinedAt: z.string(),
   lockedBonusCents: z.number().int().nonnegative(),
@@ -60,6 +61,11 @@ export const adminUserListResultSchema = z.object({
 
 export const freezeUserInputSchema = z.object({
   isFrozen: z.boolean(),
+  reason: z.string().max(500).optional(),
+});
+
+export const setForcedOutcomeInputSchema = z.object({
+  forcedOutcome: tradeOutcomeSchema.nullable(),
   reason: z.string().max(500).optional(),
 });
 

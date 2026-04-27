@@ -21,22 +21,23 @@ const WelcomeEmail = ({
 }: WelcomeEmailProps) => (
   <BaseLayout
     appName={appName}
+    appUrl={appUrl}
     supportEmail={supportEmail}
-    previewText={`Welcome to ${appName} — your account is ready.`}
+    previewText={`Welcome to ${appName} — your trading desk is ready.`}
   >
-    <PrimaryHeading>Welcome to {appName}, {displayName}.</PrimaryHeading>
+    <PrimaryHeading>Welcome aboard, {displayName}.</PrimaryHeading>
     <BodyText>
-      Your account is ready. From your dashboard you can fund your balance,
-      open trades, track performance, and withdraw to your own wallet —
-      all in one place.
+      Your {appName} desk is live. You can now fund your balance, open long
+      and short positions on the pairs you watch, track settlements in real
+      time, and withdraw to your own wallet — all from one place.
     </BodyText>
 
-    <CtaButton href={`${appUrl}/trade`} label="Open dashboard" />
+    <CtaButton href={`${appUrl}/trade/BTC`} label="Open your trading desk" />
 
     <MutedText>
-      Security tips: set a 6-digit withdrawal PIN from your profile, use a
-      unique password, and never share verification codes with anyone —
-      not even {appName} staff.
+      Heads up: set a 6-digit withdrawal PIN from your profile before you
+      request your first withdrawal, use a unique password, and never share
+      verification codes with anyone — not even {appName} staff.
     </MutedText>
   </BaseLayout>
 );

@@ -1,23 +1,12 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
-import { loadIdentityByEmail } from "@/lib/account/profile-lookup";
-import {
-  sendPasswordChangedEmail,
-  sendPasswordResetCodeEmail,
-} from "@/lib/email/send";
-import { getOptionalServerEnv } from "@/lib/env/server";
-import {
-  consumeVerificationCode,
-  issueVerificationCode,
-} from "@/lib/otp/service";
+import { sendPasswordChangedEmail } from "@/lib/email/send";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import {
   forgotPasswordInputSchema,
   resetPasswordInputSchema,
 } from "@/schemas/password-reset";
-
-const OTP_TTL_SECONDS = 10 * 60;
-const OTP_TTL_MINUTES = OTP_TTL_SECONDS / 60;
 
 export interface RequestContext {
   requestIp?: string | null;
@@ -25,29 +14,16 @@ export interface RequestContext {
 
 export const requestPasswordReset = async (
   payload: unknown,
-  context: RequestContext = {},
+  _context: RequestContext = {},
 ): Promise<{ ok: true }> => {
   const input = forgotPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
 
-  const identity = await loadIdentityByEmail(email);
-  // Always return ok to avoid account enumeration, but only email if user exists.
-  if (identity) {
-    const { code } = await issueVerificationCode({
-      email,
-      purpose: "password_reset",
-      userId: identity.userId,
-      ttlSeconds: OTP_TTL_SECONDS,
-    });
-
-    await sendPasswordResetCodeEmail({
-      to: email,
-      code,
-      expiresInMinutes: OTP_TTL_MINUTES,
-      requestIp: context.requestIp ?? null,
-    }).catch((err) => {
-      console.error("[password-reset] email send failed", err);
-    });
+  const anon = createSupabaseAnonClient();
+  const { error } = await anon.auth.resetPasswordForEmail(email);
+  if (error) {
+    // Always return ok to avoid enumeration; log for observability.
+    console.error("[password-reset] email send failed", error);
   }
 
   return { ok: true };
@@ -59,31 +35,35 @@ export const confirmPasswordReset = async (
 ): Promise<{ ok: true }> => {
   const input = resetPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
+  const code = input.code.trim();
 
-  await consumeVerificationCode(email, "password_reset", input.code);
-
-  const identity = await loadIdentityByEmail(email);
-  if (!identity) {
+  const anon = createSupabaseAnonClient();
+  const { data, error } = await anon.auth.verifyOtp({
+    email,
+    token: code,
+    type: "recovery",
+  });
+  if (error || !data.user) {
     throw new ApiClientError(
-      "Could not reset password for that email.",
-      404,
-      "ACCOUNT_NOT_FOUND",
+      "Invalid or expired code.",
+      400,
+      "CODE_INVALID",
+      error ?? undefined,
     );
   }
 
-  if (getOptionalServerEnv()) {
-    const admin = createSupabaseAdminClient();
-    const { error } = await admin.auth.admin.updateUserById(identity.userId, {
-      password: input.newPassword,
-    });
-    if (error) {
-      throw new ApiClientError(
-        error.message,
-        500,
-        "PASSWORD_UPDATE_FAILED",
-        error,
-      );
-    }
+  const admin = createSupabaseAdminClient();
+  const { error: updateError } = await admin.auth.admin.updateUserById(
+    data.user.id,
+    { password: input.newPassword },
+  );
+  if (updateError) {
+    throw new ApiClientError(
+      updateError.message,
+      500,
+      "PASSWORD_UPDATE_FAILED",
+      updateError,
+    );
   }
 
   await sendPasswordChangedEmail({

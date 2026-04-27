@@ -4,12 +4,20 @@ import { useCallback, useState } from "react";
 import BalanceHistoryDrawer from "@/components/admin/balance-history-drawer";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { AdminUser } from "@/types/admin";
+import type { TradeOutcome } from "@/types/trade";
 
 interface UsersPanelProps {
   initialData: { items: AdminUser[]; total: number };
 }
 
 type RoleTab = "user" | "admin";
+type ForcedChoice = "auto" | "win" | "lose";
+
+const outcomeToChoice = (o: TradeOutcome | null): ForcedChoice =>
+  o === "win" ? "win" : o === "lose" ? "lose" : "auto";
+
+const choiceToOutcome = (c: ForcedChoice): TradeOutcome | null =>
+  c === "auto" ? null : c;
 
 export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [tab, setTab] = useState<RoleTab>("user");
@@ -71,6 +79,18 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
     if (selectedUser?.userId === userId) {
       setSelectedUser((u) => (u ? { ...u, isFrozen } : null));
     }
+  };
+
+  const handleSetForced = async (userId: string, forcedOutcome: TradeOutcome | null) => {
+    const res = await fetch(`/api/admin/users/${userId}/set-forced-outcome`, {
+      body: JSON.stringify({ forcedOutcome }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    const data = (await res.json()) as { user?: AdminUser };
+    if (!data.user) return;
+    setUsers((prev) => prev.map((u) => (u.userId === userId ? data.user! : u)));
+    if (selectedUser?.userId === userId) setSelectedUser(data.user);
   };
 
   const handleAdjust = async () => {
@@ -150,19 +170,22 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                 <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
                   Status
                 </th>
+                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                  Outcome
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-background/20">
               {loading && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-muted">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
                     Loading…
                   </td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-sm text-muted">
+                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
                     No users found
                   </td>
                 </tr>
@@ -202,6 +225,32 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                           Active
                         </span>
                       )}
+                    </td>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <div className="inline-flex items-center rounded-full border border-border bg-background/40 p-0.5">
+                        {(["auto", "win", "lose"] as const).map((c) => {
+                          const current = outcomeToChoice(u.forcedOutcome);
+                          const active = current === c;
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => handleSetForced(u.userId, choiceToOutcome(c))}
+                              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                                active
+                                  ? c === "win"
+                                    ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                                    : c === "lose"
+                                    ? "bg-[#f6465d]/20 text-[#f6465d]"
+                                    : "bg-foreground/10 text-foreground"
+                                  : "text-muted hover:text-foreground"
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -282,6 +331,42 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                 <p className="mt-1 font-semibold text-foreground">
                   {selectedUser.totalSettledTrades}
                 </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                Forced outcome
+              </p>
+              <p className="text-[11px] text-muted">
+                Overrides global expiry policy for this user. Every trade they place
+                settles as the chosen result unless a per-trade admin decision is set.
+              </p>
+              <div className="mt-1 grid grid-cols-3 gap-2">
+                {(["auto", "win", "lose"] as const).map((c) => {
+                  const current = outcomeToChoice(selectedUser.forcedOutcome);
+                  const active = current === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() =>
+                        handleSetForced(selectedUser.userId, choiceToOutcome(c))
+                      }
+                      className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                        active
+                          ? c === "win"
+                            ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                            : c === "lose"
+                            ? "bg-[#f6465d]/20 text-[#f6465d]"
+                            : "bg-foreground text-background"
+                          : "bg-background/30 text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

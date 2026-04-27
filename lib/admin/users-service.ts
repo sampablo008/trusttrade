@@ -7,13 +7,16 @@ import {
   adminUserListResultSchema,
   adminUserSchema,
   freezeUserInputSchema,
+  setForcedOutcomeInputSchema,
 } from "@/schemas/admin";
 import type {
   AdminUser,
   AdminUserListResult,
   AdjustBalanceInput,
   FreezeUserInput,
+  SetForcedOutcomeInput,
 } from "@/types/admin";
+import type { TradeOutcome } from "@/types/trade";
 
 const toNumber = (v: number | string | bigint | null | undefined): number => {
   if (v == null) return 0;
@@ -28,6 +31,7 @@ interface UserRow {
   created_at: string;
   display_name: string | null;
   email: string;
+  forced_outcome: TradeOutcome | null;
   is_frozen: boolean;
   role: "user" | "admin";
   user_id: string;
@@ -40,7 +44,7 @@ interface UserRow {
 }
 
 const PROFILE_SELECT =
-  "user_id, email, role, username, display_name, avatar_path, is_frozen, created_at, user_balances(balance_cents, locked_in_trades_cents, locked_bonus_cents)";
+  "user_id, email, role, username, display_name, avatar_path, is_frozen, forced_outcome, created_at, user_balances(balance_cents, locked_in_trades_cents, locked_bonus_cents)";
 
 const mapUserRow = (row: UserRow, stats?: { total: number; stake: number }): AdminUser =>
   adminUserSchema.parse({
@@ -48,6 +52,7 @@ const mapUserRow = (row: UserRow, stats?: { total: number; stake: number }): Adm
     balanceCents: toNumber(row.user_balances?.balance_cents),
     displayName: row.display_name ?? null,
     email: row.email,
+    forcedOutcome: row.forced_outcome ?? null,
     isFrozen: row.is_frozen ?? false,
     joinedAt: row.created_at,
     lockedBonusCents: toNumber(row.user_balances?.locked_bonus_cents),
@@ -134,6 +139,35 @@ export const getAdminUser = async (userId: string): Promise<AdminUser> => {
     : { stake: 0, total: 0 };
 
   return mapUserRow(data as unknown as UserRow, stats);
+};
+
+export const setForcedOutcome = async (
+  userId: string,
+  input: unknown,
+  adminId: string,
+): Promise<AdminUser> => {
+  const parsed = setForcedOutcomeInputSchema.parse(input) as SetForcedOutcomeInput;
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin
+    .from("profiles")
+    .update({ forced_outcome: parsed.forcedOutcome })
+    .eq("user_id", userId);
+
+  if (error) {
+    throw new ApiClientError(error.message, 500, "FORCED_OUTCOME_UPDATE_FAILED", error);
+  }
+
+  await admin.from("admin_actions").insert({
+    action_type: "set_user_forced_outcome",
+    admin_user_id: adminId,
+    after_state: { forced_outcome: parsed.forcedOutcome },
+    note: parsed.reason ?? `forced_outcome=${parsed.forcedOutcome ?? "null"}`,
+    target_id: userId,
+    target_type: "profiles",
+  });
+
+  return getAdminUser(userId);
 };
 
 export const freezeUser = async (

@@ -251,7 +251,7 @@ export default function DepositForm({ wallets, tokens }: Props) {
 
   if (submitStatus === "success") {
     return (
-      <div className="flex flex-col items-center gap-4 rounded-[20px] border border-border bg-surface-soft p-10 text-center">
+      <div className="flex h-full min-h-80 flex-col items-center justify-center gap-4 text-center">
         <CheckCircle size={40} className="text-up" />
         <h3 className="font-display text-2xl text-foreground">
           Deposit submitted

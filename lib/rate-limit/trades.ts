@@ -1,38 +1,55 @@
 import "server-only";
+import { ApiClientError } from "@/lib/api/client";
 
-let rateLimiter: ((userId: string) => Promise<{ success: boolean }>) | null = null;
+const WINDOW_SECONDS = 10;
+const MAX_PER_WINDOW = 5;
 
-const buildLimiter = async () => {
+type Limiter = (userId: string) => Promise<boolean>;
+
+let limiter: Limiter | null = null;
+let limiterInitialized = false;
+
+const buildLimiter = async (): Promise<Limiter | null> => {
   const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
-  if (!url || !token) {
-    return null;
-  }
+  if (!url || !token) return null;
 
-  const { Ratelimit } = await import("@upstash/ratelimit");
   const { Redis } = await import("@upstash/redis");
-
   const redis = new Redis({ url, token });
-  const limiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, "10 s"),
-    prefix: "tp:place_trade",
-  });
 
-  return async (userId: string) => limiter.limit(userId);
+  // Fixed-window counter using INCR+EXPIRE only — no Lua/evalsha, so it works
+  // with REST tokens that lack scripting permission.
+  return async (userId: string) => {
+    const bucket = Math.floor(Date.now() / (WINDOW_SECONDS * 1000));
+    const key = `tp:place_trade:${userId}:${bucket}`;
+    const count = await redis.incr(key);
+    if (count === 1) {
+      await redis.expire(key, WINDOW_SECONDS);
+    }
+    return count <= MAX_PER_WINDOW;
+  };
 };
 
 export const checkTradeRateLimit = async (userId: string): Promise<void> => {
-  if (!rateLimiter) {
-    rateLimiter = await buildLimiter();
+  if (!limiterInitialized) {
+    limiter = await buildLimiter();
+    limiterInitialized = true;
   }
 
-  if (!rateLimiter) return; // No Redis configured — allow in preview
+  if (!limiter) return; // No Redis configured — allow.
 
-  const { success } = await rateLimiter(userId);
-  if (!success) {
-    const { ApiClientError } = await import("@/lib/api/client");
+  let allowed = true;
+  try {
+    allowed = await limiter(userId);
+  } catch (err) {
+    // Fail open: a misconfigured Redis (bad token, network blip) must not
+    // block trading. Log and allow.
+    console.error("[rate-limit/trades] limiter call failed, allowing through", err);
+    return;
+  }
+
+  if (!allowed) {
     throw new ApiClientError(
       "Too many trade requests. Wait a moment.",
       429,

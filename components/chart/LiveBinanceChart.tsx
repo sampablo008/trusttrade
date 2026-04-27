@@ -108,7 +108,7 @@ export default function LiveBinanceChart({ binanceSymbol }: LiveBinanceChartProp
       setStatus("loading");
       try {
         const res = await fetch(
-          `/api/market/klines?symbol=${upstreamSymbol}&interval=${interval}&limit=500`,
+          `/api/market/klines?symbol=${upstreamSymbol}&interval=${interval}&limit=1000`,
           { signal: controller.signal },
         );
         if (!res.ok) throw new Error(`klines ${res.status}`);
@@ -124,7 +124,11 @@ export default function LiveBinanceChart({ binanceSymbol }: LiveBinanceChartProp
         }));
 
         series.setData(candles);
-        chart.timeScale().fitContent();
+        const visibleCount = Math.min(120, candles.length);
+        chart.timeScale().setVisibleLogicalRange({
+          from: candles.length - visibleCount,
+          to: candles.length,
+        });
         setStatus("ready");
 
         es = new EventSource(
