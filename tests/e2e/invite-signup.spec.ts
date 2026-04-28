@@ -17,14 +17,14 @@ const createIdentity = (prefix: string) => {
   const token = `${compactPrefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
   return {
-    email: `${token}@trustpro.dev`,
+    email: `${token}@trusttrade.pro`,
     username: token.slice(0, 24),
   };
 };
 
 const signInAsAdmin = async (page: Page) => {
   await page.goto("/login?next=%2Fadmin");
-  await page.getByLabel("Email").fill("ops.admin@trustpro.dev");
+  await page.getByLabel("Email").fill("ops.admin@trusttrade.pro");
   await page.getByLabel("Password").fill("previewpass");
   await page.getByRole("button", { name: /open control room/i }).click();
   await expect(page).toHaveURL(/\/admin$/);

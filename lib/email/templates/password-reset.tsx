@@ -48,9 +48,9 @@ const PasswordResetEmail = ({
 );
 
 PasswordResetEmail.PreviewProps = {
-  appName: "TrustPro",
-  appUrl: "https://trustpro.dev",
-  supportEmail: "support@trustpro.dev",
+  appName: "TrustTrade",
+  appUrl: "https://trusttrade.pro",
+  supportEmail: "support@trusttrade.pro",
   code: "274019",
   expiresInMinutes: 10,
   requestIp: "203.0.113.10",

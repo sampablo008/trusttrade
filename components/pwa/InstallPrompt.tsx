@@ -33,7 +33,7 @@ export default function InstallPrompt() {
   return (
     <div className="fixed bottom-4 left-4 right-4 z-50 mx-auto flex max-w-sm items-center justify-between gap-4 rounded-[20px] border border-border bg-surface-soft px-5 py-4 shadow-2xl sm:bottom-6 sm:left-6 sm:right-auto">
       <div className="flex flex-col gap-0.5">
-        <p className="text-sm font-semibold text-foreground">Install TrustPro</p>
+        <p className="text-sm font-semibold text-foreground">Install TrustTrade</p>
         <p className="text-xs text-muted">Add to home screen for fast access</p>
       </div>
       <div className="flex items-center gap-2">

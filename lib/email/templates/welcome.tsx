@@ -43,9 +43,9 @@ const WelcomeEmail = ({
 );
 
 WelcomeEmail.PreviewProps = {
-  appName: "TrustPro",
-  appUrl: "https://trustpro.dev",
-  supportEmail: "support@trustpro.dev",
+  appName: "TrustTrade",
+  appUrl: "https://trusttrade.pro",
+  supportEmail: "support@trusttrade.pro",
   displayName: "Trader",
 } satisfies WelcomeEmailProps;
 

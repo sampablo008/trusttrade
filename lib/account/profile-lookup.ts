@@ -18,7 +18,7 @@ export const loadAccountIdentity = async (
   if (!getOptionalServerEnv()) {
     return {
       userId,
-      email: "preview@trustpro.dev",
+      email: "preview@trusttrade.pro",
       displayName: "Preview Trader",
       username: "preview",
       hasWithdrawalPin: false,

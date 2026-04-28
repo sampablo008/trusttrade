@@ -1,3 +1,3 @@
-import Logo from "./trustpro.png";
+import Logo from "./trusttrade.png";
 
 export { Logo };

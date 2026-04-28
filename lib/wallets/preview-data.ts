@@ -50,7 +50,7 @@ const previewWalletRegistry = new Map<string, AdminWalletAddress>([
   [
     "BTC",
     parsePreviewWallet({
-      address: "bc1qDemoBtcAddressForPreviewTrustPro",
+      address: "bc1qDemoBtcAddressForPreviewTrustTrade",
       createdAt: "2026-04-19T12:00:00.000Z",
       id: "a0000000-0000-4000-8000-000000000003",
       isEnabled: true,

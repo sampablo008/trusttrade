@@ -392,7 +392,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Link href="/" aria-label="TrustPro home" className="shrink-0">
+          <Link href="/" aria-label="TrustTrade home" className="shrink-0">
             <BrandLogo
               size={40}
               wordmarkClassName="text-lg sm:text-xl tracking-[-0.01em]"
@@ -485,7 +485,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                 transition={{ delay: 0.28, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               >
                 {hero?.subtitle ??
-                  "TrustPro frames the market like a professional control room: live pairs, disciplined execution paths, wallet continuity, and bold momentum cues that push users to trade while the signal is still hot."}
+                  "TrustTrade frames the market like a professional control room: live pairs, disciplined execution paths, wallet continuity, and bold momentum cues that push users to trade while the signal is still hot."}
               </motion.p>
 
               <motion.div
@@ -1173,7 +1173,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
           viewport={{ amount: 0.8, once: true }}
           transition={{ duration: 0.6 }}
         >
-          TrustPro (c) {new Date().getFullYear()} | Trading involves risk | Crypto markets remain
+          TrustTrade (c) {new Date().getFullYear()} | Trading involves risk | Crypto markets remain
           volatile
         </motion.footer>
       </div>

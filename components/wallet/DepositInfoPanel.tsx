@@ -3,7 +3,7 @@ import { CheckCircle2, Clock, ShieldCheck } from "lucide-react";
 const HIGHLIGHTS = [
   { icon: ShieldCheck, label: "Safe custody", body: "Funds are secured in segregated cold wallets." },
   { icon: Clock, label: "Fast approval", body: "Most deposits are confirmed within 1-2 hours." },
-  { icon: CheckCircle2, label: "Zero fees", body: "TrustPro charges no platform deposit fees." },
+  { icon: CheckCircle2, label: "Zero fees", body: "TrustTrade charges no platform deposit fees." },
 ];
 
 export default function DepositInfoPanel() {
@@ -11,7 +11,7 @@ export default function DepositInfoPanel() {
     <aside className="flex flex-col gap-4 rounded-[28px] border border-border bg-surface-soft p-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Why TrustPro
+          Why TrustTrade
         </p>
         <h3 className="mt-2 font-display text-lg text-foreground">
           Deposit with confidence.

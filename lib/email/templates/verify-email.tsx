@@ -44,9 +44,9 @@ const VerifyEmail = ({
 );
 
 VerifyEmail.PreviewProps = {
-  appName: "TrustPro",
-  appUrl: "https://trustpro.dev",
-  supportEmail: "support@trustpro.dev",
+  appName: "TrustTrade",
+  appUrl: "https://trusttrade.pro",
+  supportEmail: "support@trusttrade.pro",
   code: "482913",
   expiresInMinutes: 10,
 } satisfies VerifyEmailProps;

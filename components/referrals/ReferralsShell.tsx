@@ -59,9 +59,9 @@ function QRShareSection({ code, baseUrl }: { code: string; baseUrl: string }) {
 
       <div className="flex flex-wrap gap-2">
         {[
-          { label: "WhatsApp", href: `https://wa.me/?text=${encodeURIComponent("Join me on TrustPro! " + shareLink)}` },
-          { label: "Telegram", href: `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent("Join me on TrustPro!")}` },
-          { label: "X / Twitter", href: `https://twitter.com/intent/tweet?text=${encodeURIComponent("Join me on TrustPro! " + shareLink)}` },
+          { label: "WhatsApp", href: `https://wa.me/?text=${encodeURIComponent("Join me on TrustTrade! " + shareLink)}` },
+          { label: "Telegram", href: `https://t.me/share/url?url=${encodeURIComponent(shareLink)}&text=${encodeURIComponent("Join me on TrustTrade!")}` },
+          { label: "X / Twitter", href: `https://twitter.com/intent/tweet?text=${encodeURIComponent("Join me on TrustTrade! " + shareLink)}` },
         ].map(({ label, href }) => (
           <a
             key={label}

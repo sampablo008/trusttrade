@@ -3,7 +3,7 @@ import AuthCard from "@/components/auth/auth-card";
 import ResetPasswordForm from "@/components/auth/reset-password-form";
 
 export const metadata: Metadata = {
-  title: "Reset password | TrustPro",
+  title: "Reset password | TrustTrade",
   description: "Enter the 6-digit code we emailed to set a new password.",
 };
 

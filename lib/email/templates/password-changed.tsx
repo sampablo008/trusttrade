@@ -53,9 +53,9 @@ const PasswordChangedEmail = ({
 );
 
 PasswordChangedEmail.PreviewProps = {
-  appName: "TrustPro",
-  appUrl: "https://trustpro.dev",
-  supportEmail: "support@trustpro.dev",
+  appName: "TrustTrade",
+  appUrl: "https://trusttrade.pro",
+  supportEmail: "support@trusttrade.pro",
   changedAt: "April 25, 2026, 14:02 UTC",
   requestIp: "203.0.113.10",
 } satisfies PasswordChangedEmailProps;

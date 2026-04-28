@@ -14,7 +14,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
       <header className="flex items-center justify-between">
-        <Link href="/" aria-label="TrustPro home">
+        <Link href="/" aria-label="TrustTrade home">
           <BrandLogo size={36} wordmarkClassName="text-lg tracking-[-0.01em]" />
         </Link>
         <Link
@@ -34,7 +34,7 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
             Claim your desk before the next move starts.
           </h1>
           <p className="text-sm leading-7 text-muted sm:text-base sm:leading-8">
-            TrustPro is invite-only. Paste the invite code your referrer shared with you, then set
+            TrustTrade is invite-only. Paste the invite code your referrer shared with you, then set
             up a username, email, and password. You&apos;ll be on the trading desk within a
             minute.
           </p>

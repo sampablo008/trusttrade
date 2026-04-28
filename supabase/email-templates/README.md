@@ -1,6 +1,6 @@
 # Supabase Auth Email Templates
 
-Branded TrustPro HTML templates for the built-in Supabase auth flows.
+Branded TrustTrade HTML templates for the built-in Supabase auth flows.
 
 ## How to install
 
@@ -30,17 +30,17 @@ These templates use standard Supabase Go-template variables:
 
 ## Logo
 
-The logo is referenced as `{{ .SiteURL }}/trustpro-logo.png`, served from
-`/public/trustpro-logo.png` in the Next.js app. Make sure **Site URL** in
+The logo is referenced as `{{ .SiteURL }}/trusttrade-logo.png`, served from
+`/public/trusttrade-logo.png` in the Next.js app. Make sure **Site URL** in
 Supabase → Authentication → URL Configuration matches the deployed origin.
 If the logo fails to load, the templates degrade gracefully — the card and
 wordmark still render.
 
 ## Subject lines (copy into the Subject field)
 
-- Confirm signup:        `Confirm your TrustPro account`
-- Invite user:           `You're invited to TrustPro`
-- Magic Link:            `Your TrustPro sign-in link`
-- Change Email Address:  `Confirm your new TrustPro email`
-- Reset Password:        `Reset your TrustPro password`
-- Reauthentication:      `Confirm it's you on TrustPro`
+- Confirm signup:        `Confirm your TrustTrade account`
+- Invite user:           `You're invited to TrustTrade`
+- Magic Link:            `Your TrustTrade sign-in link`
+- Change Email Address:  `Confirm your new TrustTrade email`
+- Reset Password:        `Reset your TrustTrade password`
+- Reauthentication:      `Confirm it's you on TrustTrade`

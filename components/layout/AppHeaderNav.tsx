@@ -50,7 +50,7 @@ export default function AppHeaderNav({
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-350 items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/trade/BTC" aria-label="TrustPro home">
+        <Link href="/trade/BTC" aria-label="TrustTrade home">
           <BrandLogo size={32} wordmarkClassName="hidden sm:block" />
         </Link>
 

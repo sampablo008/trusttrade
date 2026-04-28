@@ -3,8 +3,8 @@ import AuthCard from "@/components/auth/auth-card";
 import ForgotPasswordForm from "@/components/auth/forgot-password-form";
 
 export const metadata: Metadata = {
-  title: "Forgot password | TrustPro",
-  description: "Request a verification code to reset your TrustPro password.",
+  title: "Forgot password | TrustTrade",
+  description: "Request a verification code to reset your TrustTrade password.",
 };
 
 export default function ForgotPasswordPage() {

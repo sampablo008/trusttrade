@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description: "TrustPro Privacy Policy — how we collect and use your data.",
+  description: "TrustTrade Privacy Policy — how we collect and use your data.",
 };
 
 export default function PrivacyPage() {
@@ -13,7 +13,7 @@ export default function PrivacyPage() {
         href="/"
         className="mb-10 inline-flex items-center gap-2 text-sm text-muted transition hover:text-foreground"
       >
-        ← Back to TrustPro
+        ← Back to TrustTrade
       </Link>
 
       <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
@@ -84,8 +84,8 @@ export default function PrivacyPage() {
           </ul>
           <p className="mt-3">
             To exercise these rights, email{" "}
-            <a href="mailto:privacy@trustpro.trade" className="text-brand hover:underline">
-              privacy@trustpro.trade
+            <a href="mailto:privacy@trusttrade.pro" className="text-brand hover:underline">
+              privacy@trusttrade.pro
             </a>
             .
           </p>
@@ -117,8 +117,8 @@ export default function PrivacyPage() {
         <Section title="9. Contact">
           <p>
             For privacy enquiries:{" "}
-            <a href="mailto:privacy@trustpro.trade" className="text-brand hover:underline">
-              privacy@trustpro.trade
+            <a href="mailto:privacy@trusttrade.pro" className="text-brand hover:underline">
+              privacy@trusttrade.pro
             </a>
           </p>
         </Section>

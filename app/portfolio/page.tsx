@@ -5,7 +5,7 @@ import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { listSettledTrades } from "@/lib/trades/service";
 
 export const metadata: Metadata = {
-  title: "Portfolio | TrustPro",
+  title: "Portfolio | TrustTrade",
   description: "Your complete trade history with filters and CSV export.",
 };
 

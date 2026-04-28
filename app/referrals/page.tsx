@@ -5,7 +5,7 @@ import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getMyCommissions, getMyReferralStats, getMyReferralTree } from "@/lib/referrals/service";
 
-export const metadata = { title: "Referrals — TrustPro" };
+export const metadata = { title: "Referrals — TrustTrade" };
 
 export default async function ReferralsPage() {
   await assertAuthenticated();

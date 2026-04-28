@@ -181,7 +181,7 @@ export const previewAdminUsers: AdminUser[] = [
 export const previewAuditLog: AuditLogEntry[] = [
   {
     action: "settle_trade",
-    adminEmail: "admin@trustpro.io",
+    adminEmail: "admin@trusttrade.pro",
     adminId: PREVIEW_ADMIN_ID,
     afterJson: { status: "settled", outcome: "win" },
     beforeJson: { status: "active" },
@@ -194,7 +194,7 @@ export const previewAuditLog: AuditLogEntry[] = [
   },
   {
     action: "settle_trade",
-    adminEmail: "admin@trustpro.io",
+    adminEmail: "admin@trusttrade.pro",
     adminId: PREVIEW_ADMIN_ID,
     afterJson: { status: "settled", outcome: "lose" },
     beforeJson: { status: "active" },
@@ -207,7 +207,7 @@ export const previewAuditLog: AuditLogEntry[] = [
   },
   {
     action: "freeze_user",
-    adminEmail: "admin@trustpro.io",
+    adminEmail: "admin@trusttrade.pro",
     adminId: PREVIEW_ADMIN_ID,
     afterJson: { is_frozen: true },
     beforeJson: { is_frozen: false },

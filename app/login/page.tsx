@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
       <header className="flex items-center justify-between">
-        <Link href="/" aria-label="TrustPro home">
+        <Link href="/" aria-label="TrustTrade home">
           <BrandLogo size={36} wordmarkClassName="text-lg tracking-[-0.01em]" />
         </Link>
         <Link
@@ -45,7 +45,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             <p className="max-w-2xl text-sm leading-7 text-muted sm:text-base sm:leading-8">
               Sign in to open live charts, track the pairs you care about, and place trades with a
               clear view of your risk. Traders land on the desk, admins land in the control room —
-              TrustPro takes care of the routing.
+              TrustTrade takes care of the routing.
             </p>
           </div>
 

@@ -20,7 +20,7 @@ interface BaseLayoutProps {
   children: ReactNode;
 }
 
-const LOGO_PATH = "/trustpro-logo.png";
+const LOGO_PATH = "/trusttrade-logo.png";
 
 const logoSrc = (appUrl?: string | null): string | null => {
   if (!appUrl) return null;
@@ -74,7 +74,7 @@ export const BaseLayout = ({
                   </td>
                   <td style={{ verticalAlign: "middle" }}>
                     <Text className="m-0 text-[18px] font-bold tracking-[-0.01em] text-white">
-                      Trust<span style={{ color: "#3f8bff" }}>Pro</span>
+                      Trust<span style={{ color: "#3f8bff" }}>Trade</span>
                     </Text>
                   </td>
                 </tr>

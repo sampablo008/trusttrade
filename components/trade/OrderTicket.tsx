@@ -161,7 +161,7 @@ export default function OrderTicket({
       </button>
 
       <p className="text-center text-[10px] text-muted">
-        By placing a trade you agree to TrustPro&apos;s market rules. Trades settle automatically at
+        By placing a trade you agree to TrustTrade&apos;s market rules. Trades settle automatically at
         expiry.
       </p>
     </div>

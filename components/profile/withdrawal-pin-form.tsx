@@ -82,7 +82,7 @@ export default function WithdrawalPinForm({ hasPin, onStateChange }: WithdrawalP
       <p className="text-xs leading-5 text-muted">
         Your 6-digit PIN is required for every withdrawal. Keep it private — never share it
         with anyone, including {" "}
-        <span className="font-semibold text-foreground">TrustPro</span> staff.
+        <span className="font-semibold text-foreground">TrustTrade</span> staff.
       </p>
 
       <div className="flex flex-col gap-3">

@@ -29,7 +29,7 @@ export default function LoginForm() {
           id="email"
           name="email"
           type="email"
-          placeholder="you@trustpro.dev"
+          placeholder="you@trusttrade.pro"
           className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
         />
         {state.errors?.email?.length ? (

@@ -17,8 +17,8 @@ These are the SQL files to run on Supabase for the current repo state.
 
 Create two Supabase projects:
 
-1. `trustpro-dev`
-2. `trustpro-prod`
+1. `trusttrade-dev`
+2. `trusttrade-prod`
 
 Save these values for each project:
 

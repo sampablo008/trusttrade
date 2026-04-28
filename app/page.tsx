@@ -4,11 +4,11 @@ import { listPromoSlots } from "@/lib/promo/service";
 import { listMarketTokens } from "@/lib/markets/service";
 
 export const metadata: Metadata = {
-  title: "TrustPro — Crypto Trading Platform",
+  title: "TrustTrade — Crypto Trading Platform",
   description:
     "Trade crypto long or short with live charts, instant payouts up to 85%, and a 5-level referral program. Join by invitation.",
   openGraph: {
-    title: "TrustPro — Crypto Trading Platform",
+    title: "TrustTrade — Crypto Trading Platform",
     description: "Trade crypto. Win big. Live charts, 85% payouts, 5-level referrals.",
     type: "website",
   },

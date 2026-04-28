@@ -38,7 +38,7 @@ export default function AdminSidebar({ mobileOpen, onCloseMobile }: Props) {
             <span className="flex h-7 w-7 items-center justify-center rounded-md bg-brand/15 text-brand">
               <ShieldCheck size={15} />
             </span>
-            TrustPro <span className="text-muted">/ admin</span>
+            TrustTrade <span className="text-muted">/ admin</span>
           </Link>
           <button
             type="button"

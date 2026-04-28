@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
-  description: "TrustPro Terms of Service — read before trading.",
+  description: "TrustTrade Terms of Service — read before trading.",
 };
 
 export default function TermsPage() {
@@ -13,7 +13,7 @@ export default function TermsPage() {
         href="/"
         className="mb-10 inline-flex items-center gap-2 text-sm text-muted transition hover:text-foreground"
       >
-        ← Back to TrustPro
+        ← Back to TrustTrade
       </Link>
 
       <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">
@@ -24,7 +24,7 @@ export default function TermsPage() {
       <div className="prose-legal mt-12 space-y-10">
         <Section title="1. Acceptance">
           <p>
-            By accessing or using TrustPro (&quot;the Platform&quot;), you agree to be bound by these
+            By accessing or using TrustTrade (&quot;the Platform&quot;), you agree to be bound by these
             Terms of Service. If you do not agree, do not use the Platform. The Platform is
             invitation-only and available solely to users who have received a valid invitation code.
           </p>
@@ -41,7 +41,7 @@ export default function TermsPage() {
 
         <Section title="3. Nature of Trading">
           <p>
-            TrustPro is a binary prediction platform. You predict whether an asset price will be
+            TrustTrade is a binary prediction platform. You predict whether an asset price will be
             higher or lower at expiry. All trade outcomes are final once settled. Past performance
             does not guarantee future results. You may lose your entire invested amount on any
             single trade.
@@ -96,7 +96,7 @@ export default function TermsPage() {
 
         <Section title="9. Limitation of Liability">
           <p>
-            To the maximum extent permitted by law, TrustPro is not liable for any indirect,
+            To the maximum extent permitted by law, TrustTrade is not liable for any indirect,
             incidental, special, or consequential damages, including loss of profits arising from
             your use of the Platform.
           </p>
@@ -112,8 +112,8 @@ export default function TermsPage() {
         <Section title="11. Contact">
           <p>
             For any queries regarding these Terms, contact{" "}
-            <a href="mailto:support@trustpro.trade" className="text-brand hover:underline">
-              support@trustpro.trade
+            <a href="mailto:support@trusttrade.pro" className="text-brand hover:underline">
+              support@trusttrade.pro
             </a>
             .
           </p>

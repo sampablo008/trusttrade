@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope, Syne } from "next/font/google";
 import { Toaster } from "sonner";
 import QueryProvider from "@/components/providers/QueryProvider";
 import InstallPrompt from "@/components/pwa/InstallPrompt";
 import CookieBanner from "@/components/ui/CookieBanner";
-import { siteMetadata } from "@/lib/config/site";
+import { siteConfig, siteMetadata, siteViewport } from "@/lib/config/site";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -18,6 +18,41 @@ const syne = Syne({
 });
 
 export const metadata: Metadata = siteMetadata;
+export const viewport: Viewport = siteViewport;
+
+const organizationLd = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: siteConfig.name,
+  url: siteConfig.url,
+  logo: `${siteConfig.url}/icon-512.png`,
+  sameAs: [] as string[],
+};
+
+const websiteLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: siteConfig.name,
+  url: siteConfig.url,
+  description: siteConfig.description,
+  inLanguage: "en-US",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: `${siteConfig.url}/trade?q={search_term_string}`,
+    "query-input": "required name=search_term_string",
+  },
+};
+
+const productLd = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: `${siteConfig.name} — Crypto Trading Platform`,
+  description: siteConfig.description,
+  brand: { "@type": "Brand", name: siteConfig.name },
+  url: siteConfig.url,
+  image: `${siteConfig.url}/icon-512.png`,
+  category: "Finance / Cryptocurrency Trading",
+};
 
 export default function RootLayout({
   children,
@@ -34,6 +69,18 @@ export default function RootLayout({
         className="min-h-full bg-background text-foreground antialiased"
         suppressHydrationWarning
       >
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteLd) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }}
+        />
         <QueryProvider>
           {children}
           <Toaster

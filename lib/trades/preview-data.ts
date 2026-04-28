@@ -114,7 +114,7 @@ export const getPreviewProfile = (): UserProfile => ({
   avatarPath: null,
   balanceCents: 184_500,
   displayName: "Preview Trader",
-  email: "preview@trustpro.io",
+  email: "preview@trusttrade.pro",
   lockedBonusCents: 0,
   lockedInTradesCents: 75_000,
   role: "user",

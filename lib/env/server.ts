@@ -14,7 +14,7 @@ const emailEnvSchema = z.object({
 
 const appEnvSchema = z.object({
   APP_URL: z.string().url(),
-  APP_NAME: z.string().min(1).default("TrustPro"),
+  APP_NAME: z.string().min(1).default("TrustTrade"),
   APP_SUPPORT_EMAIL: z.string().email().optional(),
 });
 
@@ -56,7 +56,7 @@ export const getAppEnv = (): AppEnv => {
   if (result.success) return result.data;
   return {
     APP_URL: "http://localhost:4001",
-    APP_NAME: "TrustPro",
+    APP_NAME: "TrustTrade",
     APP_SUPPORT_EMAIL: undefined,
   };
 };

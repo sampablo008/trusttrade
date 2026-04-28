@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Risk Disclaimer",
-  description: "TrustPro Risk Disclaimer — understand the risks before you trade.",
+  description: "TrustTrade Risk Disclaimer — understand the risks before you trade.",
 };
 
 export default function DisclaimerPage() {
@@ -13,7 +13,7 @@ export default function DisclaimerPage() {
         href="/"
         className="mb-10 inline-flex items-center gap-2 text-sm text-muted transition hover:text-foreground"
       >
-        ← Back to TrustPro
+        ← Back to TrustTrade
       </Link>
 
       <div className="mb-10 rounded-2xl border border-down/30 bg-down/10 px-6 py-5">
@@ -42,7 +42,7 @@ export default function DisclaimerPage() {
 
         <Section title="2. No Investment Advice">
           <p>
-            Nothing on the TrustPro platform constitutes investment, financial, or trading advice.
+            Nothing on the TrustTrade platform constitutes investment, financial, or trading advice.
             All information provided is for entertainment and educational purposes only. You make
             all trading decisions independently and at your own risk.
           </p>
@@ -52,7 +52,7 @@ export default function DisclaimerPage() {
           <p>
             Price charts displayed on the platform may not exactly reflect prices on external
             cryptocurrency exchanges. Charts are provided for informational purposes and trade
-            outcome reference only. Do not rely on TrustPro charts for external trading decisions.
+            outcome reference only. Do not rely on TrustTrade charts for external trading decisions.
           </p>
         </Section>
 
@@ -66,7 +66,7 @@ export default function DisclaimerPage() {
         <Section title="5. Jurisdiction">
           <p>
             Binary options trading is restricted or prohibited in many jurisdictions. You are solely
-            responsible for ensuring your use of TrustPro is lawful in your country or territory.
+            responsible for ensuring your use of TrustTrade is lawful in your country or territory.
             We do not accept users from jurisdictions where such trading is prohibited.
           </p>
         </Section>
@@ -90,7 +90,7 @@ export default function DisclaimerPage() {
         <Section title="8. Responsible Trading">
           <p>
             If you believe you have a gambling problem, please seek help from a recognised
-            organisation in your country. TrustPro encourages responsible trading and reserves
+            organisation in your country. TrustTrade encourages responsible trading and reserves
             the right to limit activity for users showing signs of harmful behaviour.
           </p>
         </Section>

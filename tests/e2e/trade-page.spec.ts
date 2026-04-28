@@ -15,7 +15,7 @@ test.describe("Trade page redirect logic", () => {
 test.describe("Trade page — preview session (admin login)", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/login");
-    await page.getByLabel("Email").fill("ops.admin@trustpro.dev");
+    await page.getByLabel("Email").fill("ops.admin@trusttrade.pro");
     await page.getByLabel("Password").fill("previewpass");
     await page.getByRole("button", { name: /open control room/i }).click();
     await expect(page).toHaveURL(/\/admin$/);

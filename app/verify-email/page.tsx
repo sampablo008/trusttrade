@@ -3,8 +3,8 @@ import AuthCard from "@/components/auth/auth-card";
 import VerifyEmailForm from "@/components/auth/verify-email-form";
 
 export const metadata: Metadata = {
-  title: "Verify email | TrustPro",
-  description: "Confirm your email to finish setting up your TrustPro account.",
+  title: "Verify email | TrustTrade",
+  description: "Confirm your email to finish setting up your TrustTrade account.",
 };
 
 interface VerifyEmailPageProps {

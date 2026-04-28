@@ -6,8 +6,8 @@ import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { getProfile } from "@/lib/trades/service";
 
 export const metadata: Metadata = {
-  title: "My Profile | TrustPro",
-  description: "Manage your TrustPro profile, avatar, account, and security.",
+  title: "My Profile | TrustTrade",
+  description: "Manage your TrustTrade profile, avatar, account, and security.",
 };
 
 export default async function MePage() {

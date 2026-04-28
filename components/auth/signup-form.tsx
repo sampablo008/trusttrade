@@ -136,7 +136,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
             Start with your invite code.
           </h2>
           <p className="text-sm leading-7 text-muted">
-            TrustPro is invite-only. Paste the code your referrer sent you — we&apos;ll check it
+            TrustTrade is invite-only. Paste the code your referrer sent you — we&apos;ll check it
             live and unlock the next step as soon as it&apos;s valid.
           </p>
         </div>
@@ -175,7 +175,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
         <div className="mt-auto rounded-[24px] border border-border bg-background/20 p-5 text-sm leading-7 text-muted">
           <p className="font-semibold text-foreground">Don&apos;t have an invite yet?</p>
           <p className="mt-1">
-            TrustPro is invite-only. Ask the trader who referred you for a fresh code, or reach
+            TrustTrade is invite-only. Ask the trader who referred you for a fresh code, or reach
             out to our team and we&apos;ll help you find one.
           </p>
         </div>

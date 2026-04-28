@@ -18,7 +18,7 @@ export default function BrandLogo({
     <span className={["inline-flex items-center gap-2.5", className].filter(Boolean).join(" ")}>
       <Image
         src={Logo}
-        alt="TrustPro"
+        alt="TrustTrade"
         width={size}
         height={size}
         priority
@@ -34,7 +34,7 @@ export default function BrandLogo({
             .filter(Boolean)
             .join(" ")}
         >
-          Trust<span className="text-brand">Pro</span>
+          Trust<span className="text-brand">Trade</span>
         </span>
       )}
     </span>

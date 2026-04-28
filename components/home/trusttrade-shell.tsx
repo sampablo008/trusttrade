@@ -12,11 +12,11 @@ import TradingWorkbench from "@/components/home/trading-workbench";
 import { moneyLoop, referralMilestones, securityInvariants } from "@/lib/constants/platform";
 import type { MarketSnapshot } from "@/types/platform";
 
-interface TrustProShellProps {
+interface TrustTradeShellProps {
   marketSnapshots: MarketSnapshot[];
 }
 
-export default function TrustProShell({ marketSnapshots }: TrustProShellProps) {
+export default function TrustTradeShell({ marketSnapshots }: TrustTradeShellProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-[1600px] flex-col gap-16 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
       <section className="overflow-hidden rounded-[36px] border border-border bg-surface-soft px-6 py-6 shadow-[0_24px_80px_rgba(3,6,15,0.45)] sm:px-8 lg:px-10">
@@ -31,7 +31,7 @@ export default function TrustProShell({ marketSnapshots }: TrustProShellProps) {
                 Shadow exchange shell. Real product feel. Admin control at the core.
               </h1>
               <p className="max-w-2xl text-base leading-8 text-muted sm:text-lg">
-                TrustPro now has a real app shell: controlled market snapshots, a trade ticket,
+                TrustTrade now has a real app shell: controlled market snapshots, a trade ticket,
                 a live admin queue surface, and the first server-only backend modules wired for the
                 rest of the build.
               </p>

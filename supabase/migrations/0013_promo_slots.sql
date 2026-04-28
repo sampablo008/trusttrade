@@ -50,5 +50,5 @@ INSERT INTO promo_slots (slug, slot_type, title, subtitle, body, cta_label, cta_
   ('feature_profits', 'text', 'Up to 85% profit', NULL, 'Win up to 85% of your stake on every correctly predicted trade.', NULL, NULL, 22),
   ('feature_tokens', 'text', 'Multiple assets', NULL, 'Trade BTC, ETH, USDT, BNB, and more — all on one platform.', NULL, NULL, 23),
   ('feature_wallet', 'text', 'Crypto wallet', NULL, 'Deposit and withdraw with USDT-TRC20, ERC20, BEP20, and BTC.', NULL, NULL, 24),
-  ('feature_mobile', 'text', 'Mobile ready', NULL, 'Trade from anywhere — TrustPro is fully responsive and PWA-installable.', NULL, NULL, 25)
+  ('feature_mobile', 'text', 'Mobile ready', NULL, 'Trade from anywhere — TrustTrade is fully responsive and PWA-installable.', NULL, NULL, 25)
 ON CONFLICT (slug) DO NOTHING;

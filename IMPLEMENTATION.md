@@ -1254,7 +1254,7 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - [x] Replace placeholder app metadata and Trust-Wallet-style design tokens — `app/layout.tsx` (modified), `app/globals.css` (modified)
 
 ### Phase 2: Product shell
-- [x] Build the first trading shell with shared constants and clean types — `types/platform.ts` (created), `lib/constants/platform.ts` (created), `components/home/section-heading.tsx` (created), `components/home/trustpro-shell.tsx` (created), `app/page.tsx` (modified)
+- [x] Build the first trading shell with shared constants and clean types — `types/platform.ts` (created), `lib/constants/platform.ts` (created), `components/home/section-heading.tsx` (created), `components/home/trusttrade-shell.tsx` (created), `app/page.tsx` (modified)
 - [x] Use Zustand for shared state and TanStack Table for the first admin queue surface — `stores/trading-shell-store.ts` (created), `components/home/trading-workbench.tsx` (created), `components/home/settlement-queue-table.tsx` (created)
 
 ### Phase 3: Verify
@@ -1290,7 +1290,7 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - `components/home/section-heading.tsx` — created
 - `components/home/settlement-queue-table.tsx` — created
 - `components/home/trading-workbench.tsx` — created
-- `components/home/trustpro-shell.tsx` — created
+- `components/home/trusttrade-shell.tsx` — created
 - `lib/auth/assertAdmin.ts` — created
 - `lib/auth/constants.ts` — created
 - `lib/auth/session.ts` — created
@@ -1437,7 +1437,7 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 ### Phase 3: Public market reads
 - [x] Add market schemas, preview/live service, and preview candle generation — `types/market.ts` (created), `schemas/market.ts` (created), `lib/markets/preview-data.ts` (created), `lib/markets/service.ts` (created), `lib/utils/format.ts` (modified)
 - [x] Add public token, period, and candle Route Handlers — `app/api/tokens/route.ts` (created), `app/api/periods/route.ts` (created), `app/api/candles/route.ts` (created)
-- [x] Wire the home shell to server-fetched market tokens instead of hardcoded snapshots — `app/page.tsx` (modified), `components/home/trustpro-shell.tsx` (modified), `components/home/trading-workbench.tsx` (modified), `lib/constants/platform.ts` (modified), `types/platform.ts` (modified)
+- [x] Wire the home shell to server-fetched market tokens instead of hardcoded snapshots — `app/page.tsx` (modified), `components/home/trusttrade-shell.tsx` (modified), `components/home/trading-workbench.tsx` (modified), `lib/constants/platform.ts` (modified), `types/platform.ts` (modified)
 
 ### Phase 4: Verify
 - [x] Verify lint and production build after the public market read slice — `pnpm lint`, `pnpm build`
@@ -1558,7 +1558,7 @@ Phase-by-phase. Every task a checkbox. Engineer picks up, completes, ticks.
 - `components/admin/period-control-panel.tsx` — created
 - `components/admin/token-control-panel.tsx` — created, modified
 - `components/home/trading-workbench.tsx` — modified
-- `components/home/trustpro-shell.tsx` — modified
+- `components/home/trusttrade-shell.tsx` — modified
 - `lib/constants/platform.ts` — modified
 - `lib/media/path.ts` — created
 - `lib/media/preview-data.ts` — created
@@ -2415,7 +2415,7 @@ NEXT_PUBLIC_SENTRY_DSN=
 # App
 NEXT_PUBLIC_APP_URL=https://yourdomain.com
 APP_URL=https://yourdomain.com
-APP_NAME=TrustPro
+APP_NAME=TrustTrade
 APP_SUPPORT_EMAIL=support@yourdomain.com
 ADMIN_SEED_EMAIL=
 
@@ -2423,7 +2423,7 @@ ADMIN_SEED_EMAIL=
 #   verify-email OTP, welcome email, password-reset OTP,
 #   password-changed notice, PIN set/changed notice
 RESEND_API_KEY=re_...
-EMAIL_FROM="TrustPro <noreply@yourdomain.com>"
+EMAIL_FROM="TrustTrade <noreply@yourdomain.com>"
 ```
 
 ### 13.2 Essential commands
