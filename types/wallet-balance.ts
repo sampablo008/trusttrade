@@ -12,9 +12,6 @@ export interface TokenBalance {
 }
 
 export interface WalletBalancesResult {
-  usdBalanceCents: number;
-  lockedInTradesCents: number;
-  lockedBonusCents: number;
   withdrawableCents: number;
   tokens: TokenBalance[];
   totalUsdValueCents: number;

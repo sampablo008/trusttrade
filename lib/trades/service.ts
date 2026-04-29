@@ -12,6 +12,7 @@ import {
 } from "@/lib/trades/preview-data";
 import { getBinanceUsdPrice } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getWalletBalances } from "@/lib/wallet-balances/service";
 import {
   activeTradesResultSchema,
   cancelTradeResultSchema,
@@ -336,25 +337,15 @@ export const getProfile = async (userId: string): Promise<UserProfile> => {
     throw new ApiClientError("Profile not found.", 404, "PROFILE_NOT_FOUND");
   }
 
-  const { data: balanceRow, error: balanceError } = await admin
-    .from("user_balances")
-    .select("balance_cents, locked_in_trades_cents, locked_bonus_cents")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (balanceError) {
-    throw new ApiClientError(balanceError.message, 500, "BALANCE_FETCH_FAILED", balanceError);
-  }
-
-  const br = balanceRow as { balance_cents?: number; locked_bonus_cents?: number; locked_in_trades_cents?: number } | null;
+  const balance = await getBalance(userId);
 
   return userProfileSchema.parse({
     avatarPath: profile.avatar_path ?? null,
-    balanceCents: toNumber(br?.balance_cents),
+    balanceCents: balance.balanceCents,
     displayName: profile.display_name ?? null,
     email: profile.email,
-    lockedBonusCents: toNumber(br?.locked_bonus_cents),
-    lockedInTradesCents: toNumber(br?.locked_in_trades_cents),
+    lockedBonusCents: balance.lockedBonusCents,
+    lockedInTradesCents: balance.lockedInTradesCents,
     role: profile.role as "user" | "admin",
     userId: profile.user_id,
     username: profile.username,
@@ -391,26 +382,15 @@ export const getBalance = async (userId: string): Promise<UserBalance> => {
     return getPreviewBalance();
   }
 
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from("user_balances")
-    .select("balance_cents, locked_in_trades_cents, locked_bonus_cents")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (error) {
-    throw new ApiClientError(error.message, 500, "BALANCE_FETCH_FAILED", error);
-  }
-
-  const d = data as { balance_cents?: number; locked_in_trades_cents?: number; locked_bonus_cents?: number } | null;
-  const balance = toNumber(d?.balance_cents);
-  const lockedTrades = toNumber(d?.locked_in_trades_cents);
-  const lockedBonus = toNumber(d?.locked_bonus_cents);
-
+  // Synthesise the legacy UserBalance shape from the user's token holdings.
+  // balanceCents is the USD value of all held tokens; lockedInTradesCents is
+  // the USD value of tokens locked in active trades. lockedBonusCents is
+  // permanently 0 — bonuses now credit USDT directly to the free balance.
+  const wallet = await getWalletBalances(userId);
   return userBalanceSchema.parse({
-    balanceCents: balance,
-    lockedBonusCents: lockedBonus,
-    lockedInTradesCents: lockedTrades,
-    withdrawableCents: Math.max(balance - lockedTrades - lockedBonus, 0),
+    balanceCents: wallet.totalUsdValueCents,
+    lockedBonusCents: 0,
+    lockedInTradesCents: wallet.totalUsdValueCents - wallet.totalFreeUsdValueCents,
+    withdrawableCents: wallet.totalFreeUsdValueCents,
   });
 };

@@ -239,12 +239,6 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
                 User
               </th>
-              <th
-                className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted"
-                title="Legacy USD ledger. Expand row for token totals."
-              >
-                USD ledger
-              </th>
               <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
                 Trades
               </th>
@@ -259,14 +253,14 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
           <tbody className="divide-y divide-border bg-background/20">
             {loading && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
                   Loading…
                 </td>
               </tr>
             )}
             {!loading && users.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
                   No users found
                 </td>
               </tr>
@@ -297,9 +291,6 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                           </span>
                           <span className="text-xs text-muted">{u.email}</span>
                         </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-foreground">
-                        {formatUsdFromCents(u.balanceCents)}
                       </td>
                       <td className="px-4 py-3 text-sm text-muted">
                         {u.totalSettledTrades}
@@ -349,7 +340,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                     </tr>
                     {isOpen && (
                       <tr className="bg-background/40">
-                        <td colSpan={6} className="px-6 py-6">
+                        <td colSpan={5} className="px-6 py-6">
                           <UserDetail
                             user={u}
                             adjustTarget={adjustTarget}
@@ -520,11 +511,6 @@ function UserDetail({
             label="Locked in trades"
             value={formatUsdFromCents(totals.lockedUsdCents)}
             hint="USD value of tokens locked in active trades"
-          />
-          <Stat
-            label="USD ledger"
-            value={formatUsdFromCents(user.balanceCents)}
-            hint="Legacy USD-cent balance"
           />
           <Stat label="Settled" value={String(user.totalSettledTrades)} />
         </div>

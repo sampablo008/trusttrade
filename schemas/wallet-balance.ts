@@ -14,9 +14,6 @@ export const tokenBalanceSchema = z.object({
 });
 
 export const walletBalancesResultSchema = z.object({
-  usdBalanceCents: z.number().int(),
-  lockedInTradesCents: z.number().int(),
-  lockedBonusCents: z.number().int(),
   withdrawableCents: z.number().int(),
   tokens: z.array(tokenBalanceSchema),
   totalUsdValueCents: z.number().int().nonnegative(),

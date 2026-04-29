@@ -51,14 +51,11 @@ export const adminTokenBalanceSchema = z.object({
 
 export const adminUserSchema = z.object({
   avatarPath: z.string().nullable(),
-  balanceCents: z.number().int().nonnegative(),
   displayName: z.string().nullable(),
   email: z.string().email(),
   forcedOutcome: tradeOutcomeSchema.nullable(),
   isFrozen: z.boolean(),
   joinedAt: z.string(),
-  lockedBonusCents: z.number().int().nonnegative(),
-  lockedInTradesCents: z.number().int().nonnegative(),
   role: z.enum(["user", "admin"]),
   totalSettledTrades: z.number().int().nonnegative(),
   totalStakeCents: z.number().int().nonnegative(),

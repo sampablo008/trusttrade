@@ -29,7 +29,7 @@ export default async function WalletPage() {
         <WalletHero
           balanceCents={balances.totalUsdValueCents}
           lockedInTradesCents={balances.totalUsdValueCents - balances.totalFreeUsdValueCents}
-          lockedBonusCents={balances.lockedBonusCents}
+          lockedBonusCents={0}
           withdrawableCents={balances.totalFreeUsdValueCents}
         />
 

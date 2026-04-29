@@ -37,15 +37,10 @@ interface UserRow {
   role: "user" | "admin";
   user_id: string;
   username: string;
-  user_balances?: {
-    balance_cents: number;
-    locked_in_trades_cents: number;
-    locked_bonus_cents: number;
-  } | null;
 }
 
 const PROFILE_SELECT =
-  "user_id, email, role, username, display_name, avatar_path, is_frozen, forced_outcome, created_at, user_balances(balance_cents, locked_in_trades_cents, locked_bonus_cents)";
+  "user_id, email, role, username, display_name, avatar_path, is_frozen, forced_outcome, created_at";
 
 const mapUserRow = (
   row: UserRow,
@@ -54,14 +49,11 @@ const mapUserRow = (
 ): AdminUser =>
   adminUserSchema.parse({
     avatarPath: row.avatar_path ?? null,
-    balanceCents: toNumber(row.user_balances?.balance_cents),
     displayName: row.display_name ?? null,
     email: row.email,
     forcedOutcome: row.forced_outcome ?? null,
     isFrozen: row.is_frozen ?? false,
     joinedAt: row.created_at,
-    lockedBonusCents: toNumber(row.user_balances?.locked_bonus_cents),
-    lockedInTradesCents: toNumber(row.user_balances?.locked_in_trades_cents),
     role: row.role,
     totalSettledTrades: stats?.total ?? 0,
     totalStakeCents: stats?.stake ?? 0,

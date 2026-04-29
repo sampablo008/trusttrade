@@ -44,9 +44,6 @@ export const getPreviewWalletBalances = (): WalletBalancesResult => {
   const totalFreeUsdValueCents = tokens.reduce((sum, t) => sum + t.freeUsdValueCents, 0);
 
   return {
-    usdBalanceCents: 0,
-    lockedInTradesCents: 0,
-    lockedBonusCents: 0,
     withdrawableCents: totalFreeUsdValueCents,
     tokens,
     totalUsdValueCents,

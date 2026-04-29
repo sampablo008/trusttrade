@@ -93,12 +93,12 @@ export async function GET() {
           .on(
             "postgres_changes",
             {
-              event: "UPDATE",
+              event: "*",
               filter: `user_id=eq.${userId}`,
               schema: "public",
-              table: "user_balances",
+              table: "user_token_balances",
             },
-            (payload) => enqueue(encodeEvent("balance", payload.new)),
+            (payload) => enqueue(encodeEvent("token-balance", payload.new)),
           )
           .subscribe();
 

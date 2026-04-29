@@ -55,14 +55,11 @@ export interface AdminTokenBalance {
 
 export interface AdminUser {
   avatarPath: string | null;
-  balanceCents: number;
   displayName: string | null;
   email: string;
   forcedOutcome: TradeOutcome | null;
   isFrozen: boolean;
   joinedAt: string;
-  lockedBonusCents: number;
-  lockedInTradesCents: number;
   role: "user" | "admin";
   totalSettledTrades: number;
   totalStakeCents: number;

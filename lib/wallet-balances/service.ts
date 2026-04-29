@@ -23,12 +23,6 @@ interface BalanceRow {
     | null;
 }
 
-interface UsdBalanceRow {
-  balance_cents: number | string | null;
-  locked_in_trades_cents: number | string | null;
-  locked_bonus_cents: number | string | null;
-}
-
 const toNum = (v: number | string | null | undefined): number => {
   if (v == null) return 0;
   if (typeof v === "string") return Number(v);
@@ -44,29 +38,14 @@ export const getWalletBalances = async (
 
   const admin = createSupabaseAdminClient();
 
-  const [usdRes, tokenRes] = await Promise.all([
-    admin
-      .from("user_balances")
-      .select("balance_cents, locked_in_trades_cents, locked_bonus_cents")
-      .eq("user_id", userId)
-      .maybeSingle(),
-    admin
-      .from("user_token_balances")
-      .select(
-        "token_id, balance, locked_balance, tokens(symbol, name, icon_path, decimals, shadow_symbol, base_price_cents)",
-      )
-      .eq("user_id", userId)
-      .or("balance.gt.0,locked_balance.gt.0"),
-  ]);
+  const tokenRes = await admin
+    .from("user_token_balances")
+    .select(
+      "token_id, balance, locked_balance, tokens(symbol, name, icon_path, decimals, shadow_symbol, base_price_cents)",
+    )
+    .eq("user_id", userId)
+    .or("balance.gt.0,locked_balance.gt.0");
 
-  if (usdRes.error) {
-    throw new ApiClientError(
-      usdRes.error.message,
-      500,
-      "USD_BALANCE_FETCH_FAILED",
-      usdRes.error,
-    );
-  }
   if (tokenRes.error) {
     throw new ApiClientError(
       tokenRes.error.message,
@@ -75,11 +54,6 @@ export const getWalletBalances = async (
       tokenRes.error,
     );
   }
-
-  const usdRow = (usdRes.data ?? null) as UsdBalanceRow | null;
-  const usdBalanceCents = toNum(usdRow?.balance_cents);
-  const lockedInTradesCents = toNum(usdRow?.locked_in_trades_cents);
-  const lockedBonusCents = toNum(usdRow?.locked_bonus_cents);
 
   const rows = (tokenRes.data ?? []) as unknown as BalanceRow[];
   const shadowSymbols = rows
@@ -145,9 +119,6 @@ export const getWalletBalances = async (
   const totalFreeUsdValueCents = tokens.reduce((sum, t) => sum + t.freeUsdValueCents, 0);
 
   return walletBalancesResultSchema.parse({
-    usdBalanceCents,
-    lockedInTradesCents,
-    lockedBonusCents,
     withdrawableCents: totalFreeUsdValueCents,
     tokens,
     totalUsdValueCents,

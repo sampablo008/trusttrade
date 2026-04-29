@@ -17,11 +17,6 @@ interface TradePayload {
   [key: string]: unknown;
 }
 
-interface BalancePayload {
-  balance_cents?: number;
-  locked_in_trades_cents?: number;
-  locked_bonus_cents?: number;
-}
 
 const RECONNECT_BASE_MS = 3_000;
 const RECONNECT_MAX_MS = 30_000;
@@ -81,23 +76,13 @@ export const useUserStream = (onSettlement?: (trade: UserTrade) => void) => {
         }
       });
 
-      es.addEventListener("balance", (e) => {
-        try {
-          const raw = JSON.parse(e.data) as BalancePayload;
-          const balance = raw.balance_cents ?? 0;
-          const lockedTrades = raw.locked_in_trades_cents ?? 0;
-          const lockedBonus = raw.locked_bonus_cents ?? 0;
-
-          setBalance({
-            balanceCents: balance,
-            lockedBonusCents: lockedBonus,
-            lockedInTradesCents: lockedTrades,
-            withdrawableCents: Math.max(balance - lockedTrades - lockedBonus, 0),
-          });
-          queryClient.invalidateQueries({ queryKey: ["balance"] });
-        } catch {
-          // Malformed balance event — ignore
-        }
+      // A user_token_balances row mutated. We don't reconstruct UserBalance
+      // from a single row — the synthetic UserBalance is derived from token
+      // totals server-side. Invalidate the relevant queries so the next
+      // fetch picks up the updated holdings.
+      es.addEventListener("token-balance", () => {
+        queryClient.invalidateQueries({ queryKey: ["balance"] });
+        queryClient.invalidateQueries({ queryKey: ["wallet-balances"] });
       });
 
       es.onerror = () => {
