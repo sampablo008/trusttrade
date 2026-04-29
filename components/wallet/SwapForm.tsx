@@ -13,7 +13,6 @@ interface SwapSide {
   name: string;
   iconPath: string | null;
   decimals: number;
-  isUsd: boolean;
   usdPriceCents: number;
   swapFeeBps: number;
 }
@@ -29,7 +28,6 @@ const buildSides = (tokens: PublicToken[]): SwapSide[] =>
     name: t.name,
     iconPath: t.iconPath,
     decimals: t.decimals,
-    isUsd: false,
     usdPriceCents: t.priceCents,
     swapFeeBps: t.swapFeeBps,
   }));
@@ -37,11 +35,8 @@ const buildSides = (tokens: PublicToken[]): SwapSide[] =>
 const balanceFor = (
   side: SwapSide,
   balances: WalletBalancesResult,
-): number => {
-  if (side.isUsd) return balances.usdBalanceCents / 100;
-  const t = balances.tokens.find((x) => x.symbol === side.symbol);
-  return t?.balance ?? 0;
-};
+): number =>
+  balances.tokens.find((x) => x.symbol === side.symbol)?.balance ?? 0;
 
 export default function SwapForm({ tokens, balances }: Props) {
   const sides = useMemo(() => buildSides(tokens), [tokens]);
@@ -327,9 +322,7 @@ function SideCard({
         <span>
           Balance:{" "}
           <span className="font-mono text-foreground">
-            {balanceSymbol === "USD"
-              ? formatUsdFromCents(Math.round(balance * 100))
-              : `${formatTokenAmount(balance, balanceSymbol, 8)}`}
+            {formatTokenAmount(balance, balanceSymbol, 8)}
           </span>
         </span>
       </div>
@@ -367,7 +360,7 @@ function SideCard({
           )}
         </div>
       </div>
-      {side && !side.isUsd && (
+      {side && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
           <CoinIcon symbol={side.symbol} iconPath={side.iconPath} size={12} />
           {side.name}

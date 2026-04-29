@@ -20,10 +20,6 @@ interface SideContext {
   basePriceCents: number;
 }
 
-interface AppConfigRow {
-  usd_swap_fee_bps: number | string | null;
-}
-
 interface TokenRow {
   id: string;
   symbol: string;
@@ -60,25 +56,11 @@ const buildSideContext = async (
   symbol: string,
 ): Promise<SideContext> => {
   if (symbol === "USD") {
-    const { data, error } = await admin
-      .from("app_config")
-      .select("usd_swap_fee_bps")
-      .eq("id", 1)
-      .maybeSingle();
-
-    if (error) {
-      throw new ApiClientError(error.message, 500, "CONFIG_FETCH_FAILED", error);
-    }
-
-    const cfg = (data ?? null) as AppConfigRow | null;
-    return {
-      symbol: "USD",
-      tokenId: null,
-      decimals: 2,
-      swapFeeBps: toNum(cfg?.usd_swap_fee_bps),
-      coingeckoId: null,
-      basePriceCents: 100,
-    };
+    throw new ApiClientError(
+      "USD swaps are no longer supported. Both sides must be tokens.",
+      400,
+      "USD_SWAP_DISABLED",
+    );
   }
 
   const { data, error } = await admin

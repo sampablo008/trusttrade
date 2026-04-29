@@ -12,7 +12,6 @@ import {
 } from "@/lib/trades/preview-data";
 import { getBinanceUsdPrice } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { applyBalanceAdjustment } from "@/lib/transactions/adjust-balance";
 import {
   activeTradesResultSchema,
   cancelTradeResultSchema,
@@ -287,49 +286,32 @@ export const cancelTrade = async (
 
   const admin = createSupabaseAdminClient();
 
-  // Fetch trade to check 2s grace window
-  const { data: trade, error: fetchError } = await admin
-    .from("user_trades")
-    .select("id, user_id, status, started_at, stake_cents")
-    .eq("id", tradeId)
-    .eq("user_id", userId)
-    .maybeSingle();
+  const { error: rpcError } = await admin.rpc("cancel_trade", {
+    p_user_id: userId,
+    p_trade_id: tradeId,
+  });
 
-  if (fetchError) {
-    throw new ApiClientError(fetchError.message, 500, "TRADE_FETCH_FAILED", fetchError);
+  if (rpcError) {
+    const message = rpcError.message ?? "Cancel failed.";
+    const code = message.includes("TRADE_NOT_FOUND") ? "TRADE_NOT_FOUND"
+      : message.includes("TRADE_NOT_ACTIVE") ? "TRADE_NOT_ACTIVE"
+      : message.includes("CANCEL_WINDOW_EXPIRED") ? "CANCEL_WINDOW_EXPIRED"
+      : "CANCEL_FAILED";
+    const friendly: Record<string, string> = {
+      TRADE_NOT_FOUND: "Trade not found.",
+      TRADE_NOT_ACTIVE: "Trade is not active.",
+      CANCEL_WINDOW_EXPIRED: "Cancel window has expired.",
+    };
+    throw new ApiClientError(
+      friendly[code] ?? message,
+      code === "TRADE_NOT_FOUND" ? 404
+        : code === "TRADE_NOT_ACTIVE" ? 409
+        : code === "CANCEL_WINDOW_EXPIRED" ? 422
+        : 500,
+      code,
+      rpcError,
+    );
   }
-
-  if (!trade) {
-    throw new ApiClientError("Trade not found.", 404, "TRADE_NOT_FOUND");
-  }
-
-  if (trade.status !== "active") {
-    throw new ApiClientError("Trade is not active.", 409, "TRADE_NOT_ACTIVE");
-  }
-
-  const ageMs = Date.now() - new Date(trade.started_at as string).getTime();
-  if (ageMs > 2_000) {
-    throw new ApiClientError("Cancel window has expired.", 422, "CANCEL_WINDOW_EXPIRED");
-  }
-
-  const { error: updateError } = await admin
-    .from("user_trades")
-    .update({ status: "cancelled" })
-    .eq("id", tradeId)
-    .eq("user_id", userId);
-
-  if (updateError) {
-    throw new ApiClientError(updateError.message, 500, "CANCEL_FAILED", updateError);
-  }
-
-  // Refund stake. Keep this best-effort so a cancel can still complete even if
-  // the balance ledger path is temporarily unavailable.
-  await applyBalanceAdjustment(admin, {
-    deltaCents: trade.stake_cents as number,
-    memo: "Trade cancelled (grace window)",
-    unlockTradesCents: trade.stake_cents as number,
-    userId,
-  }).then(() => null, () => null);
 
   return cancelTradeResultSchema.parse({ id: tradeId });
 };
