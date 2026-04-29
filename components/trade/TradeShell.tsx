@@ -19,10 +19,14 @@ import type { UserBalance, UserTrade } from "@/types/trade";
 
 interface TradeShellProps {
   coin: TopCoin;
+  coins: TopCoin[];
+  iconPaths: Record<string, string | null | undefined>;
   token: PublicToken;
   periods: PublicTradePeriod[];
   initialBalance: UserBalance;
   initialTrades: UserTrade[];
+  tokenFreeBalance: number;
+  tokenUsdPriceCents: number;
 }
 
 const profitCentsOf = (t: UserTrade) =>
@@ -30,10 +34,14 @@ const profitCentsOf = (t: UserTrade) =>
 
 export default function TradeShell({
   coin,
+  coins,
+  iconPaths,
   token,
   periods,
   initialBalance,
   initialTrades,
+  tokenFreeBalance,
+  tokenUsdPriceCents,
 }: TradeShellProps) {
   const { setBalance, setActiveTrades } = useTradingShellStore();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -89,7 +97,14 @@ export default function TradeShell({
         </div>
 
         <div className="hidden w-full lg:block lg:w-88 lg:shrink-0">
-          <OrderTicket token={token} periods={periods} />
+          <OrderTicket
+            token={token}
+            periods={periods}
+            tokenFreeBalance={tokenFreeBalance}
+            tokenUsdPriceCents={tokenUsdPriceCents}
+            coins={coins}
+            iconPaths={iconPaths}
+          />
         </div>
       </div>
 
@@ -107,6 +122,10 @@ export default function TradeShell({
       <MobileTradeDrawer
         token={token}
         periods={periods}
+        tokenFreeBalance={tokenFreeBalance}
+        tokenUsdPriceCents={tokenUsdPriceCents}
+        coins={coins}
+        iconPaths={iconPaths}
         isOpen={drawerOpen}
         onClose={() => setDrawerOpen(false)}
       />

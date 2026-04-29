@@ -25,9 +25,6 @@ const formatMs = (ms: number): string => {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 };
 
-const formatPrice = (cents: number) =>
-  `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 export default function PositionRow({ trade, onExpire }: PositionRowProps) {
   const isLong = trade.direction === "long";
   const startMs = new Date(trade.startedAt).getTime();
@@ -91,11 +88,6 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
               </span>
             </div>
             <p className="mt-0.5 text-xs text-muted">
-              Entry{" "}
-              <span className="font-semibold text-foreground">
-                {formatPrice(trade.entryPriceCents)}
-              </span>
-              <span className="mx-1.5 opacity-25">·</span>
               Stake{" "}
               <span className="font-semibold text-foreground">
                 {formatUsdFromCents(trade.stakeCents)}

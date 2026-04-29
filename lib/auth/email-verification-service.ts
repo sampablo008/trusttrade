@@ -2,6 +2,7 @@ import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { loadIdentityByEmail } from "@/lib/account/profile-lookup";
 import { sendWelcomeEmail } from "@/lib/email/send";
+import { getAppEnv } from "@/lib/env/server";
 import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import {
   resendCodeInputSchema,
@@ -88,8 +89,12 @@ export const resendVerificationCode = async (
       console.error("[resend] verify email failed", error);
     }
   } else if (input.purpose === "password_reset") {
+    const { APP_URL } = getAppEnv();
+    const redirectTo = `${APP_URL.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(
+      `/reset-password?email=${encodeURIComponent(email)}`,
+    )}`;
     const anon = createSupabaseAnonClient();
-    const { error } = await anon.auth.resetPasswordForEmail(email);
+    const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
     if (error) {
       console.error("[resend] password reset failed", error);
     }

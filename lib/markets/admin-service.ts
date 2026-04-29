@@ -49,6 +49,12 @@ interface AdminTokenRow {
   symbol: string;
   updated_at: string;
   volatility_factor: number | string;
+  decimals: number | string | null;
+  min_deposit: number | string | null;
+  swap_fee_bps: number | string | null;
+  coingecko_id: string | null;
+  min_withdrawal: number | string | null;
+  withdraw_fee_bps: number | string | null;
 }
 
 interface AdminTradePeriodRow {
@@ -100,6 +106,12 @@ const mapAdminTokenRow = (row: AdminTokenRow): AdminToken =>
     symbol: row.symbol,
     updatedAt: toIsoZ(row.updated_at),
     volatilityFactor: Number(toNumber(row.volatility_factor).toFixed(4)),
+    decimals: row.decimals != null ? Math.round(toNumber(row.decimals)) : 8,
+    minDeposit: toNumber(row.min_deposit),
+    swapFeeBps: row.swap_fee_bps != null ? Math.round(toNumber(row.swap_fee_bps)) : 0,
+    coingeckoId: row.coingecko_id ?? null,
+    minWithdrawal: toNumber(row.min_withdrawal),
+    withdrawFeeBps: row.withdraw_fee_bps != null ? Math.round(toNumber(row.withdraw_fee_bps)) : 0,
   });
 
 const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
@@ -116,7 +128,7 @@ const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
   });
 
 const selectAdminTokenFields =
-  "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at";
+  "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at, decimals, min_deposit, swap_fee_bps, coingecko_id, min_withdrawal, withdraw_fee_bps";
 const selectAdminTradePeriodFields =
   "id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, is_enabled, created_at, updated_at";
 
@@ -161,6 +173,12 @@ export const createAdminToken = async (payload: unknown): Promise<AdminToken> =>
       shadow_symbol: input.shadowSymbol,
       symbol: input.symbol,
       volatility_factor: input.volatilityFactor,
+      decimals: input.decimals,
+      min_deposit: input.minDeposit,
+      swap_fee_bps: input.swapFeeBps,
+      coingecko_id: input.coingeckoId,
+      min_withdrawal: input.minWithdrawal,
+      withdraw_fee_bps: input.withdrawFeeBps,
     })
     .select(selectAdminTokenFields)
     .single();
@@ -193,6 +211,12 @@ export const updateAdminToken = async (id: string, payload: unknown): Promise<Ad
       shadow_symbol: input.shadowSymbol,
       symbol: input.symbol,
       volatility_factor: input.volatilityFactor,
+      decimals: input.decimals,
+      min_deposit: input.minDeposit,
+      swap_fee_bps: input.swapFeeBps,
+      coingecko_id: input.coingeckoId,
+      min_withdrawal: input.minWithdrawal,
+      withdraw_fee_bps: input.withdrawFeeBps,
     })
     .eq("id", id)
     .select(selectAdminTokenFields)

@@ -1,20 +1,36 @@
 /**
- * aggregate_candles — runs every 1 minute via Supabase pg_cron.
+ * aggregate_candles — single cron that powers all stored candle data.
  *
- * Rolls up candles_1s → candles_1m, _5m, _15m, _1h, _4h, _1d.
- * Each invocation processes the last 2 minutes of 1s candles to handle
- * any late-arriving rows from tick_candles.
+ * Runs once per minute via pg_cron. Per invocation:
+ *   1. For each enabled token with a shadow_symbol, pulls the most recent
+ *      ~10 one-minute klines from Binance and upserts them into candles_1m.
+ *   2. Rolls candles_1m → candles_5m / 15m / 1h / 4h / 1d for the same window.
+ *   3. Updates tokens.last_price_cents + last_shadow_price_cents from the
+ *      latest close, so server-side readers (placeTrade fallback, wallet,
+ *      admin) always see fresh data without any high-frequency cron.
+ *
+ * NOT in scope: candles_1s. Sub-minute charting is expected to use Binance
+ * WebSocket directly from the client; we deliberately don't store 1s bars
+ * to avoid the ~2M-writes/day cost of the previous tick_candles design.
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const BINANCE_KLINES = "https://api.binance.com/api/v3/klines";
 
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-const TIMEFRAMES: { table: string; seconds: number }[] = [
-  { table: "candles_1m", seconds: 60 },
+interface TokenRow {
+  id: string;
+  symbol: string;
+  shadow_symbol: string | null;
+  price_scale: number;
+  price_offset_cents: number;
+}
+
+const ROLLUPS: { table: string; seconds: number }[] = [
   { table: "candles_5m", seconds: 300 },
   { table: "candles_15m", seconds: 900 },
   { table: "candles_1h", seconds: 3600 },
@@ -22,95 +38,155 @@ const TIMEFRAMES: { table: string; seconds: number }[] = [
   { table: "candles_1d", seconds: 86400 },
 ];
 
-async function aggregateForToken(
-  tokenId: string,
-  lookbackSec: number,
-  tf: { table: string; seconds: number },
-): Promise<void> {
-  const since = new Date(Date.now() - lookbackSec * 1000).toISOString();
+interface OHLCV {
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
 
-  const { data: rows, error } = await db
-    .from("candles_1s")
-    .select("bucket_start, open_cents, high_cents, low_cents, close_cents, volume")
-    .eq("token_id", tokenId)
-    .gte("bucket_start", since)
-    .order("bucket_start", { ascending: true });
+function applyShadow(
+  rawCents: number,
+  scale: number,
+  offsetCents: number,
+): number {
+  return Math.max(Math.round(rawCents * scale) + offsetCents, 1);
+}
 
-  if (error || !rows?.length) return;
+async function fetchBinance1m(symbol: string, limit = 10): Promise<
+  Array<{ openTime: number; open: number; high: number; low: number; close: number; volume: number }>
+> {
+  const url = `${BINANCE_KLINES}?symbol=${encodeURIComponent(symbol)}&interval=1m&limit=${limit}`;
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(`Binance klines ${symbol} HTTP ${res.status}`);
+  const rows = (await res.json()) as Array<
+    [number, string, string, string, string, string, ...unknown[]]
+  >;
+  return rows.map((r) => ({
+    openTime: r[0],
+    open: parseFloat(r[1]),
+    high: parseFloat(r[2]),
+    low: parseFloat(r[3]),
+    close: parseFloat(r[4]),
+    volume: parseFloat(r[5]),
+  }));
+}
 
-  // Group by bucket
-  const buckets = new Map<
-    number,
-    { open: number; high: number; low: number; close: number; volume: number }
-  >();
+async function processToken(token: TokenRow): Promise<void> {
+  if (!token.shadow_symbol) return;
 
-  for (const row of rows) {
-    const t = new Date(row.bucket_start as string).getTime();
-    const bucket = Math.floor(t / (tf.seconds * 1000)) * (tf.seconds * 1000);
+  const klines = await fetchBinance1m(token.shadow_symbol, 10);
+  if (klines.length === 0) return;
 
-    const existing = buckets.get(bucket);
-    if (!existing) {
-      buckets.set(bucket, {
-        open: row.open_cents as number,
-        high: row.high_cents as number,
-        low: row.low_cents as number,
-        close: row.close_cents as number,
-        volume: Number(row.volume),
-      });
-    } else {
-      existing.high = Math.max(existing.high, row.high_cents as number);
-      existing.low = Math.min(existing.low, row.low_cents as number);
-      existing.close = row.close_cents as number;
-      existing.volume += Number(row.volume);
+  const oneMinuteRows = klines.map((k) => ({
+    bucket_start: new Date(k.openTime).toISOString(),
+    open_cents: applyShadow(Math.round(k.open * 100), token.price_scale, token.price_offset_cents),
+    high_cents: applyShadow(Math.round(k.high * 100), token.price_scale, token.price_offset_cents),
+    low_cents: applyShadow(Math.round(k.low * 100), token.price_scale, token.price_offset_cents),
+    close_cents: applyShadow(Math.round(k.close * 100), token.price_scale, token.price_offset_cents),
+    volume: k.volume,
+    token_id: token.id,
+    source: "binance",
+  }));
+
+  const { error: upsert1mErr } = await db
+    .from("candles_1m")
+    .upsert(oneMinuteRows, { onConflict: "token_id,bucket_start" });
+  if (upsert1mErr) {
+    console.error(`[aggregate_candles] candles_1m upsert ${token.symbol}:`, upsert1mErr.message);
+    return;
+  }
+
+  // Roll up to higher timeframes from the same in-memory window.
+  for (const tf of ROLLUPS) {
+    const buckets = new Map<number, OHLCV>();
+    for (const row of oneMinuteRows) {
+      const t = new Date(row.bucket_start).getTime();
+      const bucketMs = Math.floor(t / (tf.seconds * 1000)) * (tf.seconds * 1000);
+      const existing = buckets.get(bucketMs);
+      if (!existing) {
+        buckets.set(bucketMs, {
+          open: row.open_cents,
+          high: row.high_cents,
+          low: row.low_cents,
+          close: row.close_cents,
+          volume: row.volume,
+        });
+      } else {
+        existing.high = Math.max(existing.high, row.high_cents);
+        existing.low = Math.min(existing.low, row.low_cents);
+        existing.close = row.close_cents;
+        existing.volume += row.volume;
+      }
+    }
+
+    if (buckets.size === 0) continue;
+
+    const rollupRows = Array.from(buckets.entries()).map(([bucketMs, o]) => ({
+      bucket_start: new Date(bucketMs).toISOString(),
+      open_cents: o.open,
+      high_cents: o.high,
+      low_cents: o.low,
+      close_cents: o.close,
+      volume: o.volume,
+      token_id: token.id,
+      source: "binance",
+    }));
+
+    const { error: tfErr } = await db
+      .from(tf.table)
+      .upsert(rollupRows, { onConflict: "token_id,bucket_start" });
+    if (tfErr) {
+      console.error(`[aggregate_candles] ${tf.table} upsert ${token.symbol}:`, tfErr.message);
     }
   }
 
-  if (!buckets.size) return;
-
-  const upsertRows = Array.from(buckets.entries()).map(([bucketMs, ohlcv]) => ({
-    bucket_start: new Date(bucketMs).toISOString(),
-    close_cents: ohlcv.close,
-    high_cents: ohlcv.high,
-    low_cents: ohlcv.low,
-    open_cents: ohlcv.open,
-    source: "aggregate",
-    token_id: tokenId,
-    volume: ohlcv.volume,
-  }));
-
-  const { error: upsertError } = await db
-    .from(tf.table)
-    .upsert(upsertRows, { onConflict: "token_id,bucket_start" });
-
-  if (upsertError) {
-    console.error(`[aggregate_candles] ${tf.table} upsert failed for ${tokenId}:`, upsertError.message);
-  }
+  // Refresh tokens.last_price_cents / last_shadow_price_cents from the latest close.
+  const lastClose = oneMinuteRows[oneMinuteRows.length - 1].close_cents;
+  const nowIso = new Date().toISOString();
+  await db
+    .from("tokens")
+    .update({
+      last_price_cents: lastClose,
+      last_price_at: nowIso,
+      last_shadow_price_cents: lastClose,
+      last_shadow_at: nowIso,
+    })
+    .eq("id", token.id);
 }
 
 Deno.serve(async () => {
-  const { data: tokens, error } = await db
-    .from("tokens")
-    .select("id, symbol")
-    .eq("is_enabled", true);
+  try {
+    const { data: tokens, error } = await db
+      .from("tokens")
+      .select("id, symbol, shadow_symbol, price_scale, price_offset_cents")
+      .eq("is_enabled", true)
+      .in("feed_source", ["shadow", "replay"]);
 
-  if (error) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
-  }
-
-  const tokenIds = (tokens ?? []).map((t) => t.id as string);
-  const tasks: Promise<void>[] = [];
-
-  for (const tokenId of tokenIds) {
-    for (const tf of TIMEFRAMES) {
-      const lookback = tf.seconds * 3;
-      tasks.push(aggregateForToken(tokenId, lookback, tf));
+    if (error) {
+      return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
+
+    const results = await Promise.allSettled(
+      (tokens ?? []).map((t) => processToken(t as TokenRow)),
+    );
+    const failed = results.filter((r) => r.status === "rejected").length;
+
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        tokens: tokens?.length ?? 0,
+        failed,
+        at: new Date().toISOString(),
+      }),
+      { headers: { "Content-Type": "application/json" } },
+    );
+  } catch (err) {
+    console.error("[aggregate_candles] error:", err);
+    return new Response(JSON.stringify({ ok: false, error: String(err) }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
-
-  await Promise.allSettled(tasks);
-
-  return new Response(
-    JSON.stringify({ ok: true, tokens: tokenIds.length, timeframes: TIMEFRAMES.length }),
-    { headers: { "Content-Type": "application/json" } },
-  );
 });

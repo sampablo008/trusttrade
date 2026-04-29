@@ -1,21 +1,22 @@
 import { Gift, History } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import BonusTicketsView from "@/components/wallet/BonusTicketsView";
+import TokenBalancesPanel from "@/components/wallet/TokenBalancesPanel";
 import WalletHero from "@/components/wallet/WalletHero";
 import WalletHistoryList from "@/components/wallet/WalletHistoryList";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { listBonusTickets } from "@/lib/bonus/service";
 import { listUserDeposits } from "@/lib/deposits/service";
-import { getBalance } from "@/lib/trades/service";
 import { listTransactions } from "@/lib/transactions/service";
 import { formatUsdFromCents } from "@/lib/utils/format";
+import { getWalletBalances } from "@/lib/wallet-balances/service";
 import { listUserWithdrawals } from "@/lib/withdrawals/service";
 
 export default async function WalletPage() {
   const { userId } = await assertUserApi();
 
-  const [balance, depositsResult, withdrawalsResult, bonusResult, txResult] = await Promise.all([
-    getBalance(userId),
+  const [balances, depositsResult, withdrawalsResult, bonusResult, txResult] = await Promise.all([
+    getWalletBalances(userId),
     listUserDeposits(userId),
     listUserWithdrawals(userId),
     listBonusTickets(userId),
@@ -26,11 +27,13 @@ export default async function WalletPage() {
     <AppShell>
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <WalletHero
-          balanceCents={balance.balanceCents}
-          lockedInTradesCents={balance.lockedInTradesCents}
-          lockedBonusCents={balance.lockedBonusCents}
-          withdrawableCents={balance.withdrawableCents}
+          balanceCents={balances.totalUsdValueCents}
+          lockedInTradesCents={balances.totalUsdValueCents - balances.totalFreeUsdValueCents}
+          lockedBonusCents={balances.lockedBonusCents}
+          withdrawableCents={balances.totalFreeUsdValueCents}
         />
+
+        <TokenBalancesPanel balances={balances} />
 
         <div className="grid gap-6 lg:grid-cols-2">
           <WalletHistoryList

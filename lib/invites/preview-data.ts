@@ -324,12 +324,15 @@ export const createPreviewInvitedUser = ({
   previewUsersByEmail.set(normalizedEmail, createdUser);
   previewUsersByUsername.set(normalizedUsername, createdUser);
 
+  const consumedAt = new Date().toISOString();
+
   previewInvites.set(
     normalizedCode,
     createPreviewInvite({
       ...invite,
-      lastUsedAt: new Date().toISOString(),
-      status: invite.isSingleUse ? "used" : "active",
+      lastUsedAt: consumedAt,
+      revokedAt: invite.isSingleUse ? consumedAt : invite.revokedAt,
+      status: invite.isSingleUse ? "revoked" : "active",
       usedCount: invite.usedCount + 1,
     }),
   );

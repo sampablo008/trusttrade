@@ -1,6 +1,7 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { sendPasswordChangedEmail } from "@/lib/email/send";
+import { getAppEnv } from "@/lib/env/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import {
@@ -19,8 +20,13 @@ export const requestPasswordReset = async (
   const input = forgotPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
 
+  const { APP_URL } = getAppEnv();
+  const redirectTo = `${APP_URL.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(
+    `/reset-password?email=${encodeURIComponent(email)}`,
+  )}`;
+
   const anon = createSupabaseAnonClient();
-  const { error } = await anon.auth.resetPasswordForEmail(email);
+  const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) {
     // Always return ok to avoid enumeration; log for observability.
     console.error("[password-reset] email send failed", error);

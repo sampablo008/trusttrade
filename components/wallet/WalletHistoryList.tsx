@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
 import TransactionStatusPill from "@/components/wallet/TransactionStatusPill";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 
 interface HistoryItem {
   id: string;
   tokenSymbol: string;
   network: string;
+  amount?: number | null;
   amountCents: number;
   status: string;
   createdAt: string;
@@ -84,7 +85,9 @@ export default function WalletHistoryList({
               </div>
               <div className="ml-auto flex flex-col items-end gap-1">
                 <span className="font-mono text-sm font-semibold tabular-nums text-foreground">
-                  {formatUsdFromCents(item.amountCents)}
+                  {item.amount != null && item.amount > 0
+                    ? formatTokenAmount(item.amount, item.tokenSymbol)
+                    : formatUsdFromCents(item.amountCents)}
                 </span>
                 <TransactionStatusPill status={item.status} />
               </div>

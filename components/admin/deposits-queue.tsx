@@ -8,8 +8,13 @@ import {
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { Deposit, DepositStatus } from "@/types/deposit";
+
+const formatDepositAmount = (deposit: Deposit) =>
+  deposit.amount != null && deposit.amount > 0
+    ? formatTokenAmount(deposit.amount, deposit.tokenSymbol)
+    : formatUsdFromCents(deposit.amountCents);
 
 const STATUS_COLORS: Record<DepositStatus, string> = {
   pending: "bg-yellow-400/15 text-yellow-400",
@@ -49,7 +54,11 @@ export default function DepositsQueue({ initialDeposits }: Props) {
 
   const openApprove = (deposit: Deposit) => {
     setApproveTarget(deposit);
-    setApproveAmount((deposit.amountCents / 100).toFixed(2));
+    setApproveAmount(
+      deposit.amount != null && deposit.amount > 0
+        ? String(deposit.amount)
+        : (deposit.amountCents / 100).toFixed(2),
+    );
     setApproveNote("");
     setError(null);
   };
@@ -67,7 +76,6 @@ export default function DepositsQueue({ initialDeposits }: Props) {
       setError("Enter an amount greater than zero.");
       return;
     }
-    const amountCents = Math.round(parsed * 100);
     const id = approveTarget.id;
     toggleBusy(id, true);
     setError(null);
@@ -75,7 +83,7 @@ export default function DepositsQueue({ initialDeposits }: Props) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        amountCents,
+        amount: parsed,
         note: approveNote.trim() || undefined,
       }),
     });
@@ -181,7 +189,7 @@ export default function DepositsQueue({ initialDeposits }: Props) {
                   {deposit.tokenSymbol} · {deposit.network}
                 </td>
                 <td className="px-4 py-4 text-sm font-semibold text-foreground">
-                  {formatUsdFromCents(deposit.amountCents)}
+                  {formatDepositAmount(deposit)}
                 </td>
                 <td className="px-4 py-4 font-mono text-xs text-muted">
                   {deposit.txHash ? `${deposit.txHash.slice(0, 12)}…` : "—"}
@@ -254,26 +262,26 @@ export default function DepositsQueue({ initialDeposits }: Props) {
           <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
             <h3 className="font-display text-2xl text-foreground">Approve deposit</h3>
             <p className="mt-2 text-sm text-muted">
-              Confirm the amount to credit to the user&apos;s balance. Submitted:{" "}
+              Confirm the {approveTarget.tokenSymbol} amount to credit. Submitted:{" "}
               <span className="font-semibold text-foreground">
-                {formatUsdFromCents(approveTarget.amountCents)}
+                {formatDepositAmount(approveTarget)}
               </span>
               .
             </p>
 
             <label className="mt-5 block text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Amount (USD)
+              Amount ({approveTarget.tokenSymbol})
             </label>
             <div className="mt-2 flex items-center gap-2 rounded-[12px] border border-border bg-background/30 px-4 py-3">
-              <span className="text-sm text-muted">$</span>
               <input
                 type="number"
                 min="0"
-                step="0.01"
+                step="any"
                 value={approveAmount}
                 onChange={(e) => setApproveAmount(e.target.value)}
                 className="flex-1 bg-transparent text-sm text-foreground outline-none"
               />
+              <span className="text-sm text-muted">{approveTarget.tokenSymbol}</span>
             </div>
 
             <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.22em] text-muted">

@@ -6,6 +6,7 @@ export interface Deposit {
   tokenId: string;
   tokenSymbol: string;
   network: string;
+  amount: number | null;
   amountCents: number;
   proofPath: string;
   txHash: string | null;
@@ -19,7 +20,7 @@ export interface Deposit {
 export interface SubmitDepositInput {
   tokenSymbol: string;
   network: string;
-  amountCents: number;
+  amount: number;
   proofPath: string;
   txHash?: string;
 }

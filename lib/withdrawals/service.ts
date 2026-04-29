@@ -17,9 +17,13 @@ import {
 interface WithdrawalRow {
   id: string;
   user_id: string;
-  amount_cents: number | bigint;
+  token_id: string | null;
+  amount: number | string | null;
+  fee_amount: number | string | null;
+  net_amount: number | string | null;
+  amount_cents: number | bigint | null;
   fee_cents: number | bigint;
-  net_amount_cents: number | bigint;
+  net_amount_cents: number | bigint | null;
   token_symbol: string;
   network: string;
   destination_address: string;
@@ -34,9 +38,10 @@ interface WithdrawalRow {
   created_at: string;
 }
 
-const toNum = (v: number | bigint | null | undefined): number => {
+const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
   if (typeof v === "bigint") return Number(v);
+  if (typeof v === "string") return Number(v);
   return v;
 };
 
@@ -44,6 +49,10 @@ const mapRow = (row: WithdrawalRow): Withdrawal =>
   withdrawalSchema.parse({
     id: row.id,
     userId: row.user_id,
+    tokenId: row.token_id,
+    amount: row.amount != null ? toNum(row.amount) : null,
+    feeAmount: row.fee_amount != null ? toNum(row.fee_amount) : null,
+    netAmount: row.net_amount != null ? toNum(row.net_amount) : null,
     amountCents: toNum(row.amount_cents),
     feeCents: toNum(row.fee_cents),
     netAmountCents: toNum(row.net_amount_cents),
@@ -61,7 +70,8 @@ const mapRow = (row: WithdrawalRow): Withdrawal =>
     createdAt: row.created_at,
   });
 
-const SELECT = "id, user_id, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at";
+const SELECT =
+  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at";
 
 export const listUserWithdrawals = async (userId: string): Promise<WithdrawalsResult> => {
   if (!getOptionalServerEnv()) {
@@ -96,10 +106,21 @@ export const requestWithdrawal = async (
   }
 
   const admin = createSupabaseAdminClient();
+
+  const { data: tokenRow, error: tokenErr } = await admin
+    .from("tokens")
+    .select("id")
+    .eq("symbol", input.tokenSymbol.toUpperCase())
+    .maybeSingle();
+
+  if (tokenErr || !tokenRow) {
+    throw new ApiClientError("Token not found.", 404, "TOKEN_NOT_FOUND");
+  }
+
   const { data, error } = await admin.rpc("request_withdrawal", {
     p_user_id: userId,
-    p_amount_cents: input.amountCents,
-    p_token_symbol: input.tokenSymbol,
+    p_token_id: tokenRow.id,
+    p_amount: input.amount,
     p_network: input.network,
     p_destination_address: input.destinationAddress,
   });
@@ -108,8 +129,10 @@ export const requestWithdrawal = async (
     const msg = error.message ?? "Withdrawal failed.";
     const code = msg.includes("DEST_REQUIRED") ? "DEST_REQUIRED"
       : msg.includes("BELOW_MIN_WITHDRAW") ? "BELOW_MIN_WITHDRAW"
-      : msg.includes("INSUFFICIENT_WITHDRAWABLE") ? "INSUFFICIENT_WITHDRAWABLE"
+      : msg.includes("INSUFFICIENT_TOKEN_BALANCE") ? "INSUFFICIENT_TOKEN_BALANCE"
       : msg.includes("FEE_EXCEEDS_AMOUNT") ? "FEE_EXCEEDS_AMOUNT"
+      : msg.includes("AMOUNT_INVALID") ? "AMOUNT_INVALID"
+      : msg.includes("TOKEN_NOT_FOUND") ? "TOKEN_NOT_FOUND"
       : "INTERNAL_ERROR";
     throw new ApiClientError(msg, 422, code, error);
   }

@@ -37,6 +37,18 @@ export const bulkSettleInputSchema = z.object({
   tradeIds: z.array(z.string().uuid()).min(1).max(200),
 });
 
+export const adminTokenBalanceSchema = z.object({
+  tokenId: z.string().uuid(),
+  symbol: z.string(),
+  name: z.string(),
+  iconPath: z.string().nullable(),
+  decimals: z.number().int().nonnegative(),
+  balance: z.number(),
+  lockedBalance: z.number(),
+  usdPriceCents: z.number().int().nonnegative(),
+  usdValueCents: z.number().int().nonnegative(),
+});
+
 export const adminUserSchema = z.object({
   avatarPath: z.string().nullable(),
   balanceCents: z.number().int().nonnegative(),
@@ -52,6 +64,7 @@ export const adminUserSchema = z.object({
   totalStakeCents: z.number().int().nonnegative(),
   userId: z.string().uuid(),
   username: z.string(),
+  tokenBalances: z.array(adminTokenBalanceSchema).optional(),
 });
 
 export const adminUserListResultSchema = z.object({
@@ -71,6 +84,12 @@ export const setForcedOutcomeInputSchema = z.object({
 
 export const adjustBalanceInputSchema = z.object({
   deltaCents: z.number().int().refine((v) => v !== 0, "Delta must be non-zero"),
+  note: z.string().min(3).max(500),
+});
+
+export const adjustTokenBalanceInputSchema = z.object({
+  tokenId: z.string().uuid(),
+  deltaAmount: z.number().refine((v) => v !== 0, "Delta must be non-zero"),
   note: z.string().min(3).max(500),
 });
 

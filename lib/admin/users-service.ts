@@ -1,18 +1,22 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
+import { getBinanceUsdPrices } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { applyBalanceAdjustment } from "@/lib/transactions/adjust-balance";
 import {
   adjustBalanceInputSchema,
+  adjustTokenBalanceInputSchema,
   adminUserListResultSchema,
   adminUserSchema,
   freezeUserInputSchema,
   setForcedOutcomeInputSchema,
 } from "@/schemas/admin";
 import type {
+  AdminTokenBalance,
   AdminUser,
   AdminUserListResult,
   AdjustBalanceInput,
+  AdjustTokenBalanceInput,
   FreezeUserInput,
   SetForcedOutcomeInput,
 } from "@/types/admin";
@@ -46,7 +50,11 @@ interface UserRow {
 const PROFILE_SELECT =
   "user_id, email, role, username, display_name, avatar_path, is_frozen, forced_outcome, created_at, user_balances(balance_cents, locked_in_trades_cents, locked_bonus_cents)";
 
-const mapUserRow = (row: UserRow, stats?: { total: number; stake: number }): AdminUser =>
+const mapUserRow = (
+  row: UserRow,
+  stats?: { total: number; stake: number },
+  tokenBalances?: AdminTokenBalance[],
+): AdminUser =>
   adminUserSchema.parse({
     avatarPath: row.avatar_path ?? null,
     balanceCents: toNumber(row.user_balances?.balance_cents),
@@ -62,6 +70,7 @@ const mapUserRow = (row: UserRow, stats?: { total: number; stake: number }): Adm
     totalStakeCents: stats?.stake ?? 0,
     userId: row.user_id,
     username: row.username,
+    tokenBalances: tokenBalances ?? undefined,
   });
 
 const ensureUserBalanceRow = async (
@@ -124,21 +133,86 @@ export const getAdminUser = async (userId: string): Promise<AdminUser> => {
   if (error) throw new ApiClientError(error.message, 500, "USER_FETCH_FAILED", error);
   if (!data) throw new ApiClientError("User not found.", 404, "USER_NOT_FOUND");
 
-  // Get trade stats
-  const { data: statsData } = await admin
-    .from("user_trades")
-    .select("stake_cents")
-    .eq("user_id", userId)
-    .eq("status", "settled");
+  const [statsRes, tokenBalancesRes, tokensRes] = await Promise.all([
+    admin
+      .from("user_trades")
+      .select("stake_cents")
+      .eq("user_id", userId)
+      .eq("status", "settled"),
+    admin
+      .from("user_token_balances")
+      .select("token_id, balance, locked_balance")
+      .eq("user_id", userId),
+    admin
+      .from("tokens")
+      .select("id, symbol, name, icon_path, decimals, shadow_symbol, base_price_cents")
+      .eq("is_enabled", true)
+      .order("symbol"),
+  ]);
 
-  const stats = statsData
+  const stats = statsRes.data
     ? {
-        stake: statsData.reduce((s, r) => s + toNumber(r.stake_cents), 0),
-        total: statsData.length,
+        stake: statsRes.data.reduce((s, r) => s + toNumber(r.stake_cents), 0),
+        total: statsRes.data.length,
       }
     : { stake: 0, total: 0 };
 
-  return mapUserRow(data as unknown as UserRow, stats);
+  const balanceByTokenId = new Map<string, { balance: number; locked: number }>();
+  for (const row of (tokenBalancesRes.data ?? []) as Array<{
+    token_id: string;
+    balance: number | string;
+    locked_balance: number | string | null;
+  }>) {
+    balanceByTokenId.set(row.token_id, {
+      balance: toNumber(row.balance),
+      locked: toNumber(row.locked_balance),
+    });
+  }
+
+  const tokens = (tokensRes.data ?? []) as Array<{
+    id: string;
+    symbol: string;
+    name: string;
+    icon_path: string | null;
+    decimals: number | string | null;
+    shadow_symbol: string | null;
+    base_price_cents: number | string;
+  }>;
+
+  const shadowSymbols = tokens
+    .map((t) => t.shadow_symbol)
+    .filter((s): s is string => Boolean(s));
+  let prices: Record<string, number> = {};
+  try {
+    prices = await getBinanceUsdPrices(shadowSymbols);
+  } catch {
+    prices = {};
+  }
+
+  const tokenBalances: AdminTokenBalance[] = tokens.map((t) => {
+    const bal = balanceByTokenId.get(t.id) ?? { balance: 0, locked: 0 };
+    const livePriceUsd = t.shadow_symbol ? prices[t.shadow_symbol] : undefined;
+    const usdPriceCents =
+      livePriceUsd != null
+        ? Math.round(livePriceUsd * 100)
+        : Math.round(toNumber(t.base_price_cents));
+    const usdValueCents = Math.round((bal.balance + bal.locked) * usdPriceCents);
+    return {
+      tokenId: t.id,
+      symbol: t.symbol,
+      name: t.name,
+      iconPath: t.icon_path ?? null,
+      decimals: t.decimals != null ? Math.round(toNumber(t.decimals)) : 8,
+      balance: bal.balance,
+      lockedBalance: bal.locked,
+      usdPriceCents,
+      usdValueCents,
+    };
+  });
+
+  tokenBalances.sort((a, b) => b.usdValueCents - a.usdValueCents);
+
+  return mapUserRow(data as unknown as UserRow, stats, tokenBalances);
 };
 
 export const setForcedOutcome = async (
@@ -222,6 +296,49 @@ export const adjustBalance = async (
     target_id: userId,
     target_type: "user_balances",
   });
+
+  return getAdminUser(userId);
+};
+
+export const adjustTokenBalance = async (
+  userId: string,
+  input: unknown,
+  adminId: string,
+): Promise<AdminUser> => {
+  const parsed = adjustTokenBalanceInputSchema.parse(input) as AdjustTokenBalanceInput;
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("admin_adjust_token_balance", {
+    p_user_id: userId,
+    p_token_id: parsed.tokenId,
+    p_delta: parsed.deltaAmount,
+    p_note: parsed.note,
+    p_admin_id: adminId,
+  });
+
+  if (error) {
+    const message = error.message ?? "Token balance adjustment failed.";
+    const code =
+      message.includes("DELTA_ZERO") ? "DELTA_ZERO"
+      : message.includes("NOTE_REQUIRED") ? "NOTE_REQUIRED"
+      : message.includes("TOKEN_NOT_FOUND") ? "TOKEN_NOT_FOUND"
+      : message.includes("NEGATIVE_BALANCE") ? "NEGATIVE_BALANCE"
+      : "TOKEN_BALANCE_ADJUST_FAILED";
+
+    const friendly: Record<string, string> = {
+      DELTA_ZERO: "Adjustment amount must be non-zero.",
+      NOTE_REQUIRED: "A reason note is required.",
+      TOKEN_NOT_FOUND: "Token not found.",
+      NEGATIVE_BALANCE: "Adjustment would make the token balance negative.",
+    };
+
+    throw new ApiClientError(
+      friendly[code] ?? message,
+      code === "NEGATIVE_BALANCE" ? 422 : 400,
+      code,
+      error,
+    );
+  }
 
   return getAdminUser(userId);
 };

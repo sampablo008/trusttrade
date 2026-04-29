@@ -10,6 +10,7 @@ import {
   previewCancelTrade,
   previewPlaceTrade,
 } from "@/lib/trades/preview-data";
+import { getBinanceUsdPrice } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { applyBalanceAdjustment } from "@/lib/transactions/adjust-balance";
 import {
@@ -83,7 +84,7 @@ const mapTradeRow = (row: TradeRow): UserTrade =>
   });
 
 const TRADE_SELECT =
-  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens(symbol)";
+  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens!token_id(symbol)";
 
 export const listActiveTrades = async (userId: string): Promise<ActiveTradesResult> => {
   if (!getOptionalServerEnv()) {
@@ -175,24 +176,99 @@ export const placeTrade = async (
   }
 
   const admin = createSupabaseAdminClient();
+
+  // Resolve a fresh USD price at trade time via Binance REST (same source
+  // as the chart UI). DB-cached columns are a defensive fallback only —
+  // we don't trust them for execution because they depend on edge-function
+  // crons that may be stale or NULL.
+  const { data: tokenRow } = await admin
+    .from("tokens")
+    .select("shadow_symbol, last_price_cents, last_shadow_price_cents, base_price_cents")
+    .eq("id", parsed.tokenId)
+    .maybeSingle();
+
+  const t = tokenRow as {
+    shadow_symbol?: string | null;
+    last_price_cents?: number | null;
+    last_shadow_price_cents?: number | null;
+    base_price_cents?: number | null;
+  } | null;
+
+  let livePriceCents = 0;
+  if (t?.shadow_symbol) {
+    try {
+      const usd = await getBinanceUsdPrice(t.shadow_symbol);
+      if (usd != null && usd > 0) {
+        livePriceCents = Math.round(usd * 100);
+      }
+    } catch {
+      // Swallow — DB function will fall back to its own chain.
+    }
+  }
+
+  // Opportunistically warm the cached column so other readers (charts,
+  // wallet, admin dashboards) see fresh data without a Binance roundtrip.
+  if (livePriceCents > 0) {
+    void admin
+      .from("tokens")
+      .update({
+        last_shadow_price_cents: livePriceCents,
+        last_shadow_at: new Date().toISOString(),
+      })
+      .eq("id", parsed.tokenId)
+      .then(() => null, () => null);
+  }
+
+  const lockPriceCents =
+    livePriceCents > 0
+      ? livePriceCents
+      : t?.last_price_cents && t.last_price_cents > 0
+        ? t.last_price_cents
+        : t?.last_shadow_price_cents && t.last_shadow_price_cents > 0
+          ? t.last_shadow_price_cents
+          : 0;
+
   const { data, error } = await admin.rpc("place_trade", {
     p_user_id: userId,
     p_token_id: parsed.tokenId,
     p_period_id: parsed.periodId,
     p_direction: parsed.direction,
     p_amount_cents: parsed.amountCents,
+    p_lock_price_usd_cents: lockPriceCents > 0 ? lockPriceCents : null,
   });
 
   if (error) {
     const message = error.message ?? "Place trade failed.";
     const code = message.includes("TRADING_FROZEN") ? "TRADING_FROZEN"
       : message.includes("TOKEN_UNAVAILABLE") ? "TOKEN_UNAVAILABLE"
+      : message.includes("STABLE_NOT_TRADEABLE") ? "STABLE_NOT_TRADEABLE"
+      : message.includes("USDT_TOKEN_MISSING") ? "USDT_TOKEN_MISSING"
       : message.includes("PERIOD_UNAVAILABLE") ? "PERIOD_UNAVAILABLE"
       : message.includes("AMOUNT_OUT_OF_RANGE") ? "AMOUNT_OUT_OF_RANGE"
-      : message.includes("INSUFFICIENT_FUNDS") ? "INSUFFICIENT_FUNDS"
+      : message.includes("INSUFFICIENT_USDT_BALANCE") ? "INSUFFICIENT_USDT_BALANCE"
+      : message.includes("INSUFFICIENT_TOKEN_BALANCE") ? "INSUFFICIENT_TOKEN_BALANCE"
+      : message.includes("TOKEN_PRICE_UNAVAILABLE") ? "TOKEN_PRICE_UNAVAILABLE"
+      : message.includes("STAKE_TOO_SMALL") ? "STAKE_TOO_SMALL"
       : "INTERNAL_ERROR";
 
-    throw new ApiClientError(message, code === "INSUFFICIENT_FUNDS" ? 422 : 400, code, error);
+    const friendlyMessages: Record<string, string> = {
+      TRADING_FROZEN: "Trading is currently paused. Please try again later.",
+      TOKEN_UNAVAILABLE: "This token is not available for trading.",
+      STABLE_NOT_TRADEABLE: "Stablecoins cannot be traded.",
+      PERIOD_UNAVAILABLE: "This trade duration is not available.",
+      AMOUNT_OUT_OF_RANGE: "Amount is outside the allowed range for this period.",
+      INSUFFICIENT_USDT_BALANCE: "Insufficient balance to cover this trade.",
+      INSUFFICIENT_TOKEN_BALANCE: "Insufficient token balance to cover this trade. Check your available balance and try a smaller amount.",
+      TOKEN_PRICE_UNAVAILABLE: "No live price available for this token. Please try again.",
+      STAKE_TOO_SMALL: "Trade amount is too small.",
+    };
+
+    throw new ApiClientError(
+      friendlyMessages[code] ?? message,
+      code === "INSUFFICIENT_USDT_BALANCE" || code === "INSUFFICIENT_TOKEN_BALANCE" ? 422 : 400,
+      code,
+      error,
+    );
   }
 
   // Fetch the full trade with token symbol

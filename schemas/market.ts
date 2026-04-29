@@ -13,6 +13,11 @@ export const publicTokenSchema = z.object({
   shadowOffsetPercent: z.number(),
   symbol: z.string().regex(/^[A-Z0-9]{2,12}$/),
   volumeLabel: z.string().min(1),
+  decimals: z.number().int().min(0).max(30).default(8),
+  minDeposit: z.number().nonnegative().default(0),
+  swapFeeBps: z.number().int().nonnegative().default(0),
+  minWithdrawal: z.number().nonnegative().default(0),
+  withdrawFeeBps: z.number().int().nonnegative().default(0),
 });
 
 export const publicTokensResultSchema = z.object({
@@ -79,6 +84,12 @@ export const adminTokenSchema = z.object({
   symbol: z.string().trim().toUpperCase().regex(/^[A-Z0-9]{2,12}$/),
   updatedAt: z.string().datetime(),
   volatilityFactor: z.number().positive(),
+  decimals: z.number().int().min(0).max(30),
+  minDeposit: z.number().nonnegative(),
+  swapFeeBps: z.number().int().min(0).max(5000),
+  coingeckoId: z.string().nullable(),
+  minWithdrawal: z.number().nonnegative(),
+  withdrawFeeBps: z.number().int().min(0).max(5000),
 });
 
 export const adminTokensResultSchema = z.object({
@@ -105,6 +116,18 @@ export const upsertAdminTokenInputSchema = z.object({
     .toUpperCase()
     .regex(/^[A-Z0-9]{2,12}$/, "Symbol format is invalid."),
   volatilityFactor: z.coerce.number().positive("Volatility must be positive."),
+  decimals: z.coerce.number().int().min(0).max(30).default(8),
+  minDeposit: z.coerce.number().nonnegative().default(0),
+  swapFeeBps: z.coerce.number().int().min(0).max(5000).default(100),
+  coingeckoId: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[a-z0-9-]+$/, "CoinGecko id must be lowercase letters, numbers, or dashes.")
+    .nullable(),
+  minWithdrawal: z.coerce.number().nonnegative().default(0),
+  withdrawFeeBps: z.coerce.number().int().min(0).max(5000).default(0),
 });
 
 export const deleteAdminTokenResultSchema = z.object({

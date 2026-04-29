@@ -9,8 +9,13 @@ import {
   RefreshCw,
   Flag,
 } from "lucide-react";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { Withdrawal, WithdrawalStatus } from "@/types/withdrawal";
+
+const formatWithdrawalAmount = (w: Withdrawal) =>
+  w.amount != null && w.amount > 0
+    ? formatTokenAmount(w.amount, w.tokenSymbol)
+    : formatUsdFromCents(w.amountCents);
 
 const STATUS_BADGE: Record<WithdrawalStatus, string> = {
   pending: "bg-yellow-400/15 text-yellow-400",
@@ -192,7 +197,7 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
                   {w.userId.slice(0, 8)}…
                 </td>
                 <td className="px-4 py-4 text-sm font-semibold text-foreground">
-                  {formatUsdFromCents(w.amountCents)}
+                  {formatWithdrawalAmount(w)}
                 </td>
                 <td className="px-4 py-4 text-sm text-foreground">
                   {w.tokenSymbol} · {w.network}

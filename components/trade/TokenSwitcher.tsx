@@ -24,9 +24,12 @@ export default function TokenSwitcher({ coins, iconPaths = {} }: TokenSwitcherPr
     }
   };
 
+  // Stablecoins are not chartable — they fund trades but are not bet-able underlyings.
+  const tradeable = coins.filter((c) => c.symbol !== "USDT" && c.symbol !== "USDC");
+
   return (
     <div className="flex gap-1.5 overflow-x-auto pb-1">
-      {coins.map((coin) => {
+      {tradeable.map((coin) => {
         const active = coin.symbol === currentSymbol;
         return (
           <button

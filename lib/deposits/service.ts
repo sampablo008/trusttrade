@@ -18,7 +18,8 @@ interface DepositRow {
   user_id: string;
   token_id: string;
   network: string;
-  amount_cents: number | bigint;
+  amount: number | string | null;
+  amount_cents: number | bigint | null;
   proof_path: string;
   tx_hash: string | null;
   status: string;
@@ -29,9 +30,10 @@ interface DepositRow {
   tokens?: { symbol: string } | { symbol: string }[] | null;
 }
 
-const toNum = (v: number | bigint | null | undefined): number => {
+const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
   if (typeof v === "bigint") return Number(v);
+  if (typeof v === "string") return Number(v);
   return v;
 };
 
@@ -48,6 +50,7 @@ const mapDepositRow = (row: DepositRow): Deposit =>
     tokenId: row.token_id,
     tokenSymbol: resolveSymbol(row.tokens),
     network: row.network,
+    amount: row.amount != null ? toNum(row.amount) : null,
     amountCents: toNum(row.amount_cents),
     proofPath: row.proof_path,
     txHash: row.tx_hash ?? null,
@@ -58,7 +61,8 @@ const mapDepositRow = (row: DepositRow): Deposit =>
     createdAt: row.created_at,
   });
 
-const DEPOSIT_SELECT = "id, user_id, token_id, network, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol)";
+const DEPOSIT_SELECT =
+  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol)";
 
 export const listUserDeposits = async (userId: string): Promise<DepositsResult> => {
   if (!getOptionalServerEnv()) {
@@ -94,7 +98,7 @@ export const submitDeposit = async (
 
   const { data: tokenRow, error: tokenErr } = await admin
     .from("tokens")
-    .select("id")
+    .select("id, min_deposit")
     .eq("symbol", input.tokenSymbol.toUpperCase())
     .maybeSingle();
 
@@ -102,11 +106,20 @@ export const submitDeposit = async (
     throw new ApiClientError("Token not found.", 404, "TOKEN_NOT_FOUND");
   }
 
+  const minDeposit = toNum(tokenRow.min_deposit as number | string | null);
+  if (input.amount < minDeposit) {
+    throw new ApiClientError(
+      `Amount is below the minimum deposit (${minDeposit} ${input.tokenSymbol.toUpperCase()}).`,
+      422,
+      "AMOUNT_BELOW_MIN",
+    );
+  }
+
   const { data, error } = await admin.rpc("submit_deposit", {
     p_user_id: userId,
     p_token_id: tokenRow.id,
     p_network: input.network,
-    p_amount_cents: input.amountCents,
+    p_amount: input.amount,
     p_proof_path: input.proofPath,
     p_tx_hash: input.txHash ?? null,
   });
@@ -121,7 +134,6 @@ export const submitDeposit = async (
     throw new ApiClientError(msg, 422, code, error);
   }
 
-  // Re-fetch with token symbol joined
   const { data: row, error: fetchErr } = await admin
     .from("deposits")
     .select(DEPOSIT_SELECT)

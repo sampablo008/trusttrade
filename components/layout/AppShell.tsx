@@ -4,6 +4,7 @@ import { assertAuthenticated } from "@/lib/auth/session";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { buildMediaUrl } from "@/lib/media/path";
 import { getProfile } from "@/lib/trades/service";
+import { getWalletBalances } from "@/lib/wallet-balances/service";
 import type { UserProfile } from "@/types/trade";
 
 interface AppShellProps {
@@ -33,10 +34,19 @@ export default async function AppShell({ children }: AppShellProps) {
     const { getPreviewProfile } = await import("@/lib/trades/preview-data");
     profile = getPreviewProfile();
   }
-  const availableCents = Math.max(
-    profile.balanceCents - profile.lockedInTradesCents - profile.lockedBonusCents,
-    0,
-  );
+
+  let totalCents = 0;
+  let availableCents = 0;
+  if (userId) {
+    const walletBalances = await getWalletBalances(userId).catch(() => null);
+    totalCents = walletBalances?.totalUsdValueCents ?? 0;
+    availableCents = walletBalances?.totalFreeUsdValueCents ?? 0;
+  } else if (!getOptionalServerEnv()) {
+    const { getPreviewWalletBalances } = await import("@/lib/wallet-balances/preview-data");
+    const wb = getPreviewWalletBalances();
+    totalCents = wb.totalUsdValueCents;
+    availableCents = wb.totalFreeUsdValueCents;
+  }
 
   const avatarUrl = profile.avatarPath ? buildMediaUrl("avatars", profile.avatarPath) : null;
 
@@ -44,12 +54,12 @@ export default async function AppShell({ children }: AppShellProps) {
     <div className="flex min-h-screen flex-col">
       <AppHeaderNav
         availableCents={availableCents}
-        balanceCents={profile.balanceCents}
+        balanceCents={totalCents}
         displayName={profile.displayName}
         username={profile.username ?? session.username}
         avatarUrl={avatarUrl}
       />
-      <div className="flex-1">{children}</div>
+      <div className="flex-1 pb-[calc(env(safe-area-inset-bottom)+72px)] lg:pb-0">{children}</div>
     </div>
   );
 }

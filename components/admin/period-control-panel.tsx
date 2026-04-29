@@ -22,11 +22,11 @@ interface PeriodFormState {
   label: string;
   maxAmountDollars: string;
   minAmountDollars: string;
-  payoutPercent: string;
+  profitPercent: string;
 }
 
-const formatPercentFromBps = (bps: number) => {
-  const percent = bps / 100;
+const formatProfitPercentFromBps = (bps: number) => {
+  const percent = Math.max(0, bps - 10000) / 100;
   return Number.isInteger(percent) ? String(percent) : percent.toFixed(2);
 };
 
@@ -41,7 +41,7 @@ const createEmptyDraft = (): PeriodFormState => ({
   label: "",
   maxAmountDollars: "1000",
   minAmountDollars: "10",
-  payoutPercent: "185",
+  profitPercent: "85",
 });
 
 const mapPeriodToDraft = (period: AdminTradePeriod): PeriodFormState => ({
@@ -50,7 +50,7 @@ const mapPeriodToDraft = (period: AdminTradePeriod): PeriodFormState => ({
   label: period.label,
   maxAmountDollars: formatDollarsFromCents(period.maxAmountCents),
   minAmountDollars: formatDollarsFromCents(period.minAmountCents),
-  payoutPercent: formatPercentFromBps(period.payoutBps),
+  profitPercent: formatProfitPercentFromBps(period.payoutBps),
 });
 
 const formatDuration = (seconds: number) => {
@@ -117,9 +117,9 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
     setFeedback(null);
     setErrorMessage(null);
 
-    const percentValue = Number(draft.payoutPercent);
-    if (!Number.isFinite(percentValue) || percentValue <= 0) {
-      setErrorMessage("Payout percent must be a positive number.");
+    const profitValue = Number(draft.profitPercent);
+    if (!Number.isFinite(profitValue) || profitValue < 0) {
+      setErrorMessage("Profit percent must be zero or positive.");
       return;
     }
 
@@ -140,7 +140,7 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
       label: draft.label,
       maxAmountCents: Math.round(maxDollars * 100),
       minAmountCents: Math.round(minDollars * 100),
-      payoutBps: Math.round(percentValue * 100),
+      payoutBps: 10000 + Math.round(profitValue * 100),
     });
 
     if (!parsed.success) {
@@ -253,7 +253,7 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
                 <div className="text-right">
                   <p className="text-sm font-semibold text-foreground">{formatDuration(period.durationSeconds)}</p>
                   <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
-                    payout {period.payoutBps / 100}%
+                    profit {formatProfitPercentFromBps(period.payoutBps)}%
                   </p>
                 </div>
               </button>
@@ -362,13 +362,13 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
 
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Payout %
+              Profit %
             </label>
             <div className="relative">
               <input
                 inputMode="decimal"
-                value={draft.payoutPercent}
-                onChange={(event) => updateDraft("payoutPercent", event.target.value)}
+                value={draft.profitPercent}
+                onChange={(event) => updateDraft("profitPercent", event.target.value)}
                 className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 pr-10 text-sm text-foreground outline-none transition focus:border-brand"
               />
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted">
@@ -376,7 +376,7 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
               </span>
             </div>
             <p className="text-xs text-muted">
-              Total return on stake. 185% means a $100 stake pays $185.
+              Profit on a winning trade. 10% means a $100 stake earns $10 (returns $110).
             </p>
           </div>
 

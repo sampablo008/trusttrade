@@ -1,9 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 
-const QUICK_AMOUNTS_CENTS = [1_000, 5_000, 10_000, 25_000, 50_000];
+function buildChips(minCents: number, maxCents: number): number[] {
+  const clampedMax = Math.max(minCents, maxCents);
+  const step = (clampedMax - minCents) / 5;
+  const raw = [
+    minCents,
+    Math.round((minCents + step) / 100) * 100,
+    Math.round((minCents + step * 2) / 100) * 100,
+    Math.round((minCents + step * 3) / 100) * 100,
+    Math.round((minCents + step * 4) / 100) * 100,
+    clampedMax,
+  ];
+  return [...new Set(raw)];
+}
 
 interface AmountInputProps {
   valueCents: number;
@@ -11,6 +23,9 @@ interface AmountInputProps {
   minCents: number;
   maxCents: number;
   availableCents: number;
+  tokenSymbol: string;
+  tokenDecimals: number;
+  tokenFreeBalance: number;
   disabled?: boolean;
 }
 
@@ -23,6 +38,9 @@ export default function AmountInput({
   minCents,
   maxCents,
   availableCents,
+  tokenSymbol,
+  tokenDecimals,
+  tokenFreeBalance,
   disabled,
 }: AmountInputProps) {
   const [raw, setRaw] = useState<string>(() => centsToInput(valueCents));
@@ -58,16 +76,21 @@ export default function AmountInput({
     if (!isNaN(n)) setRaw(n.toFixed(2));
   };
 
-  const clampedMax = Math.min(maxCents, availableCents);
-  const isInvalid = valueCents > 0 && (valueCents < minCents || valueCents > clampedMax);
+  const exceedsBalance = valueCents > availableCents;
+  const belowMin = valueCents > 0 && valueCents < minCents;
+  const aboveMax = valueCents > 0 && valueCents > maxCents;
+  const isInvalid = belowMin || aboveMax || exceedsBalance;
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">Amount</p>
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted text-right">
           Available:{" "}
-          <span className="font-semibold text-foreground">{formatUsdFromCents(availableCents)}</span>
+          <span className="font-semibold text-foreground">
+            {formatTokenAmount(tokenFreeBalance, tokenSymbol, tokenDecimals)}
+          </span>{" "}
+          <span className="text-muted">(≈ {formatUsdFromCents(availableCents)})</span>
         </p>
       </div>
 
@@ -94,38 +117,46 @@ export default function AmountInput({
       </div>
 
       <div className="grid grid-cols-3 gap-1.5">
-        {QUICK_AMOUNTS_CENTS.filter((a) => a <= maxCents).map((amount) => (
-          <button
-            key={amount}
-            type="button"
-            disabled={disabled}
-            onClick={() => onChange(amount)}
-            className={[
-              "rounded-xl py-1.5 text-xs font-semibold transition-all",
-              valueCents === amount
-                ? "border border-brand/50 bg-brand/10 text-brand"
-                : "border border-white/10 bg-background/30 text-muted hover:border-white/20 hover:text-foreground",
-              disabled ? "cursor-not-allowed opacity-40" : "",
-            ].join(" ")}
-          >
-            {formatUsdFromCents(amount)}
-          </button>
-        ))}
-        <button
-          type="button"
-          disabled={disabled || availableCents < minCents}
-          onClick={() => onChange(clampedMax)}
-          className={[
-            "rounded-xl py-1.5 text-xs font-semibold transition-all",
-            valueCents === clampedMax && clampedMax > 0
-              ? "border border-brand/50 bg-brand/10 text-brand"
-              : "border border-white/10 bg-background/30 text-muted hover:border-white/20 hover:text-foreground",
-            disabled || availableCents < minCents ? "cursor-not-allowed opacity-40" : "",
-          ].join(" ")}
-        >
-          Max
-        </button>
+        {buildChips(minCents, maxCents).map((amount, i, arr) => {
+          const isLast = i === arr.length - 1;
+          const unreachable = amount > availableCents;
+          const label = isLast ? "Max" : formatUsdFromCents(amount);
+          return (
+            <button
+              key={amount}
+              type="button"
+              disabled={disabled || unreachable}
+              onClick={() => onChange(amount)}
+              className={[
+                "rounded-xl py-1.5 text-xs font-semibold transition-all",
+                valueCents === amount
+                  ? "border border-brand/50 bg-brand/10 text-brand"
+                  : "border border-white/10 bg-background/30 text-muted hover:border-white/20 hover:text-foreground",
+                disabled || unreachable ? "cursor-not-allowed opacity-40" : "",
+              ].join(" ")}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
+
+      {exceedsBalance && (
+        <p className="text-xs font-semibold text-down">
+          Insufficient {tokenSymbol} balance — max {formatUsdFromCents(availableCents)} (
+          {formatTokenAmount(tokenFreeBalance, tokenSymbol, tokenDecimals)}).
+        </p>
+      )}
+      {!exceedsBalance && belowMin && (
+        <p className="text-xs text-down">
+          Below minimum stake ({formatUsdFromCents(minCents)}).
+        </p>
+      )}
+      {!exceedsBalance && !belowMin && aboveMax && (
+        <p className="text-xs text-down">
+          Above maximum stake ({formatUsdFromCents(maxCents)}).
+        </p>
+      )}
     </div>
   );
 }

@@ -12,6 +12,11 @@ export interface PublicToken {
   shadowOffsetPercent: number;
   symbol: string;
   volumeLabel: string;
+  decimals: number;
+  minDeposit: number;
+  swapFeeBps: number;
+  minWithdrawal: number;
+  withdrawFeeBps: number;
 }
 
 export interface PublicTokensResult {
@@ -63,6 +68,12 @@ export interface AdminToken {
   symbol: string;
   updatedAt: string;
   volatilityFactor: number;
+  decimals: number;
+  minDeposit: number;
+  swapFeeBps: number;
+  coingeckoId: string | null;
+  minWithdrawal: number;
+  withdrawFeeBps: number;
 }
 
 export interface AdminTokensResult {
@@ -80,6 +91,12 @@ export interface UpsertAdminTokenInput {
   shadowSymbol: string | null;
   symbol: string;
   volatilityFactor: number;
+  decimals: number;
+  minDeposit: number;
+  swapFeeBps: number;
+  coingeckoId: string | null;
+  minWithdrawal: number;
+  withdrawFeeBps: number;
 }
 
 export interface DeleteAdminTokenResult {

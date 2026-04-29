@@ -35,7 +35,27 @@ import {
   upsertAdminTradePeriodInputSchema,
 } from "@/schemas/market";
 
-const parsePreviewAdminToken = (token: AdminToken): AdminToken => adminTokenSchema.parse(token);
+const PREVIEW_DEFAULTS = {
+  BTC:  { decimals: 8,  coingeckoId: "bitcoin"          },
+  ETH:  { decimals: 18, coingeckoId: "ethereum"         },
+  SOL:  { decimals: 9,  coingeckoId: "solana"           },
+} as const;
+
+const parsePreviewAdminToken = (
+  token: Omit<AdminToken, "decimals" | "minDeposit" | "swapFeeBps" | "coingeckoId" | "minWithdrawal" | "withdrawFeeBps"> &
+    Partial<Pick<AdminToken, "decimals" | "minDeposit" | "swapFeeBps" | "coingeckoId" | "minWithdrawal" | "withdrawFeeBps">>,
+): AdminToken => {
+  const fallback = PREVIEW_DEFAULTS[token.symbol as keyof typeof PREVIEW_DEFAULTS];
+  return adminTokenSchema.parse({
+    ...token,
+    decimals: token.decimals ?? fallback?.decimals ?? 8,
+    minDeposit: token.minDeposit ?? 0,
+    swapFeeBps: token.swapFeeBps ?? 100,
+    coingeckoId: token.coingeckoId ?? fallback?.coingeckoId ?? null,
+    minWithdrawal: token.minWithdrawal ?? 0,
+    withdrawFeeBps: token.withdrawFeeBps ?? 0,
+  });
+};
 
 const previewTokenRegistry = new Map<string, AdminToken>([
   [
@@ -267,6 +287,11 @@ const buildPublicToken = (token: AdminToken): PublicToken => {
       notation: "compact",
       style: "currency",
     }).format(volumeBase / 100),
+    decimals: token.decimals,
+    minDeposit: token.minDeposit,
+    swapFeeBps: token.swapFeeBps,
+    minWithdrawal: token.minWithdrawal,
+    withdrawFeeBps: token.withdrawFeeBps,
   });
 };
 
@@ -388,6 +413,12 @@ export const createPreviewAdminToken = (payload: UpsertAdminTokenInput): AdminTo
     symbol: input.symbol,
     updatedAt: now,
     volatilityFactor: input.volatilityFactor,
+    decimals: input.decimals,
+    minDeposit: input.minDeposit,
+    swapFeeBps: input.swapFeeBps,
+    coingeckoId: input.coingeckoId,
+    minWithdrawal: input.minWithdrawal,
+    withdrawFeeBps: input.withdrawFeeBps,
   });
 
   previewTokenRegistry.set(token.symbol, token);
@@ -425,6 +456,12 @@ export const updatePreviewAdminToken = (id: string, payload: UpsertAdminTokenInp
     symbol: input.symbol,
     updatedAt: new Date().toISOString(),
     volatilityFactor: input.volatilityFactor,
+    decimals: input.decimals,
+    minDeposit: input.minDeposit,
+    swapFeeBps: input.swapFeeBps,
+    coingeckoId: input.coingeckoId,
+    minWithdrawal: input.minWithdrawal,
+    withdrawFeeBps: input.withdrawFeeBps,
   });
 
   previewTokenRegistry.set(token.symbol, token);

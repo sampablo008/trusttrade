@@ -12,8 +12,8 @@ export async function POST(
     const { userId } = await assertAdminApi();
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
-    const { note, amountCents } = adminApproveDepositSchema.parse(body);
-    const deposit = await approveAdminDeposit(id, userId, note, amountCents);
+    const { note, amount } = adminApproveDepositSchema.parse(body);
+    const deposit = await approveAdminDeposit(id, userId, note, amount);
     return NextResponse.json({ deposit });
   } catch (err) {
     if (err instanceof ApiClientError) {

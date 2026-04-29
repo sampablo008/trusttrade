@@ -16,7 +16,8 @@ const makeDeposit = (overrides: Partial<Deposit> = {}): Deposit => ({
   tokenId: PREVIEW_TOKEN_ID,
   tokenSymbol: "USDT",
   network: "TRC20",
-  amountCents: 50_000,
+  amount: 500,
+  amountCents: 0,
   proofPath: "deposit-proofs/preview/proof.webp",
   txHash: null,
   status: "pending",
@@ -31,11 +32,12 @@ const previewDeposits: Deposit[] = [
   makeDeposit({
     id: "00000000-0000-4000-8000-000000000d01",
     status: "pending",
-    amountCents: 50_000,
+    amount: 500,
   }),
   makeDeposit({
     id: "00000000-0000-4000-8000-000000000d02",
     status: "approved",
+    amount: 1000,
     amountCents: 100_000,
     txHash: "TX_PREVIEW_HASH_1",
     adminNote: "Verified on-chain",
@@ -45,7 +47,7 @@ const previewDeposits: Deposit[] = [
   makeDeposit({
     id: "00000000-0000-4000-8000-000000000d03",
     status: "rejected",
-    amountCents: 25_000,
+    amount: 250,
     adminNote: "Screenshot unclear — please re-upload",
     reviewedAt: new Date(now.getTime() - 3600_000).toISOString(),
     createdAt: new Date(now.getTime() - 10_800_000).toISOString(),
@@ -65,7 +67,7 @@ export const getPreviewAdminDeposits = (): AdminDepositsResult => ({
 export const previewSubmitDeposit = (input: {
   tokenSymbol: string;
   network: string;
-  amountCents: number;
+  amount: number;
   proofPath: string;
   txHash?: string;
 }): Deposit => {
@@ -73,7 +75,8 @@ export const previewSubmitDeposit = (input: {
     id: randomUUID(),
     tokenSymbol: input.tokenSymbol.toUpperCase(),
     network: input.network,
-    amountCents: input.amountCents,
+    amount: input.amount,
+    amountCents: 0,
     proofPath: input.proofPath,
     txHash: input.txHash ?? null,
     createdAt: new Date().toISOString(),

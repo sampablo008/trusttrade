@@ -16,6 +16,10 @@ export type WithdrawalFlag =
 export interface Withdrawal {
   id: string;
   userId: string;
+  tokenId: string | null;
+  amount: number | null;
+  feeAmount: number | null;
+  netAmount: number | null;
   amountCents: number;
   feeCents: number;
   netAmountCents: number;
@@ -34,9 +38,9 @@ export interface Withdrawal {
 }
 
 export interface RequestWithdrawalInput {
-  amountCents: number;
   tokenSymbol: string;
   network: string;
+  amount: number;
   destinationAddress: string;
   withdrawalPin: string;
 }

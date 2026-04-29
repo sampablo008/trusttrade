@@ -5,17 +5,17 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   ChevronDown,
+  Download,
   LogOut,
-  Menu,
   PieChart,
   Settings,
   TrendingUp,
   User,
   Wallet as WalletIcon,
-  X,
 } from "lucide-react";
 import { signOutPreview } from "@/app/actions/auth";
 import BrandLogo from "@/components/brand/BrandLogo";
+import { usePwaInstall } from "@/hooks/usePwaInstall";
 import { formatUsdFromCents } from "@/lib/utils/format";
 
 interface AppHeaderNavProps {
@@ -41,12 +41,13 @@ export default function AppHeaderNav({
 }: AppHeaderNavProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { canInstall, install } = usePwaInstall();
 
   const initial = (displayName ?? username ?? "U").charAt(0).toUpperCase();
   const isActive = (href: string) => pathname.startsWith(href.replace(/\/BTC$/, "/"));
 
   return (
+    <>
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-350 items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
         {/* Logo */}
@@ -150,6 +151,21 @@ export default function AppHeaderNav({
                     <MenuLink href="/portfolio" icon={<PieChart size={14} />} label="Portfolio" onClose={() => setMenuOpen(false)} />
                     <MenuLink href="/referrals" icon={<Settings size={14} />} label="Referrals" onClose={() => setMenuOpen(false)} />
                   </div>
+                  {canInstall && (
+                    <div className="border-t border-border py-1.5">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setMenuOpen(false);
+                          await install();
+                        }}
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground transition hover:bg-background/50"
+                      >
+                        <Download size={14} />
+                        Install app
+                      </button>
+                    </div>
+                  )}
                   <div className="border-t border-border py-1.5">
                     <form action={signOutPreview}>
                       <button
@@ -166,62 +182,37 @@ export default function AppHeaderNav({
             )}
           </div>
 
-          {/* Mobile menu toggle */}
-          <button
-            type="button"
-            onClick={() => setMobileOpen((v) => !v)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface/60 text-muted transition hover:border-brand/60 lg:hidden"
-            aria-label="Toggle menu"
-          >
-            {mobileOpen ? <X size={16} /> : <Menu size={16} />}
-          </button>
         </div>
       </div>
-
-      {/* Mobile nav drawer */}
-      {mobileOpen && (
-        <div className="border-t border-border bg-surface/95 lg:hidden">
-          <div className="mx-auto flex max-w-350 flex-col gap-1 px-4 py-3">
-            {NAV_LINKS.map((link) => {
-              const Icon = link.icon;
-              const active = isActive(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                    active
-                      ? "bg-brand-soft text-brand"
-                      : "text-muted hover:bg-background/40 hover:text-foreground"
-                  }`}
-                >
-                  <Icon size={16} />
-                  {link.label}
-                </Link>
-              );
-            })}
-            <div className="mt-1 flex items-center justify-between rounded-xl border border-border bg-background/40 px-3 py-2.5">
-              <div className="flex flex-col leading-tight">
-                <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  Available
-                </span>
-                <span className="font-mono text-sm font-semibold text-foreground">
-                  {formatUsdFromCents(availableCents)}
-                </span>
-              </div>
-              <Link
-                href="/wallet/deposit"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-full bg-brand px-4 py-1.5 text-xs font-semibold text-background"
-              >
-                Deposit
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
+
+    {/* Mobile bottom tab bar */}
+    <nav
+      aria-label="Primary"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 backdrop-blur-xl pb-[env(safe-area-inset-bottom)] lg:hidden"
+    >
+      <ul className="mx-auto flex w-full max-w-350 items-stretch justify-around">
+        {NAV_LINKS.map((link) => {
+          const Icon = link.icon;
+          const active = isActive(link.href);
+          return (
+            <li key={link.href} className="flex-1">
+              <Link
+                href={link.href}
+                aria-current={active ? "page" : undefined}
+                className={`flex flex-col items-center justify-center gap-1 px-2 py-2.5 text-[11px] font-semibold transition ${
+                  active ? "text-brand" : "text-muted hover:text-foreground"
+                }`}
+              >
+                <Icon size={20} />
+                {link.label}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+    </>
   );
 }
 

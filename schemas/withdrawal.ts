@@ -20,7 +20,11 @@ export const withdrawalFlagSchema = z.enum([
 export const withdrawalSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
-  amountCents: z.number().int().positive(),
+  tokenId: z.string().uuid().nullable(),
+  amount: z.number().nonnegative().nullable(),
+  feeAmount: z.number().nonnegative().nullable(),
+  netAmount: z.number().nonnegative().nullable(),
+  amountCents: z.number().int().nonnegative(),
   feeCents: z.number().int().min(0),
   netAmountCents: z.number().int().min(0),
   tokenSymbol: z.string().min(1),
@@ -43,9 +47,9 @@ export const withdrawalsResultSchema = z.object({
 });
 
 export const requestWithdrawalInputSchema = z.object({
-  amountCents: z.number().int().positive(),
   tokenSymbol: z.string().min(1),
   network: z.string().min(1),
+  amount: z.number().positive("Amount must be greater than zero."),
   destinationAddress: z.string().min(10, "Destination address is required."),
   withdrawalPin: z
     .string()

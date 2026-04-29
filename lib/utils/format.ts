@@ -18,3 +18,16 @@ export const formatSignedPercent = (value: number) =>
   `${value > 0 ? "+" : ""}${value.toFixed(2)}%`;
 
 export const formatCompactUsd = (value: number) => compactUsdFormatter.format(value / 100);
+
+export const formatTokenAmount = (
+  amount: number,
+  symbol: string,
+  decimals = 8,
+): string => {
+  const displayDecimals = Math.min(decimals, 8);
+  const trimmed = Number(amount.toFixed(displayDecimals));
+  return `${trimmed.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: displayDecimals,
+  })} ${symbol}`;
+};

@@ -21,6 +21,11 @@ interface TokenRow {
   price_scale: number | string;
   symbol: string;
   volatility_factor: number | string;
+  decimals: number | string | null;
+  min_deposit: number | string | null;
+  swap_fee_bps: number | string | null;
+  min_withdrawal: number | string | null;
+  withdraw_fee_bps: number | string | null;
 }
 
 interface TradePeriodRow {
@@ -133,6 +138,11 @@ const mapLiveToken = (row: TokenRow) => {
     shadowOffsetPercent: Number(shadowOffsetPercent.toFixed(2)),
     symbol: row.symbol,
     volumeLabel: formatCompactUsd(volumeEstimateUsd),
+    decimals: row.decimals != null ? Math.round(toNumber(row.decimals)) : 8,
+    minDeposit: toNumber(row.min_deposit),
+    swapFeeBps: row.swap_fee_bps != null ? Math.round(toNumber(row.swap_fee_bps)) : 0,
+    minWithdrawal: toNumber(row.min_withdrawal),
+    withdrawFeeBps: row.withdraw_fee_bps != null ? Math.round(toNumber(row.withdraw_fee_bps)) : 0,
   });
 };
 
@@ -145,7 +155,7 @@ export const listMarketTokens = async (): Promise<PublicTokensResult> => {
   const { data, error } = await adminClient
     .from("tokens")
     .select(
-      "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled",
+      "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, swap_fee_bps, min_withdrawal, withdraw_fee_bps",
     )
     .eq("is_enabled", true)
     .order("symbol", { ascending: true });

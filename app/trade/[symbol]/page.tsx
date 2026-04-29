@@ -1,5 +1,5 @@
 import { type Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import TradeShell from "@/components/trade/TradeShell";
 import TokenSwitcher from "@/components/trade/TokenSwitcher";
@@ -8,6 +8,7 @@ import { getOptionalServerEnv } from "@/lib/env/server";
 import { TOP_COINS, findTopCoin } from "@/lib/markets/top-coins";
 import { listMarketTokens, listTradePeriods } from "@/lib/markets/service";
 import { getBalance, listActiveTrades } from "@/lib/trades/service";
+import { getWalletBalances } from "@/lib/wallet-balances/service";
 import type { PublicToken } from "@/types/market";
 
 export async function generateMetadata(
@@ -34,6 +35,11 @@ function stubToken(symbol: string, name: string): PublicToken {
     feedSource: "synthetic",
     shadowOffsetPercent: 0,
     lastPriceAt: null,
+    decimals: 8,
+    minDeposit: 0,
+    swapFeeBps: 0,
+    minWithdrawal: 0,
+    withdrawFeeBps: 0,
   };
 }
 
@@ -45,6 +51,14 @@ export default async function TradeSymbolPage({
   const session = await assertAuthenticated();
   const { symbol } = await params;
   const upperSymbol = symbol.toUpperCase();
+
+  // Stablecoins are not chartable — redirect to the first non-stable in TOP_COINS.
+  if (upperSymbol === "USDT" || upperSymbol === "USDC") {
+    const fallback = TOP_COINS.find(
+      (c) => c.symbol !== "USDT" && c.symbol !== "USDC",
+    );
+    if (fallback) redirect(`/trade/${fallback.symbol}`);
+  }
 
   const coin = findTopCoin(upperSymbol);
   if (!coin) notFound();
@@ -61,12 +75,23 @@ export default async function TradeSymbolPage({
   const userId =
     session.userId ?? (getOptionalServerEnv() ? null : PREVIEW_USER_ID);
 
-  const [balance, activeTrades] = userId
-    ? await Promise.all([getBalance(userId), listActiveTrades(userId)])
+  const [balance, activeTrades, walletBalances] = userId
+    ? await Promise.all([
+        getBalance(userId),
+        listActiveTrades(userId),
+        getWalletBalances(userId),
+      ])
     : [
         { balanceCents: 0, lockedInTradesCents: 0, lockedBonusCents: 0, withdrawableCents: 0 },
         { items: [] },
+        null,
       ];
+
+  // Trades are funded from the chart token's balance.
+  const chartTokenEntry =
+    walletBalances?.tokens.find((t) => t.symbol === upperSymbol) ?? null;
+  const tokenFreeBalance = chartTokenEntry?.balance ?? 0;
+  const tokenUsdPriceCents = chartTokenEntry?.usdPriceCents ?? token.priceCents;
 
   const iconPaths = Object.fromEntries(
     tokensResult.items.map((t) => [t.symbol, t.iconPath ?? null]),
@@ -78,10 +103,14 @@ export default async function TradeSymbolPage({
         <TokenSwitcher coins={TOP_COINS} iconPaths={iconPaths} />
         <TradeShell
           coin={coin}
+          coins={TOP_COINS}
+          iconPaths={iconPaths}
           token={token}
           periods={periodsResult.items}
           initialBalance={balance}
           initialTrades={activeTrades.items}
+          tokenFreeBalance={tokenFreeBalance}
+          tokenUsdPriceCents={tokenUsdPriceCents}
         />
       </main>
     </AppShell>

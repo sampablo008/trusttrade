@@ -33,7 +33,7 @@ const ACCEPTED_MIME = ["image/png", "image/jpeg", "image/webp"];
 const schema = z.object({
   tokenSymbol: z.string().min(1),
   network: z.string().min(1),
-  amountCents: z.number().int().positive(),
+  amount: z.number().positive(),
   txHash: z.string().optional(),
 });
 
@@ -43,6 +43,9 @@ interface DepositableToken {
   symbol: string;
   name: string;
   iconPath: string | null;
+  decimals: number;
+  minDeposit: number;
+  usdPriceCents: number;
 }
 
 interface Props {
@@ -50,7 +53,12 @@ interface Props {
   tokens: PublicToken[];
 }
 
-const AMOUNT_PRESETS = [50, 100, 200, 500];
+const formatTokenAmount = (value: number, decimals = 8) => {
+  const display = Math.min(decimals, 8);
+  return Number(value.toFixed(display)).toLocaleString("en-US", {
+    maximumFractionDigits: display,
+  });
+};
 
 function MethodToggle({
   method,
@@ -86,7 +94,6 @@ const formatBytes = (bytes: number) => {
 };
 
 export default function DepositForm({ wallets, tokens }: Props) {
-  // Build depositable tokens from wallets — this includes tokens even without a tokens-table entry
   const depositableTokens = useMemo<DepositableToken[]>(() => {
     const uniqueSymbols = [...new Set(wallets.map((w) => w.tokenSymbol))];
     return uniqueSymbols.map((symbol) => {
@@ -96,6 +103,9 @@ export default function DepositForm({ wallets, tokens }: Props) {
         symbol,
         name: dbToken?.name ?? coin?.name ?? symbol,
         iconPath: dbToken?.iconPath ?? null,
+        decimals: dbToken?.decimals ?? 8,
+        minDeposit: dbToken?.minDeposit ?? 0,
+        usdPriceCents: dbToken?.priceCents ?? 0,
       };
     });
   }, [tokens, wallets]);
@@ -142,12 +152,18 @@ export default function DepositForm({ wallets, tokens }: Props) {
     defaultValues: {
       tokenSymbol: selectedSymbol,
       network: selectedNetwork,
-      amountCents: 0,
+      amount: 0,
     },
   });
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const amountCents = watch("amountCents");
+  const amount = watch("amount");
+  const minDeposit = selectedToken?.minDeposit ?? 0;
+  const usdPreviewCents =
+    amount > 0 && selectedToken?.usdPriceCents
+      ? Math.round(amount * selectedToken.usdPriceCents)
+      : 0;
+  const minOk = amount === 0 || amount >= minDeposit;
 
   const pickToken = (symbol: string) => {
     setSelectedSymbol(symbol);
@@ -216,6 +232,13 @@ export default function DepositForm({ wallets, tokens }: Props) {
       return;
     }
 
+    if (data.amount < minDeposit) {
+      setErrorMsg(
+        `Minimum deposit for ${data.tokenSymbol} is ${formatTokenAmount(minDeposit, selectedToken?.decimals)} ${data.tokenSymbol}.`,
+      );
+      return;
+    }
+
     setSubmitStatus("loading");
 
     try {
@@ -227,7 +250,7 @@ export default function DepositForm({ wallets, tokens }: Props) {
         body: JSON.stringify({
           tokenSymbol: data.tokenSymbol,
           network: data.network,
-          amountCents: data.amountCents,
+          amount: data.amount,
           txHash: data.txHash,
           proofPath,
         }),
@@ -282,13 +305,13 @@ export default function DepositForm({ wallets, tokens }: Props) {
   const steps = [
     { label: "Choose token", done: !!selectedSymbol },
     { label: "Pick network", done: !!selectedNetwork },
-    { label: "Enter amount", done: amountCents > 0 },
+    { label: "Enter amount", done: amount > 0 && minOk },
     { label: "Attach proof", done: !!proofFile },
   ];
 
   const isLoading = submitStatus === "loading";
   const canSubmit =
-    !isLoading && !!selectedWallet && amountCents > 0 && !!proofFile;
+    !isLoading && !!selectedWallet && amount > 0 && minOk && !!proofFile;
 
   if (method === "banxa") {
     return (
@@ -569,10 +592,15 @@ export default function DepositForm({ wallets, tokens }: Props) {
                   </span>
                 </p>
               )}
-              <p className="mt-2 text-xs text-muted">
-                Min deposit: {(selectedWallet.minDepositCents / 100).toFixed(2)}{" "}
-                USD
-              </p>
+              {minDeposit > 0 && selectedToken && (
+                <p className="mt-2 text-xs text-muted">
+                  Min deposit:{" "}
+                  <span className="font-semibold text-foreground">
+                    {formatTokenAmount(minDeposit, selectedToken.decimals)}{" "}
+                    {selectedToken.symbol}
+                  </span>
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -581,40 +609,57 @@ export default function DepositForm({ wallets, tokens }: Props) {
       {/* Amount */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Amount (USD)
+          Amount ({selectedToken?.symbol ?? "TOKEN"})
         </label>
-        <div className="flex flex-wrap gap-2">
-          {AMOUNT_PRESETS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => setValue("amountCents", preset * 100)}
-              className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                amountCents === preset * 100
-                  ? "bg-brand text-background"
-                  : "border border-border bg-background/30 text-foreground hover:border-brand"
-              }`}
-            >
-              ${preset}
-            </button>
-          ))}
-        </div>
+        {minDeposit > 0 && selectedToken && (
+          <div className="flex flex-wrap gap-2">
+            {[1, 2, 5, 10].map((mult) => {
+              const value = Number((minDeposit * mult).toFixed(8));
+              return (
+                <button
+                  key={mult}
+                  type="button"
+                  onClick={() => setValue("amount", value)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    amount === value
+                      ? "bg-brand text-background"
+                      : "border border-border bg-background/30 text-foreground hover:border-brand"
+                  }`}
+                >
+                  {mult}× min
+                </button>
+              );
+            })}
+          </div>
+        )}
         <input
           type="number"
           min={0}
-          step={1}
-          placeholder="Enter USD amount"
-          value={amountCents ? amountCents / 100 : ""}
+          step="any"
+          placeholder={`Enter ${selectedToken?.symbol ?? "amount"}`}
+          value={amount ? amount : ""}
           className="mt-1 w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-          onChange={(e) =>
-            setValue(
-              "amountCents",
-              Math.round(parseFloat(e.target.value) * 100) || 0,
-            )
-          }
+          onChange={(e) => {
+            const v = Number.parseFloat(e.target.value);
+            setValue("amount", Number.isFinite(v) ? v : 0);
+          }}
         />
-        {errors.amountCents && (
-          <p className="text-xs text-down">{errors.amountCents.message}</p>
+        {usdPreviewCents > 0 && (
+          <p className="text-xs text-muted">
+            ≈ {(usdPreviewCents / 100).toLocaleString("en-US", {
+              style: "currency",
+              currency: "USD",
+            })}
+          </p>
+        )}
+        {amount > 0 && !minOk && selectedToken && (
+          <p className="text-xs text-down">
+            Below min deposit ({formatTokenAmount(minDeposit, selectedToken.decimals)}{" "}
+            {selectedToken.symbol}).
+          </p>
+        )}
+        {errors.amount && (
+          <p className="text-xs text-down">{errors.amount.message}</p>
         )}
       </div>
 
@@ -699,11 +744,13 @@ export default function DepositForm({ wallets, tokens }: Props) {
         <p className="text-center text-[11px] text-muted">
           {!selectedWallet
             ? "Pick a token and network to continue."
-            : amountCents <= 0
+            : amount <= 0
               ? "Enter the amount you sent."
-              : !proofFile
-                ? "Attach a screenshot of your transaction."
-                : ""}
+              : !minOk
+                ? "Amount is below the minimum deposit."
+                : !proofFile
+                  ? "Attach a screenshot of your transaction."
+                  : ""}
         </p>
       )}
     </form>

@@ -29,6 +29,12 @@ interface TokenFormState {
   shadowSymbol: string;
   symbol: string;
   volatilityFactor: string;
+  decimals: string;
+  minDeposit: string;
+  swapFeeBps: string;
+  coingeckoId: string;
+  minWithdrawal: string;
+  withdrawFeeBps: string;
 }
 
 const feedSourceOptions: TokenFeedSource[] = ["shadow", "synthetic", "replay", "frozen"];
@@ -44,6 +50,12 @@ const createEmptyDraft = (): TokenFormState => ({
   shadowSymbol: "",
   symbol: "",
   volatilityFactor: "1",
+  decimals: "8",
+  minDeposit: "0",
+  swapFeeBps: "100",
+  coingeckoId: "",
+  minWithdrawal: "0",
+  withdrawFeeBps: "0",
 });
 
 const mapTokenToDraft = (token: AdminToken): TokenFormState => ({
@@ -57,6 +69,12 @@ const mapTokenToDraft = (token: AdminToken): TokenFormState => ({
   shadowSymbol: token.shadowSymbol ?? "",
   symbol: token.symbol,
   volatilityFactor: String(token.volatilityFactor),
+  decimals: String(token.decimals),
+  minDeposit: String(token.minDeposit),
+  swapFeeBps: String(token.swapFeeBps),
+  coingeckoId: token.coingeckoId ?? "",
+  minWithdrawal: String(token.minWithdrawal),
+  withdrawFeeBps: String(token.withdrawFeeBps),
 });
 
 const statusClasses = {
@@ -183,6 +201,12 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
       shadowSymbol: draft.shadowSymbol.trim() || null,
       symbol: draft.symbol,
       volatilityFactor: draft.volatilityFactor,
+      decimals: draft.decimals,
+      minDeposit: draft.minDeposit,
+      swapFeeBps: draft.swapFeeBps,
+      coingeckoId: draft.coingeckoId.trim() || null,
+      minWithdrawal: draft.minWithdrawal,
+      withdrawFeeBps: draft.withdrawFeeBps,
     });
 
     if (!parsed.success) {
@@ -491,6 +515,84 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
                 )}
               </div>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Decimals
+            </label>
+            <input
+              inputMode="numeric"
+              value={draft.decimals}
+              onChange={(event) => updateDraft("decimals", event.target.value)}
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Native unit precision (BTC=8, ETH=18, USDT=6).</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Min deposit (native units)
+            </label>
+            <input
+              inputMode="decimal"
+              value={draft.minDeposit}
+              onChange={(event) => updateDraft("minDeposit", event.target.value)}
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Smallest accepted user deposit, in this token&apos;s units.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Swap fee (bps)
+            </label>
+            <input
+              inputMode="numeric"
+              value={draft.swapFeeBps}
+              onChange={(event) => updateDraft("swapFeeBps", event.target.value)}
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Charged when this token is the FROM side. 100 bps = 1%.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              CoinGecko id
+            </label>
+            <input
+              value={draft.coingeckoId}
+              onChange={(event) => updateDraft("coingeckoId", event.target.value.toLowerCase())}
+              placeholder="bitcoin"
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Used to fetch live USD price for deposits and swaps.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Min withdrawal (native units)
+            </label>
+            <input
+              inputMode="decimal"
+              value={draft.minWithdrawal}
+              onChange={(event) => updateDraft("minWithdrawal", event.target.value)}
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Smallest accepted withdrawal, in this token&apos;s units.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Withdraw fee (bps)
+            </label>
+            <input
+              inputMode="numeric"
+              value={draft.withdrawFeeBps}
+              onChange={(event) => updateDraft("withdrawFeeBps", event.target.value)}
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Charged on the withdrawal amount. 100 bps = 1%.</p>
           </div>
 
           <label className="md:col-span-2 flex items-center gap-3 rounded-[20px] border border-border bg-background/25 px-4 py-4 text-sm text-foreground">

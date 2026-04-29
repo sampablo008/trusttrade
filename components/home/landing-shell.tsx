@@ -62,6 +62,14 @@ const fallbackMarkets: MarketSnapshot[] = [
     volumeLabel: "$8.6B",
   },
   {
+    dayChangePercent: 1.92,
+    name: "BNB",
+    priceCents: 712_38,
+    shadowOffsetPercent: 0.05,
+    symbol: "BNBUSDT",
+    volumeLabel: "$2.4B",
+  },
+  {
     dayChangePercent: -1.28,
     name: "Solana",
     priceCents: 182_44,
@@ -77,77 +85,118 @@ const fallbackMarkets: MarketSnapshot[] = [
     symbol: "XRPUSDT",
     volumeLabel: "$1.4B",
   },
+  {
+    dayChangePercent: 5.41,
+    name: "Dogecoin",
+    priceCents: 38,
+    shadowOffsetPercent: 0.12,
+    symbol: "DOGEUSDT",
+    volumeLabel: "$1.2B",
+  },
+  {
+    dayChangePercent: 0.84,
+    name: "Cardano",
+    priceCents: 78,
+    shadowOffsetPercent: 0.02,
+    symbol: "ADAUSDT",
+    volumeLabel: "$0.9B",
+  },
+  {
+    dayChangePercent: 3.66,
+    name: "Avalanche",
+    priceCents: 41_22,
+    shadowOffsetPercent: 0.07,
+    symbol: "AVAXUSDT",
+    volumeLabel: "$0.7B",
+  },
+  {
+    dayChangePercent: -0.92,
+    name: "Chainlink",
+    priceCents: 19_84,
+    shadowOffsetPercent: -0.03,
+    symbol: "LINKUSDT",
+    volumeLabel: "$0.6B",
+  },
+  {
+    dayChangePercent: 2.74,
+    name: "Toncoin",
+    priceCents: 6_41,
+    shadowOffsetPercent: 0.04,
+    symbol: "TONUSDT",
+    volumeLabel: "$0.4B",
+  },
 ];
+
 
 const defaultTrustSignals = [
   {
-    body: "Execution surfaces stay clean and legible so users can move fast without losing risk context.",
+    body: "Win up to 85% on every correct call across BTC, ETH, SOL, BNB, XRP and 5+ more top pairs. Payouts hit your USDT balance the moment your trade settles.",
     icon: ShieldCheck,
-    title: "Institutional-grade control surface",
+    title: "Up to 85% payout per trade",
   },
   {
-    body: "Live pairs, instant desk feedback, and clear payout framing keep decisions grounded in market flow.",
+    body: "Crypto never sleeps and neither do we. Trade your favourite pairs around the clock — weekends, holidays, 3am pumps — the desk is always live.",
     icon: Zap,
-    title: "Fast market response",
+    title: "24/7 markets, every day",
   },
   {
-    body: "Referral momentum, wallet rails, and mobile-first access are built into the acquisition loop.",
+    body: "Deposit any supported coin, swap into USDT in one tap, fund a trade, then withdraw whenever you want. No paperwork. No middlemen.",
     icon: Sparkles,
-    title: "Growth engine built in",
+    title: "From wallet to trade in seconds",
   },
 ];
 
 const defaultFeatureCards = [
   {
-    body: "Monitor high-liquidity crypto pairs with bold directional cues, payout framing, and fast visual scanning.",
+    body: "Real Binance-grade candles for BTC, ETH, SOL, BNB, XRP, DOGE, ADA and more — refreshing tick by tick. Spot the move, then act on it.",
     icon: ChartCandlestick,
-    title: "Live market board",
+    title: "Live charts on every major pair",
   },
   {
-    body: "Confidence-first execution cards keep stake size, direction, and timing visible before the user commits.",
+    body: "Pick a coin. Pick a direction. Lock a 30s, 1m, 5m, 15m, 1h or 1d window. If price closes your way, you win up to 85%.",
     icon: Gauge,
-    title: "Disciplined order flow",
+    title: "Long or short in two taps",
   },
   {
-    body: "Funding rails and portfolio paths stay within reach, so the desk feels like a platform instead of a promo page.",
+    body: "USDT is your trading rail. Deposit any supported token, swap on-platform, fund trades, and withdraw — all from one mobile-first wallet.",
     icon: Wallet,
-    title: "Wallet and portfolio continuity",
+    title: "Wallet, swap & withdraw built in",
   },
 ];
 
 const executionSteps = [
   {
-    detail: "Track the strongest pair first. Market color, velocity, and payout signals pull attention where it matters.",
-    title: "Read the tape",
+    detail: "Bitcoin, Ethereum, Solana, BNB, XRP, Dogecoin and more — right there with live prices, 24h change and Binance-grade candles.",
+    title: "Pick your coin",
   },
   {
-    detail: "Set direction with clean conviction. The interface keeps the long-short decision central and visually obvious.",
-    title: "Frame the trade",
+    detail: "Long if you think it's going up. Short if you think it's coming down. Choose 30s, 1m, 5m, 15m, 1h or 1d.",
+    title: "Pick your direction",
   },
   {
-    detail: "Move into settlement with a controlled risk posture, not a cluttered sequence of extra clicks and hidden states.",
-    title: "Lock the position",
+    detail: "If price closes your way, your USDT balance is credited up to 85% the second the timer hits zero. Withdraw any time.",
+    title: "Collect in USDT",
   },
 ];
 
 const platformMetrics = [
   {
-    detail: "High-clarity desks built for fast direction calls.",
-    label: "Payout ceiling",
+    detail: "Up to 85% payout on every winning trade.",
+    label: "Max payout",
     value: "85%",
   },
   {
-    detail: "Always-on access to active crypto pairs.",
-    label: "Market access",
+    detail: "Crypto markets are open. Always.",
+    label: "Trading hours",
     value: "24/7",
   },
   {
-    detail: "Clean capital entry and withdrawal pathways.",
-    label: "Wallet response",
-    value: "<2m",
+    detail: "30s, 1m, 5m, 15m, 1h and 1d windows.",
+    label: "Trade timeframes",
+    value: "6",
   },
   {
-    detail: "Acquisition loop connected to the trading core.",
+    detail: "Earn from up to 5 levels of referrals.",
     label: "Referral depth",
     value: "5 levels",
   },
@@ -155,50 +204,50 @@ const platformMetrics = [
 
 const dashboardSignals = [
   {
-    label: "Live risk monitor",
-    value: "Nominal",
+    label: "Live BTC feed",
+    value: "Streaming",
   },
   {
-    label: "Desk liquidity",
-    value: "Deep",
+    label: "USDT settlement",
+    value: "Instant",
   },
   {
-    label: "Settlement queue",
-    value: "Flowing",
+    label: "Open markets",
+    value: "10+ pairs",
   },
 ];
 
 const traderTestimonials = [
   {
-    handle: "@atlasflow",
-    highlight: "Caught the breakout early",
+    handle: "@btc_native",
+    highlight: "Caught a 60-second BTC pump",
     quote:
-      "The desk keeps the market readable. I can scan momentum, pick direction, and commit before the move gets crowded.",
-    result: "+18.4% week",
+      "Saw a clean breakout on the 1-minute, locked a 60s long on BTCUSDT, and the payout was in my USDT before I refreshed. This is how crypto trading should feel.",
+    result: "+85% in 60s",
     tone: "from-brand via-[#69c0ff] to-up",
   },
   {
-    handle: "@solgrid",
-    highlight: "Execution feels immediate",
+    handle: "@solflow",
+    highlight: "Shorted SOL on the rejection",
     quote:
-      "I stopped bouncing between tabs. The payout framing, market pressure, and wallet flow sit in one clean surface that actually pushes me to trade.",
-    result: "24/7 active",
+      "I shorted SOL on a 5-minute rejection candle and walked away. Came back to a green ticket and an instant credit to my balance. No spread games.",
+    result: "85% payout",
     tone: "from-[#0f9a6f] via-up to-[#8affcb]",
   },
   {
-    handle: "@hedgeline",
-    highlight: "Clean enough for repeat trades",
+    handle: "@ethdaily",
+    highlight: "ETH 15m grind, every day",
     quote:
-      "It feels more like a control room than a promo funnel. That matters when you want confidence before locking a position.",
-    result: "5-level referrals",
+      "The chart is real-time, the order ticket is one tap, and there's no slippage. I scalp ETH on 15-minute windows almost every day now.",
+    result: "Daily routine",
     tone: "from-warning via-[#ffb74a] to-brand",
   },
   {
-    handle: "@voltpulse",
-    highlight: "Friction dropped hard",
+    handle: "@dogerunner",
+    highlight: "DOGE volatility plays",
     quote:
-      "Signup, funding, and execution feel connected. New users get to the desk fast, and that speed translates into more actual trading activity.",
-    result: "<2m wallet flow",
+      "DOGE moves fast. TrustTrade lets me ride those 30-second spikes without ever touching a spot exchange. Pure direction calls, paid in USDT.",
+    result: "Volatility = profit",
     tone: "from-[#d9658b] via-warning to-brand",
   },
 ];
@@ -466,7 +515,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                 transition={{ delay: 0.1, duration: 0.55 }}
               >
                 <CircleDollarSign size={13} />
-                Trade with live market conviction
+                BTC · ETH · SOL · BNB · XRP · DOGE & more
               </motion.div>
 
               <motion.h1
@@ -475,7 +524,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                 initial={{ opacity: 0, y: 24 }}
                 transition={{ delay: 0.18, duration: 0.72, ease: [0.22, 1, 0.36, 1] }}
               >
-                {hero?.title ?? "Trade crypto with a desk built to convert intent into action."}
+                {hero?.title ?? "Trade Bitcoin, Ethereum & top crypto in seconds."}
               </motion.h1>
 
               <motion.p
@@ -485,7 +534,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                 transition={{ delay: 0.28, duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               >
                 {hero?.subtitle ??
-                  "TrustTrade frames the market like a professional control room: live pairs, disciplined execution paths, wallet continuity, and bold momentum cues that push users to trade while the signal is still hot."}
+                  "TrustTrade is the simplest way to bet on crypto direction. Pick a pair like BTC, ETH or SOL, choose long or short, and win up to 85% on every correct call — paid instantly in USDT. No leverage liquidations. No order books. No spread games."}
               </motion.p>
 
               <motion.div
@@ -498,7 +547,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   href={hero?.ctaHref ?? "/signup"}
                   className="group inline-flex items-center gap-3 rounded-full bg-brand px-7 py-4 text-sm font-semibold text-background transition hover:bg-[#66b2ff]"
                 >
-                  {hero?.ctaLabel ?? "Open trading desk"}
+                  {hero?.ctaLabel ?? "Start trading free"}
                   <ArrowRight
                     size={16}
                     className="transition-transform duration-300 group-hover:translate-x-1"
@@ -558,10 +607,10 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-                        Market command
+                        Top markets right now
                       </p>
                       <p className="mt-2 text-2xl font-semibold text-foreground">
-                        Crypto momentum board
+                        Pick a coin, place your trade
                       </p>
                     </div>
                     <div className="rounded-full border border-up/20 bg-up/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-up">
@@ -660,14 +709,14 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] uppercase tracking-[0.3em] text-muted">
-                        Execution card
+                        One-tap order ticket
                       </p>
                       <TrendingUp size={16} className="text-brand" />
                     </div>
                     <div className="mt-5 rounded-[22px] border border-brand/20 bg-brand-soft/40 p-4">
                       <div className="flex items-center justify-between text-sm text-muted">
-                        <span>BTCUSDT</span>
-                        <span>02:30</span>
+                        <span>BTCUSDT · 60s</span>
+                        <span>00:60</span>
                       </div>
                       <div className="mt-4 grid grid-cols-2 gap-3">
                         <motion.div
@@ -675,7 +724,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                           whileHover={reduceMotion ? undefined : { scale: 1.03 }}
                         >
                           <p className="text-[11px] uppercase tracking-[0.24em] text-up">Long</p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">Bull bias</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">Price ↑</p>
                         </motion.div>
                         <motion.div
                           className="rounded-[18px] border border-down/20 bg-down/10 px-4 py-3"
@@ -684,12 +733,12 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                           <p className="text-[11px] uppercase tracking-[0.24em] text-down">
                             Short
                           </p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">Hedge bias</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">Price ↓</p>
                         </motion.div>
                       </div>
                       <div className="mt-4 flex items-center justify-between text-sm text-muted">
-                        <span>Projected payout</span>
-                        <span className="font-semibold text-foreground">+85%</span>
+                        <span>Win payout</span>
+                        <span className="font-semibold text-foreground">+85% USDT</span>
                       </div>
                     </div>
                     <div className="mt-5 space-y-3">
@@ -723,14 +772,14 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   >
                     <div className="flex items-center justify-between">
                       <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-                        Conversion layer
+                        Earn while you trade
                       </p>
                       <Users size={16} className="text-warning" />
                     </div>
-                    <p className="mt-3 text-3xl font-semibold text-foreground">5-level growth loop</p>
+                    <p className="mt-3 text-3xl font-semibold text-foreground">5-level referrals</p>
                     <p className="mt-3 text-sm leading-6 text-muted">
-                      Users arrive for momentum, stay for clean execution, and pull new traders into
-                      the same desk experience.
+                      Invite friends. Earn USDT commission every time they trade — across five
+                      levels of network depth. Your link, your stack, forever.
                     </p>
                     <div className="mt-5 space-y-3">
                       {[28, 42, 63, 76, 92].map((width, index) => (
@@ -764,9 +813,9 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1440px] flex-col gap-6 px-4 pb-24 sm:px-6 lg:px-8">
         <SectionFrame
-          eyebrow="Trust layer"
-          title="Built to feel like a real trading platform, not a disposable campaign page."
-          description="Trust signals, execution context, and strong operating language reduce hesitation. Users should feel invited to act because the interface looks disciplined, current, and market-aware."
+          eyebrow="Why traders pick TrustTrade"
+          title="The fastest way to bet on crypto direction."
+          description="No leverage liquidations. No spreads. No order books to chase. Pick a side, set a timer, and get paid in USDT the moment you're right."
         >
           <div className="grid gap-4 lg:grid-cols-3">
             {trustSignals.map((signal, index) => {
@@ -794,10 +843,62 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
         </SectionFrame>
 
         <SectionFrame
+          eyebrow="Supported markets"
+          title="Trade the world's biggest crypto pairs."
+          description="Bitcoin, Ethereum, Solana, BNB, XRP, Dogecoin and the rest of the top liquidity. Live Binance-grade candles, real prices, every pair with the same one-tap execution — all settled in USDT."
+        >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {markets.map((market, index) => (
+              <motion.article
+                key={`token-${market.symbol}`}
+                className="rounded-3xl border border-border/80 bg-surface p-5"
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ amount: 0.2, once: true }}
+                transition={{ delay: (index % 5) * 0.06, duration: 0.45 }}
+                whileHover={reduceMotion ? undefined : { y: -6 }}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-base font-semibold text-foreground">{market.name}</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-[0.24em] text-muted">
+                      {market.symbol}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
+                      market.dayChangePercent >= 0 ? "bg-up/10 text-up" : "bg-down/10 text-down"
+                    }`}
+                  >
+                    {formatChange(market.dayChangePercent)}
+                  </span>
+                </div>
+                <p className="mt-4 text-xl font-semibold text-foreground">
+                  {formatPrice(market.priceCents)}
+                </p>
+                <p className="mt-1 text-xs text-muted">{market.volumeLabel} 24h volume</p>
+              </motion.article>
+            ))}
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-border/70 bg-surface px-5 py-4">
+            <p className="text-sm text-muted">
+              New pairs added regularly. Live prices stream from Binance with sub-second latency.
+            </p>
+            <Link
+              href="/signup"
+              className="inline-flex items-center gap-2 rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-background transition hover:bg-[#66b2ff]"
+            >
+              Trade now
+              <ArrowRight size={14} />
+            </Link>
+          </div>
+        </SectionFrame>
+
+        <SectionFrame
           className="overflow-hidden"
-          eyebrow="Platform edge"
-          title="Every section reinforces the next trade."
-          description="The landing page is structured like a funnel through a professional terminal: momentum first, clarity second, and frictionless capital movement underneath."
+          eyebrow="Built for crypto traders"
+          title="Everything you need on one screen."
+          description="Live charts, instant order tickets, a USDT-funded wallet, and the world's most-traded crypto pairs — all wired into a single, mobile-first desk."
         >
           <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="grid gap-4 sm:grid-cols-2">
@@ -834,16 +935,16 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
               <div className="absolute inset-x-6 top-6 h-px bg-gradient-to-r from-transparent via-brand/60 to-transparent" />
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.32em] text-muted">Momentum panel</p>
+                  <p className="text-[11px] uppercase tracking-[0.32em] text-muted">All supported markets</p>
                   <p className="mt-2 text-2xl font-semibold text-foreground">
-                    Live desk pressure stays visible
+                    Trade the top crypto pairs by volume
                   </p>
                 </div>
                 <Gauge size={18} className="text-brand" />
               </div>
 
               <div className="mt-8 grid gap-4">
-                {topMarkets.map((market, index) => (
+                {markets.slice(0, 8).map((market, index) => (
                   <motion.div
                     key={`insight-${market.symbol}`}
                     className="rounded-[24px] border border-border/75 bg-surface px-4 py-4"
@@ -854,8 +955,8 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-foreground">{market.symbol}</p>
-                        <p className="mt-1 text-xs text-muted">{market.volumeLabel} routed volume</p>
+                        <p className="text-sm font-semibold text-foreground">{market.name}</p>
+                        <p className="mt-1 text-xs text-muted">{market.symbol} · {market.volumeLabel} 24h vol</p>
                       </div>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -898,9 +999,9 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
         </SectionFrame>
 
         <SectionFrame
-          eyebrow="Execution flow"
-          title="A clear trading journey increases action."
-          description="The page should not bury intent under abstract brand copy. It should move the user through observation, commitment, and account creation with a strong visual cadence."
+          eyebrow="How it works"
+          title="Three steps from idea to USDT payout."
+          description="TrustTrade strips away the noise of traditional exchanges. You're three taps away from a position on Bitcoin, Ethereum, Solana or any of our supported pairs."
         >
           <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
             <div className="rounded-[30px] border border-border/80 bg-surface p-6">
@@ -909,15 +1010,15 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                   <TimerReset size={20} />
                 </div>
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.28em] text-muted">Trade rhythm</p>
+                  <p className="text-[11px] uppercase tracking-[0.28em] text-muted">The numbers</p>
                   <p className="mt-1 text-xl font-semibold text-foreground">
-                    Compression. Clarity. Conversion.
+                    Fast. Fair. Always open.
                   </p>
                 </div>
               </div>
               <p className="mt-5 text-sm leading-7 text-muted">
-                Every animated surface narrows the user toward a decision. The market feels active.
-                The interface feels precise. The call to trade feels earned.
+                Six trade windows from 30 seconds to a full day. Up to 85% payouts on every win.
+                Five levels of referral commission. The whole crypto market — your call, your timing.
               </p>
               <div className="mt-6 grid gap-3">
                 {platformMetrics.map((metric, index) => (
@@ -973,9 +1074,9 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
 
         <SectionFrame
           className="overflow-hidden"
-          eyebrow="Trader proof"
-          title="Real momentum needs visible social proof."
-          description="Testimonials should feel like they are moving through the same market current as the rest of the page: alive, directional, and confident enough to make the next user step in."
+          eyebrow="From the desk"
+          title="Real traders. Real wins. Paid in USDT."
+          description="Our community trades the same pairs you watch every day — BTC, ETH, SOL, BNB, XRP, DOGE — with cleaner mechanics and faster payouts than any spot exchange."
         >
           <div className="grid gap-5 xl:grid-cols-[0.78fr_1.22fr]">
             <motion.div
@@ -1001,21 +1102,21 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
 
               <div className="relative z-10">
                 <p className="text-[11px] uppercase tracking-[0.32em] text-muted">
-                  Sentiment pulse
+                  Why traders stay
                 </p>
                 <h3 className="mt-3 max-w-md text-3xl font-semibold tracking-tight text-foreground">
-                  The landing page now carries trader energy past the hero.
+                  Win or lose, the result is on-chain fast.
                 </h3>
                 <p className="mt-4 max-w-md text-sm leading-7 text-muted">
-                  These quotes are staged like active desk chatter, not static endorsements. The
-                  motion keeps social proof present without turning it into a loud carousel.
+                  No T+2 settlements. No support tickets to chase profit. The candle closes,
+                  the trade resolves, and your USDT balance updates — within the same second.
                 </p>
 
                 <div className="mt-8 grid gap-3">
                   {[
-                    { label: "Confidence lift", value: "92%" },
-                    { label: "Repeat intent", value: "High" },
-                    { label: "Referral pull", value: "Compounding" },
+                    { label: "Settlement", value: "Instant" },
+                    { label: "Max payout", value: "85%" },
+                    { label: "Markets", value: "10+ pairs" },
                   ].map((signal, index) => (
                     <motion.div
                       key={signal.label}
@@ -1132,15 +1233,14 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
           <div className="relative z-10 flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <p className="text-[11px] font-semibold uppercase tracking-[0.34em] text-brand">
-                Final call
+                Start trading
               </p>
               <h2 className="mt-4 font-display text-4xl tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-                Move while the market is live. Bring users into a platform that looks ready now.
+                The market is moving. So should you.
               </h2>
               <p className="mt-5 max-w-2xl text-base leading-8 text-muted">
-                The landing page now sells trading behavior through motion, control, and visible
-                market energy. It should feel credible to serious users and persuasive to curious
-                ones.
+                Open a TrustTrade account in under a minute. Fund with crypto, swap to USDT,
+                and place your first trade on Bitcoin, Ethereum, Solana — or any of our top pairs — today.
               </p>
             </div>
 
@@ -1149,7 +1249,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                 href="/signup"
                 className="group inline-flex items-center gap-3 rounded-full bg-brand px-7 py-4 text-sm font-semibold text-background transition hover:bg-[#66b2ff]"
               >
-                Create account
+                Create free account
                 <ArrowRight
                   size={16}
                   className="transition-transform duration-300 group-hover:translate-x-1"
@@ -1159,7 +1259,7 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
                 href="/login"
                 className="inline-flex items-center gap-3 rounded-full border border-border/80 bg-surface px-7 py-4 text-sm font-semibold text-foreground transition hover:border-brand/60 hover:bg-surface-strong"
               >
-                Access existing desk
+                Sign in
                 <ArrowUpRight size={16} />
               </Link>
             </div>

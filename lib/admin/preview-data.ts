@@ -235,6 +235,7 @@ export const previewAppConfig: AppConfig = {
   signupBonusCents: 1000,
   withdrawFeeCents: 0,
   withdrawMinCents: 5000,
+  usdSwapFeeBps: 0,
 };
 
 export const previewBusinessDashboard: BusinessDashboard = {

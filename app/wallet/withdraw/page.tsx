@@ -4,13 +4,15 @@ import AppShell from "@/components/layout/AppShell";
 import WithdrawForm from "@/components/wallet/WithdrawForm";
 import { hasWithdrawalPin } from "@/lib/account/pin-service";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
-import { getBalance } from "@/lib/trades/service";
+import { listMarketTokens } from "@/lib/markets/service";
+import { getWalletBalances } from "@/lib/wallet-balances/service";
 
 export default async function WithdrawPage() {
   const { userId } = await assertUserApi();
-  const [balance, pinSet] = await Promise.all([
-    getBalance(userId),
+  const [balances, pinSet, tokensResult] = await Promise.all([
+    getWalletBalances(userId),
     hasWithdrawalPin(userId),
+    listMarketTokens(),
   ]);
 
   return (
@@ -40,15 +42,18 @@ export default async function WithdrawPage() {
             Withdraw funds
           </h1>
           <p className="max-w-2xl text-sm text-muted">
-            Funds are held immediately on submission. Admin reviews and pays externally. Minimum
-            withdrawal is $50. Locked bonus balances cannot be withdrawn until the wager
-            requirement is met.
+            Pick a token, enter the native amount, and submit. Funds are held on submission and
+            admin reviews + pays externally. Min withdrawal and fee are configured per token.
           </p>
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
           <section className="rounded-[28px] border border-border bg-surface-soft p-6 sm:p-8">
-            <WithdrawForm balance={balance} hasWithdrawalPin={pinSet} />
+            <WithdrawForm
+              balances={balances}
+              tokens={tokensResult.items}
+              hasWithdrawalPin={pinSet}
+            />
           </section>
 
           <aside className="flex flex-col gap-4 rounded-[28px] border border-border bg-surface-soft p-6">

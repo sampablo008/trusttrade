@@ -8,7 +8,8 @@ export const depositSchema = z.object({
   tokenId: z.string().uuid(),
   tokenSymbol: z.string(),
   network: z.string().min(1),
-  amountCents: z.number().int().positive(),
+  amount: z.number().nonnegative().nullable(),
+  amountCents: z.number().int().nonnegative(),
   proofPath: z.string().min(1),
   txHash: z.string().nullable(),
   status: depositStatusSchema,
@@ -26,7 +27,7 @@ export const depositsResultSchema = z.object({
 export const submitDepositInputSchema = z.object({
   tokenSymbol: z.string().min(1, "Token is required."),
   network: z.string().min(1, "Network is required."),
-  amountCents: z.number().int().positive(),
+  amount: z.number().positive("Amount must be greater than zero."),
   proofPath: z.string().min(1),
   txHash: z.string().optional(),
 });
@@ -40,7 +41,7 @@ export const adminDepositFiltersSchema = z.object({
 
 export const adminApproveDepositSchema = z.object({
   note: z.string().optional(),
-  amountCents: z.number().int().positive().optional(),
+  amount: z.number().positive().optional(),
 });
 
 export const adminRejectDepositSchema = z.object({

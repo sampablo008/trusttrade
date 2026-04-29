@@ -13,9 +13,13 @@ import { getPreviewAdminWithdrawals } from "./preview-data";
 interface WithdrawalRow {
   id: string;
   user_id: string;
-  amount_cents: number | bigint;
+  token_id: string | null;
+  amount: number | string | null;
+  fee_amount: number | string | null;
+  net_amount: number | string | null;
+  amount_cents: number | bigint | null;
   fee_cents: number | bigint;
-  net_amount_cents: number | bigint;
+  net_amount_cents: number | bigint | null;
   token_symbol: string;
   network: string;
   destination_address: string;
@@ -30,9 +34,10 @@ interface WithdrawalRow {
   created_at: string;
 }
 
-const toNum = (v: number | bigint | null | undefined): number => {
+const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
   if (typeof v === "bigint") return Number(v);
+  if (typeof v === "string") return Number(v);
   return v;
 };
 
@@ -40,6 +45,10 @@ const mapRow = (row: WithdrawalRow): Withdrawal =>
   withdrawalSchema.parse({
     id: row.id,
     userId: row.user_id,
+    tokenId: row.token_id,
+    amount: row.amount != null ? toNum(row.amount) : null,
+    feeAmount: row.fee_amount != null ? toNum(row.fee_amount) : null,
+    netAmount: row.net_amount != null ? toNum(row.net_amount) : null,
     amountCents: toNum(row.amount_cents),
     feeCents: toNum(row.fee_cents),
     netAmountCents: toNum(row.net_amount_cents),
@@ -57,7 +66,8 @@ const mapRow = (row: WithdrawalRow): Withdrawal =>
     createdAt: row.created_at,
   });
 
-const SELECT = "id, user_id, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at";
+const SELECT =
+  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at";
 
 export const listAdminWithdrawals = async (
   filters: AdminWithdrawalFilters,
@@ -129,7 +139,6 @@ export const markWithdrawalPaid = async (
   addressConfirm: string,
   destinationAddress: string,
 ): Promise<Withdrawal> => {
-  // Verify last-8-char safety check
   const last8 = destinationAddress.slice(-8);
   if (addressConfirm !== last8) {
     throw new ApiClientError(

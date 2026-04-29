@@ -121,6 +121,13 @@ export default function GlobalConfigPanel() {
           disabled={mutation.isPending}
         />
         <NumericField
+          label="USD swap fee (bps)"
+          hint={`${(data.usdSwapFeeBps / 100).toFixed(2)}%`}
+          value={data.usdSwapFeeBps}
+          onSave={(v) => mutation.mutate({ usdSwapFeeBps: v })}
+          disabled={mutation.isPending}
+        />
+        <NumericField
           label="Bonus Wager Multiplier"
           hint={`${data.bonusWagerMultiplier}×`}
           value={data.bonusWagerMultiplier}

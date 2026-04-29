@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
+import { ChevronDown, Plus, Minus } from "lucide-react";
 import BalanceHistoryDrawer from "@/components/admin/balance-history-drawer";
-import { formatUsdFromCents } from "@/lib/utils/format";
-import type { AdminUser } from "@/types/admin";
+import CoinIcon from "@/components/ui/CoinIcon";
+import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
+import type { AdminTokenBalance, AdminUser } from "@/types/admin";
 import type { TradeOutcome } from "@/types/trade";
 
 interface UsersPanelProps {
@@ -12,6 +14,7 @@ interface UsersPanelProps {
 
 type RoleTab = "user" | "admin";
 type ForcedChoice = "auto" | "win" | "lose";
+type AdjustSign = "credit" | "debit";
 
 const outcomeToChoice = (o: TradeOutcome | null): ForcedChoice =>
   o === "win" ? "win" : o === "lose" ? "lose" : "auto";
@@ -19,19 +22,49 @@ const outcomeToChoice = (o: TradeOutcome | null): ForcedChoice =>
 const choiceToOutcome = (c: ForcedChoice): TradeOutcome | null =>
   c === "auto" ? null : c;
 
+const USD_TARGET = "__USD__";
+
 export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [tab, setTab] = useState<RoleTab>("user");
   const [users, setUsers] = useState<AdminUser[]>(initialData.items);
   const [total, setTotal] = useState(initialData.total);
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
-  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
-  const [adjustDelta, setAdjustDelta] = useState("");
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<string>(USD_TARGET);
+  const [adjustSign, setAdjustSign] = useState<AdjustSign>("credit");
+  const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyUserId, setHistoryUserId] = useState<string | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const limit = 50;
+
+  const expandedUser = users.find((u) => u.userId === expandedUserId) ?? null;
+
+  // When a user is expanded, fetch full detail (token balances) lazily.
+  useEffect(() => {
+    if (!expandedUserId) return;
+    const u = users.find((x) => x.userId === expandedUserId);
+    if (!u || u.tokenBalances) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetch(`/api/admin/users/${expandedUserId}`);
+      const data = (await res.json()) as { user?: AdminUser };
+      if (!cancelled && data.user) {
+        const fetched = data.user;
+        setUsers((prev) =>
+          prev.map((x) => (x.userId === fetched.userId ? fetched : x)),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [expandedUserId, users]);
 
   const fetchUsers = useCallback(
     async (q: string, off: number, role: RoleTab) => {
@@ -63,9 +96,25 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   const handleTab = (next: RoleTab) => {
     if (next === tab) return;
     setTab(next);
-    setSelectedUser(null);
+    setExpandedUserId(null);
     fetchUsers(search, 0, next);
   };
+
+  const toggleExpand = (userId: string) => {
+    if (expandedUserId === userId) {
+      setExpandedUserId(null);
+      return;
+    }
+    setExpandedUserId(userId);
+    setAdjustTarget(USD_TARGET);
+    setAdjustSign("credit");
+    setAdjustAmount("");
+    setAdjustNote("");
+    setAdjustError(null);
+  };
+
+  const replaceUser = (next: AdminUser) =>
+    setUsers((prev) => prev.map((u) => (u.userId === next.userId ? next : u)));
 
   const handleFreeze = async (userId: string, isFrozen: boolean) => {
     await fetch(`/api/admin/users/${userId}/freeze`, {
@@ -76,48 +125,76 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
     setUsers((prev) =>
       prev.map((u) => (u.userId === userId ? { ...u, isFrozen } : u)),
     );
-    if (selectedUser?.userId === userId) {
-      setSelectedUser((u) => (u ? { ...u, isFrozen } : null));
-    }
   };
 
-  const handleSetForced = async (userId: string, forcedOutcome: TradeOutcome | null) => {
+  const handleSetForced = async (
+    userId: string,
+    forcedOutcome: TradeOutcome | null,
+  ) => {
     const res = await fetch(`/api/admin/users/${userId}/set-forced-outcome`, {
       body: JSON.stringify({ forcedOutcome }),
       headers: { "Content-Type": "application/json" },
       method: "POST",
     });
     const data = (await res.json()) as { user?: AdminUser };
-    if (!data.user) return;
-    setUsers((prev) => prev.map((u) => (u.userId === userId ? data.user! : u)));
-    if (selectedUser?.userId === userId) setSelectedUser(data.user);
+    if (data.user) replaceUser(data.user);
   };
 
   const handleAdjust = async () => {
-    if (!selectedUser) return;
-    const deltaCents = Math.round(parseFloat(adjustDelta) * 100);
-    if (!deltaCents || !adjustNote.trim()) return;
+    if (!expandedUser) return;
+    const amount = parseFloat(adjustAmount);
+    if (!isFinite(amount) || amount <= 0 || !adjustNote.trim()) return;
+    const signed = adjustSign === "debit" ? -amount : amount;
 
-    const res = await fetch(`/api/admin/users/${selectedUser.userId}/adjust-balance`, {
-      body: JSON.stringify({ deltaCents, note: adjustNote }),
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-    });
-    const data = await res.json() as { user: AdminUser };
-    if (data.user) {
-      setUsers((prev) => prev.map((u) => (u.userId === data.user.userId ? data.user : u)));
-      setSelectedUser(data.user);
+    setAdjustError(null);
+    setAdjustSubmitting(true);
+    try {
+      const isUsd = adjustTarget === USD_TARGET;
+      const url = isUsd
+        ? `/api/admin/users/${expandedUser.userId}/adjust-balance`
+        : `/api/admin/users/${expandedUser.userId}/adjust-token-balance`;
+      const body = isUsd
+        ? { deltaCents: Math.round(signed * 100), note: adjustNote }
+        : { tokenId: adjustTarget, deltaAmount: signed, note: adjustNote };
+
+      const res = await fetch(url, {
+        body: JSON.stringify(body),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const data = (await res.json()) as
+        | { user: AdminUser }
+        | { error: { code: string; message: string } };
+
+      if (!res.ok || "error" in data) {
+        const message = "error" in data ? data.error.message : "Adjustment failed.";
+        setAdjustError(message);
+        return;
+      }
+
+      replaceUser(data.user);
       setHistoryRefreshKey((k) => k + 1);
+      setAdjustAmount("");
+      setAdjustNote("");
+    } finally {
+      setAdjustSubmitting(false);
     }
-    setAdjustDelta("");
-    setAdjustNote("");
+  };
+
+  const adjustTokenSelected: AdminTokenBalance | null =
+    adjustTarget !== USD_TARGET
+      ? expandedUser?.tokenBalances?.find((t) => t.tokenId === adjustTarget) ?? null
+      : null;
+
+  const openHistory = (userId: string) => {
+    setHistoryUserId(userId);
+    setHistoryOpen(true);
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-      {/* Left: user list */}
-      <div className="flex flex-col gap-4">
-        <div className="inline-flex items-center gap-1 self-start rounded-full border border-border bg-background/30 p-1">
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-background/30 p-1">
           {(
             [
               { id: "user", label: "Users" },
@@ -139,7 +216,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
           ))}
         </div>
 
-        <form onSubmit={handleSearch} className="flex gap-3">
+        <form onSubmit={handleSearch} className="flex flex-1 min-w-[260px] gap-3">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -153,270 +230,186 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
             Search
           </button>
         </form>
-
-        <div className="overflow-hidden rounded-[24px] border border-border">
-          <table className="min-w-full divide-y divide-border text-left">
-            <thead className="bg-surface">
-              <tr>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  User
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  Balance
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  Trades
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  Status
-                </th>
-                <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  Outcome
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border bg-background/20">
-              {loading && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
-                    Loading…
-                  </td>
-                </tr>
-              )}
-              {!loading && users.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted">
-                    No users found
-                  </td>
-                </tr>
-              )}
-              {!loading &&
-                users.map((u) => (
-                  <tr
-                    key={u.userId}
-                    onClick={() => setSelectedUser(u)}
-                    className={`cursor-pointer transition-colors ${
-                      selectedUser?.userId === u.userId
-                        ? "bg-brand/10"
-                        : "hover:bg-surface/60"
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-foreground">
-                          {u.username}
-                        </span>
-                        <span className="text-xs text-muted">{u.email}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-foreground">
-                      {formatUsdFromCents(u.balanceCents)}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-muted">
-                      {u.totalSettledTrades}
-                    </td>
-                    <td className="px-4 py-3">
-                      {u.isFrozen ? (
-                        <span className="rounded-full bg-[#f6465d]/15 px-2 py-0.5 text-xs font-semibold text-[#f6465d]">
-                          Frozen
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-[#0ecb81]/15 px-2 py-0.5 text-xs font-semibold text-[#0ecb81]">
-                          Active
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <div className="inline-flex items-center rounded-full border border-border bg-background/40 p-0.5">
-                        {(["auto", "win", "lose"] as const).map((c) => {
-                          const current = outcomeToChoice(u.forcedOutcome);
-                          const active = current === c;
-                          return (
-                            <button
-                              key={c}
-                              type="button"
-                              onClick={() => handleSetForced(u.userId, choiceToOutcome(c))}
-                              className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition ${
-                                active
-                                  ? c === "win"
-                                    ? "bg-[#0ecb81]/20 text-[#0ecb81]"
-                                    : c === "lose"
-                                    ? "bg-[#f6465d]/20 text-[#f6465d]"
-                                    : "bg-foreground/10 text-foreground"
-                                  : "text-muted hover:text-foreground"
-                              }`}
-                            >
-                              {c}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex items-center justify-between text-xs text-muted">
-          <span>
-            Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}
-          </span>
-          <div className="flex gap-2">
-            <button
-              disabled={offset === 0}
-              onClick={() => fetchUsers(search, Math.max(offset - limit, 0), tab)}
-              className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <button
-              disabled={offset + limit >= total}
-              onClick={() => fetchUsers(search, offset + limit, tab)}
-              className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
       </div>
 
-      {/* Right: user detail panel */}
-      <div className="rounded-[24px] border border-border bg-background/20 p-6">
-        {!selectedUser ? (
-          <p className="text-sm text-muted">Select a user to view details</p>
-        ) : (
-          <div className="flex flex-col gap-5">
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  User detail
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setHistoryOpen(true)}
-                  className="shrink-0 rounded-full bg-brand/15 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-brand transition hover:bg-brand/25"
-                >
-                  Balance history →
-                </button>
-              </div>
-              <h2 className="mt-2 truncate text-2xl font-semibold text-foreground">
-                {selectedUser.username}
-              </h2>
-              <p className="mt-0.5 truncate text-sm text-muted">{selectedUser.email}</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="rounded-[16px] border border-border bg-background/30 p-3">
-                <p className="text-xs text-muted">Balance</p>
-                <p className="mt-1 font-semibold text-foreground">
-                  {formatUsdFromCents(selectedUser.balanceCents)}
-                </p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-background/30 p-3">
-                <p className="text-xs text-muted">Locked (trades)</p>
-                <p className="mt-1 font-semibold text-foreground">
-                  {formatUsdFromCents(selectedUser.lockedInTradesCents)}
-                </p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-background/30 p-3">
-                <p className="text-xs text-muted">Locked (bonus)</p>
-                <p className="mt-1 font-semibold text-foreground">
-                  {formatUsdFromCents(selectedUser.lockedBonusCents)}
-                </p>
-              </div>
-              <div className="rounded-[16px] border border-border bg-background/30 p-3">
-                <p className="text-xs text-muted">Settled trades</p>
-                <p className="mt-1 font-semibold text-foreground">
-                  {selectedUser.totalSettledTrades}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                Forced outcome
-              </p>
-              <p className="text-[11px] text-muted">
-                Overrides global expiry policy for this user. Every trade they place
-                settles as the chosen result unless a per-trade admin decision is set.
-              </p>
-              <div className="mt-1 grid grid-cols-3 gap-2">
-                {(["auto", "win", "lose"] as const).map((c) => {
-                  const current = outcomeToChoice(selectedUser.forcedOutcome);
-                  const active = current === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() =>
-                        handleSetForced(selectedUser.userId, choiceToOutcome(c))
-                      }
-                      className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
-                        active
-                          ? c === "win"
-                            ? "bg-[#0ecb81]/20 text-[#0ecb81]"
-                            : c === "lose"
-                            ? "bg-[#f6465d]/20 text-[#f6465d]"
-                            : "bg-foreground text-background"
-                          : "bg-background/30 text-muted hover:text-foreground"
+      <div className="overflow-hidden rounded-3xl border border-border">
+        <table className="min-w-full divide-y divide-border text-left">
+          <thead className="bg-surface">
+            <tr>
+              <th className="w-10 px-4 py-3" />
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                User
+              </th>
+              <th
+                className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted"
+                title="Legacy USD ledger. Expand row for token totals."
+              >
+                USD ledger
+              </th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                Trades
+              </th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                Status
+              </th>
+              <th className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+                Outcome
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border bg-background/20">
+            {loading && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                  Loading…
+                </td>
+              </tr>
+            )}
+            {!loading && users.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted">
+                  No users found
+                </td>
+              </tr>
+            )}
+            {!loading &&
+              users.map((u) => {
+                const isOpen = expandedUserId === u.userId;
+                return (
+                  <Fragment key={u.userId}>
+                    <tr
+                      onClick={() => toggleExpand(u.userId)}
+                      className={`cursor-pointer transition-colors ${
+                        isOpen ? "bg-brand/10" : "hover:bg-surface/60"
                       }`}
                     >
-                      {c}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                      <td className="px-4 py-3 text-muted">
+                        <ChevronDown
+                          size={16}
+                          className={`transition-transform ${
+                            isOpen ? "rotate-180 text-foreground" : ""
+                          }`}
+                        />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold text-foreground">
+                            {u.username}
+                          </span>
+                          <span className="text-xs text-muted">{u.email}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-foreground">
+                        {formatUsdFromCents(u.balanceCents)}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-muted">
+                        {u.totalSettledTrades}
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.isFrozen ? (
+                          <span className="rounded-full bg-[#f6465d]/15 px-2 py-0.5 text-xs font-semibold text-[#f6465d]">
+                            Frozen
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-[#0ecb81]/15 px-2 py-0.5 text-xs font-semibold text-[#0ecb81]">
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-3"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="inline-flex items-center rounded-full border border-border bg-background/40 p-0.5">
+                          {(["auto", "win", "lose"] as const).map((c) => {
+                            const current = outcomeToChoice(u.forcedOutcome);
+                            const active = current === c;
+                            return (
+                              <button
+                                key={c}
+                                type="button"
+                                onClick={() =>
+                                  handleSetForced(u.userId, choiceToOutcome(c))
+                                }
+                                className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                                  active
+                                    ? c === "win"
+                                      ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                                      : c === "lose"
+                                      ? "bg-[#f6465d]/20 text-[#f6465d]"
+                                      : "bg-foreground/10 text-foreground"
+                                    : "text-muted hover:text-foreground"
+                                }`}
+                              >
+                                {c}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="bg-background/40">
+                        <td colSpan={6} className="px-6 py-6">
+                          <UserDetail
+                            user={u}
+                            adjustTarget={adjustTarget}
+                            setAdjustTarget={(v) => {
+                              setAdjustTarget(v);
+                              setAdjustError(null);
+                            }}
+                            adjustSign={adjustSign}
+                            setAdjustSign={setAdjustSign}
+                            adjustAmount={adjustAmount}
+                            setAdjustAmount={setAdjustAmount}
+                            adjustNote={adjustNote}
+                            setAdjustNote={setAdjustNote}
+                            adjustError={adjustError}
+                            adjustSubmitting={adjustSubmitting}
+                            adjustTokenSelected={adjustTokenSelected}
+                            onAdjust={handleAdjust}
+                            onFreeze={() =>
+                              handleFreeze(u.userId, !u.isFrozen)
+                            }
+                            onSetForced={(c) =>
+                              handleSetForced(u.userId, choiceToOutcome(c))
+                            }
+                            onOpenHistory={() => openHistory(u.userId)}
+                            onPickToken={(tokenId) => {
+                              setAdjustTarget(tokenId);
+                              setAdjustError(null);
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                );
+              })}
+          </tbody>
+        </table>
+      </div>
 
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                Account
-              </p>
-              <button
-                onClick={() =>
-                  handleFreeze(selectedUser.userId, !selectedUser.isFrozen)
-                }
-                className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-                  selectedUser.isFrozen
-                    ? "bg-[#0ecb81]/15 text-[#0ecb81] hover:bg-[#0ecb81]/25"
-                    : "bg-[#f6465d]/15 text-[#f6465d] hover:bg-[#f6465d]/25"
-                }`}
-              >
-                {selectedUser.isFrozen ? "Unfreeze account" : "Freeze account"}
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3 border-t border-border pt-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                Adjust balance
-              </p>
-              <input
-                type="number"
-                step="0.01"
-                value={adjustDelta}
-                onChange={(e) => setAdjustDelta(e.target.value)}
-                placeholder="Amount (e.g. +50 or -25)"
-                className="rounded-full border border-border bg-background/30 px-4 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand"
-              />
-              <input
-                type="text"
-                value={adjustNote}
-                onChange={(e) => setAdjustNote(e.target.value)}
-                placeholder="Required note (reason)"
-                className="rounded-full border border-border bg-background/30 px-4 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand"
-              />
-              <button
-                onClick={handleAdjust}
-                disabled={!adjustDelta || !adjustNote}
-                className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition hover:bg-brand disabled:opacity-40"
-              >
-                Apply adjustment
-              </button>
-            </div>
-          </div>
-        )}
+      <div className="flex items-center justify-between text-xs text-muted">
+        <span>
+          Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}
+        </span>
+        <div className="flex gap-2">
+          <button
+            disabled={offset === 0}
+            onClick={() => fetchUsers(search, Math.max(offset - limit, 0), tab)}
+            className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
+          >
+            Prev
+          </button>
+          <button
+            disabled={offset + limit >= total}
+            onClick={() => fetchUsers(search, offset + limit, tab)}
+            className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
+          >
+            Next
+          </button>
+        </div>
       </div>
 
       <BalanceHistoryDrawer
@@ -424,15 +417,365 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
         onClose={() => setHistoryOpen(false)}
         refreshKey={historyRefreshKey}
         user={
-          selectedUser
-            ? {
-                email: selectedUser.email,
-                userId: selectedUser.userId,
-                username: selectedUser.username,
-              }
+          historyUserId
+            ? (() => {
+                const u = users.find((x) => x.userId === historyUserId);
+                return u
+                  ? { email: u.email, userId: u.userId, username: u.username }
+                  : null;
+              })()
             : null
         }
       />
+    </div>
+  );
+}
+
+interface UserDetailProps {
+  user: AdminUser;
+  adjustTarget: string;
+  setAdjustTarget: (v: string) => void;
+  adjustSign: AdjustSign;
+  setAdjustSign: (s: AdjustSign) => void;
+  adjustAmount: string;
+  setAdjustAmount: (v: string) => void;
+  adjustNote: string;
+  setAdjustNote: (v: string) => void;
+  adjustError: string | null;
+  adjustSubmitting: boolean;
+  adjustTokenSelected: AdminTokenBalance | null;
+  onAdjust: () => void;
+  onFreeze: () => void;
+  onSetForced: (c: ForcedChoice) => void;
+  onOpenHistory: () => void;
+  onPickToken: (tokenId: string) => void;
+}
+
+function UserDetail({
+  user,
+  adjustTarget,
+  setAdjustTarget,
+  adjustSign,
+  setAdjustSign,
+  adjustAmount,
+  setAdjustAmount,
+  adjustNote,
+  setAdjustNote,
+  adjustError,
+  adjustSubmitting,
+  adjustTokenSelected,
+  onAdjust,
+  onFreeze,
+  onSetForced,
+  onOpenHistory,
+  onPickToken,
+}: UserDetailProps) {
+  const isLoadingTokens = !user.tokenBalances;
+
+  const totals = (user.tokenBalances ?? []).reduce(
+    (acc, tb) => {
+      acc.totalUsdCents += tb.usdValueCents;
+      acc.lockedUsdCents += Math.round(tb.lockedBalance * tb.usdPriceCents);
+      return acc;
+    },
+    { totalUsdCents: 0, lockedUsdCents: 0 },
+  );
+
+  const previewUsd =
+    adjustTokenSelected && adjustAmount
+      ? Math.round(
+          (parseFloat(adjustAmount) || 0) * adjustTokenSelected.usdPriceCents,
+        )
+      : null;
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
+      {/* Column 1: balances + status */}
+      <div className="flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+              User
+            </p>
+            <h3 className="mt-1 truncate text-lg font-semibold text-foreground">
+              {user.username}
+            </h3>
+            <p className="truncate text-xs text-muted">{user.email}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className="shrink-0 rounded-full bg-brand/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-brand transition hover:bg-brand/25"
+          >
+            History →
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <Stat
+            label="Total balance"
+            value={formatUsdFromCents(totals.totalUsdCents)}
+            hint="USD value of all token holdings"
+          />
+          <Stat
+            label="Locked in trades"
+            value={formatUsdFromCents(totals.lockedUsdCents)}
+            hint="USD value of tokens locked in active trades"
+          />
+          <Stat
+            label="USD ledger"
+            value={formatUsdFromCents(user.balanceCents)}
+            hint="Legacy USD-cent balance"
+          />
+          <Stat label="Settled" value={String(user.totalSettledTrades)} />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+            Forced outcome
+          </p>
+          <p className="text-[11px] text-muted">
+            Overrides global expiry policy for this user.
+          </p>
+          <div className="grid grid-cols-3 gap-2">
+            {(["auto", "win", "lose"] as const).map((c) => {
+              const current = outcomeToChoice(user.forcedOutcome);
+              const active = current === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => onSetForced(c)}
+                  className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                    active
+                      ? c === "win"
+                        ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                        : c === "lose"
+                        ? "bg-[#f6465d]/20 text-[#f6465d]"
+                        : "bg-foreground text-background"
+                      : "bg-background/30 text-muted hover:text-foreground"
+                  }`}
+                >
+                  {c}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <button
+          onClick={onFreeze}
+          className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+            user.isFrozen
+              ? "bg-[#0ecb81]/15 text-[#0ecb81] hover:bg-[#0ecb81]/25"
+              : "bg-[#f6465d]/15 text-[#f6465d] hover:bg-[#f6465d]/25"
+          }`}
+        >
+          {user.isFrozen ? "Unfreeze account" : "Freeze account"}
+        </button>
+      </div>
+
+      {/* Column 2: token balances list */}
+      <div className="flex flex-col gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+          Token balances
+        </p>
+        {isLoadingTokens && (
+          <p className="text-xs text-muted">Loading token balances…</p>
+        )}
+        {!isLoadingTokens && user.tokenBalances && user.tokenBalances.length === 0 && (
+          <p className="text-xs text-muted">No token balances.</p>
+        )}
+        {user.tokenBalances && user.tokenBalances.length > 0 && (
+          <div className="flex flex-col gap-1.5 max-h-[360px] overflow-y-auto pr-1">
+            {user.tokenBalances.map((tb) => {
+              const active = adjustTarget === tb.tokenId;
+              return (
+                <button
+                  key={tb.tokenId}
+                  type="button"
+                  onClick={() => onPickToken(tb.tokenId)}
+                  className={`flex items-center justify-between gap-2 rounded-2xl border px-3 py-2 text-left transition ${
+                    active
+                      ? "border-brand bg-brand/10"
+                      : "border-border bg-background/30 hover:border-brand/50"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <CoinIcon symbol={tb.symbol} iconPath={tb.iconPath} size={20} />
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-semibold text-foreground">
+                        {tb.symbol}
+                      </span>
+                      <span className="truncate text-[10px] text-muted">
+                        {tb.name}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end leading-tight">
+                    <span className="font-mono text-xs text-foreground">
+                      {formatTokenAmount(tb.balance, tb.symbol, tb.decimals)}
+                    </span>
+                    <span className="text-[10px] text-muted">
+                      {formatUsdFromCents(tb.usdValueCents)}
+                      {tb.lockedBalance > 0 && (
+                        <>
+                          {" · locked "}
+                          {formatTokenAmount(
+                            tb.lockedBalance,
+                            tb.symbol,
+                            tb.decimals,
+                          )}
+                        </>
+                      )}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Column 3: adjust form */}
+      <div className="flex flex-col gap-3 rounded-2xl border border-border bg-background/30 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">
+            Adjust balance
+          </p>
+          <div className="inline-flex items-center rounded-full border border-border bg-background/40 p-0.5">
+            {(
+              [
+                { id: "credit", label: "Credit", icon: Plus, color: "text-[#0ecb81]" },
+                { id: "debit", label: "Debit", icon: Minus, color: "text-[#f6465d]" },
+              ] as const
+            ).map((opt) => {
+              const Icon = opt.icon;
+              const active = adjustSign === opt.id;
+              return (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setAdjustSign(opt.id)}
+                  className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition ${
+                    active
+                      ? opt.id === "credit"
+                        ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                        : "bg-[#f6465d]/20 text-[#f6465d]"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  <Icon size={12} className={active ? opt.color : ""} />
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <select
+          value={adjustTarget}
+          onChange={(e) => setAdjustTarget(e.target.value)}
+          className="rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-foreground focus:outline-none focus:border-brand"
+        >
+          <option value={USD_TARGET}>USD (cents balance)</option>
+          {user.tokenBalances?.map((tb) => (
+            <option key={tb.tokenId} value={tb.tokenId}>
+              {tb.symbol} — {tb.name}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Amount in{" "}
+            <span className="text-foreground">
+              {adjustTarget === USD_TARGET
+                ? "USD"
+                : adjustTokenSelected?.symbol ?? ""}
+            </span>
+          </label>
+          <div className="relative">
+            <input
+              type="number"
+              min="0"
+              step={adjustTarget === USD_TARGET ? "0.01" : "any"}
+              value={adjustAmount}
+              onChange={(e) => setAdjustAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-full rounded-full border border-border bg-background/40 px-4 py-2 pr-20 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand"
+            />
+            <span
+              className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
+                adjustTarget === USD_TARGET
+                  ? "bg-foreground/10 text-foreground"
+                  : "bg-brand/15 text-brand"
+              }`}
+            >
+              {adjustTarget === USD_TARGET ? "USD" : adjustTokenSelected?.symbol ?? ""}
+            </span>
+          </div>
+          {previewUsd != null && (
+            <p className="px-1 text-[11px] text-muted">
+              ≈ {formatUsdFromCents(previewUsd)} at{" "}
+              {formatUsdFromCents(adjustTokenSelected!.usdPriceCents)} /{" "}
+              {adjustTokenSelected!.symbol}
+            </p>
+          )}
+        </div>
+
+        <input
+          type="text"
+          value={adjustNote}
+          onChange={(e) => setAdjustNote(e.target.value)}
+          placeholder="Required note (reason)"
+          className="rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand"
+        />
+
+        {adjustError && (
+          <p className="rounded-2xl bg-[#f6465d]/10 px-3 py-2 text-[11px] font-semibold text-[#f6465d]">
+            {adjustError}
+          </p>
+        )}
+
+        <button
+          onClick={onAdjust}
+          disabled={!adjustAmount || !adjustNote || adjustSubmitting}
+          className={`rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:opacity-40 ${
+            adjustSign === "credit"
+              ? "bg-[#0ecb81] text-background hover:brightness-110"
+              : "bg-[#f6465d] text-background hover:brightness-110"
+          }`}
+        >
+          {adjustSubmitting
+            ? "Applying…"
+            : `${adjustSign === "credit" ? "Credit" : "Debit"} ${
+                adjustTarget === USD_TARGET
+                  ? "USD balance"
+                  : adjustTokenSelected?.symbol ?? "token"
+              }`}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+}) {
+  return (
+    <div
+      className="rounded-2xl border border-border bg-background/30 p-3"
+      title={hint}
+    >
+      <p className="text-[10px] uppercase tracking-wide text-muted">{label}</p>
+      <p className="mt-1 font-semibold text-foreground">{value}</p>
     </div>
   );
 }

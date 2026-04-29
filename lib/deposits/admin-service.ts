@@ -2,6 +2,7 @@ import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getUsdPrice, nativeToUsdCents } from "@/lib/markets/prices";
 import { depositSchema, depositsResultSchema } from "@/schemas/deposit";
 import type {
   AdminDepositFilters,
@@ -15,7 +16,8 @@ interface DepositRow {
   user_id: string;
   token_id: string;
   network: string;
-  amount_cents: number | bigint;
+  amount: number | string | null;
+  amount_cents: number | bigint | null;
   proof_path: string;
   tx_hash: string | null;
   status: string;
@@ -23,12 +25,16 @@ interface DepositRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
-  tokens?: { symbol: string } | { symbol: string }[] | null;
+  tokens?:
+    | { symbol: string; coingecko_id?: string | null }
+    | { symbol: string; coingecko_id?: string | null }[]
+    | null;
 }
 
-const toNum = (v: number | bigint | null | undefined): number => {
+const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
   if (typeof v === "bigint") return Number(v);
+  if (typeof v === "string") return Number(v);
   return v;
 };
 
@@ -45,6 +51,7 @@ const mapRow = (row: DepositRow): Deposit =>
     tokenId: row.token_id,
     tokenSymbol: resolveSymbol(row.tokens),
     network: row.network,
+    amount: row.amount != null ? toNum(row.amount) : null,
     amountCents: toNum(row.amount_cents),
     proofPath: row.proof_path,
     txHash: row.tx_hash ?? null,
@@ -55,7 +62,8 @@ const mapRow = (row: DepositRow): Deposit =>
     createdAt: row.created_at,
   });
 
-const SELECT = "id, user_id, token_id, network, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol)";
+const SELECT =
+  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, coingecko_id)";
 
 export const listAdminDeposits = async (
   filters: AdminDepositFilters,
@@ -90,11 +98,37 @@ export const listAdminDeposits = async (
   });
 };
 
+const computeUsdValueCents = async (
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  tokenId: string,
+  amount: number,
+): Promise<number> => {
+  const { data, error } = await admin
+    .from("tokens")
+    .select("coingecko_id, base_price_cents")
+    .eq("id", tokenId)
+    .maybeSingle();
+
+  if (error || !data) return 0;
+
+  const coingeckoId = (data as { coingecko_id: string | null }).coingecko_id;
+  if (coingeckoId) {
+    try {
+      const usd = await getUsdPrice(coingeckoId);
+      return nativeToUsdCents(amount, usd);
+    } catch {
+      // fall through to base price
+    }
+  }
+  const basePriceCents = toNum((data as { base_price_cents: number | string }).base_price_cents);
+  return Math.round(amount * basePriceCents);
+};
+
 export const approveAdminDeposit = async (
   depositId: string,
   adminUserId: string,
   note?: string,
-  amountCents?: number,
+  amount?: number,
 ): Promise<Deposit> => {
   if (!getOptionalServerEnv()) {
     const all = getPreviewAdminDeposits();
@@ -104,16 +138,43 @@ export const approveAdminDeposit = async (
       ...d,
       status: "approved",
       adminNote: note ?? null,
-      amountCents: amountCents ?? d.amountCents,
+      amount: amount ?? d.amount,
     };
   }
 
   const admin = createSupabaseAdminClient();
+
+  const { data: depositRow, error: depErr } = await admin
+    .from("deposits")
+    .select("id, token_id, amount")
+    .eq("id", depositId)
+    .maybeSingle();
+
+  if (depErr || !depositRow) {
+    throw new ApiClientError("Deposit not found.", 404, "DEPOSIT_NOT_FOUND");
+  }
+
+  const finalAmount = amount ?? toNum((depositRow as { amount: number | string | null }).amount);
+  if (finalAmount <= 0) {
+    throw new ApiClientError(
+      "Deposit amount must be positive.",
+      422,
+      "AMOUNT_BELOW_MIN",
+    );
+  }
+
+  const usdValueCents = await computeUsdValueCents(
+    admin,
+    (depositRow as { token_id: string }).token_id,
+    finalAmount,
+  );
+
   const { data, error } = await admin.rpc("approve_deposit", {
     p_deposit_id: depositId,
     p_admin_user_id: adminUserId,
     p_note: note ?? null,
-    p_amount_cents: amountCents ?? null,
+    p_amount: amount ?? null,
+    p_usd_value_cents: usdValueCents,
   });
 
   if (error) {

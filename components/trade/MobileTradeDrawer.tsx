@@ -2,11 +2,16 @@
 
 import { useEffect, useRef } from "react";
 import OrderTicket from "@/components/trade/OrderTicket";
+import type { TopCoin } from "@/lib/markets/top-coins";
 import type { PublicToken, PublicTradePeriod } from "@/types/market";
 
 interface MobileTradeDrawerProps {
   token: PublicToken;
   periods: PublicTradePeriod[];
+  tokenFreeBalance: number;
+  tokenUsdPriceCents: number;
+  coins?: TopCoin[];
+  iconPaths?: Record<string, string | null | undefined>;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -14,6 +19,10 @@ interface MobileTradeDrawerProps {
 export default function MobileTradeDrawer({
   token,
   periods,
+  tokenFreeBalance,
+  tokenUsdPriceCents,
+  coins,
+  iconPaths,
   isOpen,
   onClose,
 }: MobileTradeDrawerProps) {
@@ -73,6 +82,10 @@ export default function MobileTradeDrawer({
           <OrderTicket
             token={token}
             periods={periods}
+            tokenFreeBalance={tokenFreeBalance}
+            tokenUsdPriceCents={tokenUsdPriceCents}
+            coins={coins}
+            iconPaths={iconPaths}
             onTradeSuccess={onClose}
           />
         </div>

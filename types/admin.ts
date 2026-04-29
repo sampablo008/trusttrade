@@ -41,6 +41,18 @@ export interface BulkSettleResult {
   settled: string[];
 }
 
+export interface AdminTokenBalance {
+  tokenId: string;
+  symbol: string;
+  name: string;
+  iconPath: string | null;
+  decimals: number;
+  balance: number;
+  lockedBalance: number;
+  usdPriceCents: number;
+  usdValueCents: number;
+}
+
 export interface AdminUser {
   avatarPath: string | null;
   balanceCents: number;
@@ -56,6 +68,7 @@ export interface AdminUser {
   totalStakeCents: number;
   userId: string;
   username: string;
+  tokenBalances?: AdminTokenBalance[];
 }
 
 export interface AdminUserListResult {
@@ -75,6 +88,12 @@ export interface SetForcedOutcomeInput {
 
 export interface AdjustBalanceInput {
   deltaCents: number;
+  note: string;
+}
+
+export interface AdjustTokenBalanceInput {
+  tokenId: string;
+  deltaAmount: number;
   note: string;
 }
 
@@ -146,6 +165,7 @@ export interface AppConfig {
   signupBonusCents: number;
   withdrawFeeCents: number;
   withdrawMinCents: number;
+  usdSwapFeeBps: number;
 }
 
 export interface UpdateAppConfigInput {
@@ -162,6 +182,7 @@ export interface UpdateAppConfigInput {
   signupBonusCents?: number;
   withdrawFeeCents?: number;
   withdrawMinCents?: number;
+  usdSwapFeeBps?: number;
 }
 
 export interface BusinessDashboard {
