@@ -135,7 +135,7 @@ export default async function WalletPage() {
                         {formatUsdFromCents(tx.amountCents)}
                       </td>
                       <td className="px-4 py-3 text-right font-mono text-foreground tabular-nums">
-                        {formatUsdFromCents(tx.balanceAfterCents)}
+                        {tx.balanceAfterCents === null ? "—" : formatUsdFromCents(tx.balanceAfterCents)}
                       </td>
                     </tr>
                   ))}

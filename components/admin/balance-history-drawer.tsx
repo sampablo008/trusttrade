@@ -21,8 +21,13 @@ const TRANSACTION_KIND_LABELS: Record<string, string> = {
   bonus_expire: "Bonus expired",
   deposit: "Deposit",
   referral_payout: "Referral payout",
+  swap: "Swap",
+  trade_cancel_refund: "Trade cancelled",
   trade_credit: "Trade payout",
   trade_debit: "Trade stake",
+  trade_lose: "Trade lost",
+  trade_void: "Trade voided",
+  trade_win: "Trade won",
   withdrawal: "Withdrawal",
 };
 
@@ -36,6 +41,35 @@ const txTimestamp = new Intl.DateTimeFormat("en-US", {
 
 const formatSignedUsd = (cents: number) =>
   `${cents > 0 ? "+" : cents < 0 ? "−" : ""}${formatUsdFromCents(Math.abs(cents))}`;
+
+const formatTokenAmount = (amount: number, symbol: string | null) => {
+  const abs = Math.abs(amount);
+  // Show up to 8 decimals, trim trailing zeros, keep at least 2.
+  const fixed = abs.toFixed(8).replace(/0+$/, "").replace(/\.$/, ".00");
+  const sign = amount > 0 ? "+" : amount < 0 ? "−" : "";
+  return `${sign}${fixed}${symbol ? ` ${symbol}` : ""}`;
+};
+
+type AmountDisplay = { text: string; tone: "up" | "down" | "neutral" };
+
+const renderAmount = (tx: AdminTransaction): AmountDisplay => {
+  if (tx.tokenAmount !== null && tx.tokenAmount !== 0) {
+    return {
+      text: formatTokenAmount(tx.tokenAmount, tx.tokenSymbol),
+      tone: tx.tokenAmount > 0 ? "up" : "down",
+    };
+  }
+  if (tx.tokenAmount === 0 && tx.tokenSymbol) {
+    return { text: `0 ${tx.tokenSymbol}`, tone: "neutral" };
+  }
+  if (tx.amountCents !== 0) {
+    return {
+      text: formatSignedUsd(tx.amountCents),
+      tone: tx.amountCents > 0 ? "up" : "down",
+    };
+  }
+  return { text: "—", tone: "neutral" };
+};
 
 export default function BalanceHistoryDrawer({
   isOpen,
@@ -106,7 +140,13 @@ export default function BalanceHistoryDrawer({
         ) : (
           <ul className="flex flex-col gap-2">
             {items.map((tx) => {
-              const positive = tx.amountCents > 0;
+              const amount = renderAmount(tx);
+              const toneClass =
+                amount.tone === "up"
+                  ? "text-[#0ecb81]"
+                  : amount.tone === "down"
+                  ? "text-[#f6465d]"
+                  : "text-muted";
               return (
                 <li
                   key={tx.id}
@@ -116,17 +156,12 @@ export default function BalanceHistoryDrawer({
                     <span className="text-sm font-semibold text-foreground">
                       {TRANSACTION_KIND_LABELS[tx.kind] ?? tx.kind}
                     </span>
-                    <span
-                      className={`text-sm font-semibold ${
-                        positive ? "text-[#0ecb81]" : "text-[#f6465d]"
-                      }`}
-                    >
-                      {formatSignedUsd(tx.amountCents)}
+                    <span className={`text-sm font-semibold ${toneClass}`}>
+                      {amount.text}
                     </span>
                   </div>
-                  <div className="mt-1 flex items-center justify-between gap-3 text-[11px] text-muted">
-                    <span>{txTimestamp.format(new Date(tx.createdAt))}</span>
-                    <span>Balance {formatUsdFromCents(tx.balanceAfterCents)}</span>
+                  <div className="mt-1 text-[11px] text-muted">
+                    {txTimestamp.format(new Date(tx.createdAt))}
                   </div>
                   {tx.memo && <p className="mt-1 text-xs text-muted">{tx.memo}</p>}
                 </li>
