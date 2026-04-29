@@ -87,13 +87,16 @@ export const adjustTokenBalanceInputSchema = z.object({
 
 export const adminTransactionSchema = z.object({
   amountCents: z.number().int(),
-  balanceAfterCents: z.number().int(),
+  balanceAfterCents: z.number().int().nullable(),
   createdAt: z.string(),
   id: z.string(),
   kind: z.string(),
   memo: z.string().nullable(),
   referenceId: z.string().nullable(),
   userId: z.string(),
+  tokenId: z.string().nullable(),
+  tokenSymbol: z.string().nullable(),
+  tokenAmount: z.number().nullable(),
 });
 
 export const adminTransactionListResultSchema = z.object({

@@ -469,12 +469,14 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
           style={{ opacity: heroOpacity, y: heroY }}
         >
           <motion.div
-            className="rounded-full border border-border/80 bg-surface px-4 py-3"
+            className="relative overflow-hidden rounded-full border border-border/80 bg-surface px-4 py-3"
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="flex min-w-max items-center overflow-hidden">
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-surface via-surface/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-surface via-surface/70 to-transparent" />
+            <div className="flex w-full items-center overflow-hidden">
               <motion.div
                 animate={reduceMotion ? undefined : { x: ["0%", "-50%"] }}
                 className="flex min-w-max items-center gap-4"

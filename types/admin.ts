@@ -91,13 +91,16 @@ export interface AdjustTokenBalanceInput {
 
 export interface AdminTransaction {
   amountCents: number;
-  balanceAfterCents: number;
+  balanceAfterCents: number | null;
   createdAt: string;
   id: string;
   kind: string;
   memo: string | null;
   referenceId: string | null;
   userId: string;
+  tokenId: string | null;
+  tokenSymbol: string | null;
+  tokenAmount: number | null;
 }
 
 export interface AdminTransactionListResult {
