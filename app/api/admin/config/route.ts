@@ -18,7 +18,6 @@ const patchSchema = z.object({
   signupBonusCents: z.number().int().min(0).optional(),
   withdrawFeeCents: z.number().int().min(0).optional(),
   withdrawMinCents: z.number().int().min(0).optional(),
-  usdSwapFeeBps: z.number().int().min(0).max(5000).optional(),
 });
 
 function internalError(err: unknown): NextResponse {

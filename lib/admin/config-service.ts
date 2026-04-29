@@ -26,7 +26,6 @@ export const getAppConfig = async (): Promise<AppConfig> => {
     signupBonusCents: data.signup_bonus_cents,
     withdrawFeeCents: data.withdraw_fee_cents,
     withdrawMinCents: data.withdraw_min_cents,
-    usdSwapFeeBps: data.usd_swap_fee_bps ?? 0,
   };
 };
 
@@ -49,7 +48,6 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
   if (input.signupBonusCents !== undefined) patch.signup_bonus_cents = input.signupBonusCents;
   if (input.withdrawFeeCents !== undefined) patch.withdraw_fee_cents = input.withdrawFeeCents;
   if (input.withdrawMinCents !== undefined) patch.withdraw_min_cents = input.withdrawMinCents;
-  if (input.usdSwapFeeBps !== undefined) patch.usd_swap_fee_bps = input.usdSwapFeeBps;
 
   const { data, error } = await db.from("app_config").update(patch).eq("id", 1).select("*").single();
   if (error) throw new Error(error.message);
@@ -69,7 +67,6 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
     signupBonusCents: data.signup_bonus_cents,
     withdrawFeeCents: data.withdraw_fee_cents,
     withdrawMinCents: data.withdraw_min_cents,
-    usdSwapFeeBps: data.usd_swap_fee_bps ?? 0,
   };
 };
 

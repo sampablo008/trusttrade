@@ -157,7 +157,6 @@ export interface AppConfig {
   signupBonusCents: number;
   withdrawFeeCents: number;
   withdrawMinCents: number;
-  usdSwapFeeBps: number;
 }
 
 export interface UpdateAppConfigInput {
@@ -174,7 +173,6 @@ export interface UpdateAppConfigInput {
   signupBonusCents?: number;
   withdrawFeeCents?: number;
   withdrawMinCents?: number;
-  usdSwapFeeBps?: number;
 }
 
 export interface BusinessDashboard {
