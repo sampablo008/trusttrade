@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import CoinIcon from "@/components/ui/CoinIcon";
 import type { TopCoin } from "@/lib/markets/top-coins";
+import { saveLastTradeSymbol } from "@/lib/trade/last-symbol";
 
 interface TokenSwitcherProps {
   coins: TopCoin[];
@@ -14,6 +16,10 @@ export default function TokenSwitcher({ coins, iconPaths = {} }: TokenSwitcherPr
   const router = useRouter();
 
   const currentSymbol = pathname.split("/").pop()?.toUpperCase() ?? "";
+
+  useEffect(() => {
+    if (currentSymbol) saveLastTradeSymbol(currentSymbol);
+  }, [currentSymbol]);
 
   const navigate = (symbol: string) => {
     if ("startViewTransition" in document) {

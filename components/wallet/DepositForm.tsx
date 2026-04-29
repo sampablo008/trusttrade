@@ -69,7 +69,7 @@ function MethodToggle({
 }) {
   return (
     <div className="flex gap-2 rounded-2xl border border-border bg-background/30 p-1.5">
-      {(["banxa", "manual"] as const).map((m) => (
+      {(["manual", "banxa"] as const).map((m) => (
         <button
           key={m}
           type="button"
@@ -116,7 +116,7 @@ export default function DepositForm({ wallets, tokens }: Props) {
         .filter((w) => w.tokenSymbol === initialToken.symbol)
         .map((w) => w.network)
     : [];
-  const [method, setMethod] = useState<DepositMethod>("banxa");
+  const [method, setMethod] = useState<DepositMethod>("manual");
   const [selectedSymbol, setSelectedSymbol] = useState(
     initialToken?.symbol ?? "",
   );
@@ -646,7 +646,8 @@ export default function DepositForm({ wallets, tokens }: Props) {
         />
         {usdPreviewCents > 0 && (
           <p className="text-xs text-muted">
-            ≈ {(usdPreviewCents / 100).toLocaleString("en-US", {
+            ≈{" "}
+            {(usdPreviewCents / 100).toLocaleString("en-US", {
               style: "currency",
               currency: "USD",
             })}
@@ -654,7 +655,8 @@ export default function DepositForm({ wallets, tokens }: Props) {
         )}
         {amount > 0 && !minOk && selectedToken && (
           <p className="text-xs text-down">
-            Below min deposit ({formatTokenAmount(minDeposit, selectedToken.decimals)}{" "}
+            Below min deposit (
+            {formatTokenAmount(minDeposit, selectedToken.decimals)}{" "}
             {selectedToken.symbol}).
           </p>
         )}
