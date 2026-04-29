@@ -31,3 +31,12 @@ export const formatTokenAmount = (
     maximumFractionDigits: displayDecimals,
   })} ${symbol}`;
 };
+
+// Cent-denominated values that semantically represent USDT amounts (since
+// 1 USD-cent = 0.01 USDT). Used while the legacy *_cents columns are still
+// in place but their meaning has shifted from USD to USDT.
+export const formatUsdtFromCents = (valueInCents: number): string =>
+  `${(valueInCents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} USDT`;

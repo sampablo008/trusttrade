@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { Check, X, ChevronDown } from "lucide-react";
 import type { ReferralCommission } from "@/types/referrals";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatUsdFromCents, formatUsdtFromCents } from "@/lib/utils/format";
 
 interface ReferralCommissionQueueProps {
   initialCommissions: ReferralCommission[];
@@ -221,7 +221,7 @@ export default function ReferralCommissionQueue({
                       {formatUsdFromCents(c.baseAmountCents)}
                     </td>
                     <td className="px-4 py-3 text-right font-semibold text-foreground">
-                      {formatUsdFromCents(c.commissionCents)}
+                      {formatUsdtFromCents(c.commissionCents)}
                       <span className="ml-1 text-xs text-muted">({c.bpsApplied / 100}%)</span>
                     </td>
                     <td className="px-4 py-3 text-center">

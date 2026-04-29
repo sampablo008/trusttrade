@@ -12,7 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import type { ReferralCommission, ReferralStats, ReferralTreeNode } from "@/types/referrals";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatUsdtFromCents } from "@/lib/utils/format";
 
 interface ReferralsShellProps {
   stats: ReferralStats;
@@ -88,19 +88,19 @@ function StatsCards({ stats }: { stats: ReferralStats }) {
     },
     {
       label: "Pending earnings",
-      value: formatUsdFromCents(stats.pendingCommissionCents),
+      value: formatUsdtFromCents(stats.pendingCommissionCents),
       sub: "Awaiting admin approval",
       icon: <Clock size={18} className="text-brand" />,
     },
     {
       label: "Approved earnings",
-      value: formatUsdFromCents(stats.approvedCommissionCents),
-      sub: "Locked — wager 3× to withdraw",
+      value: formatUsdtFromCents(stats.approvedCommissionCents),
+      sub: "Credited to your USDT balance",
       icon: <TrendingUp size={18} className="text-up" />,
     },
     {
       label: "Lifetime total",
-      value: formatUsdFromCents(stats.totalCommissionCents),
+      value: formatUsdtFromCents(stats.totalCommissionCents),
       sub: "Pending + approved",
       icon: <TrendingUp size={18} className="text-brand" />,
     },
@@ -255,7 +255,7 @@ function CommissionTable({ commissions }: { commissions: ReferralCommission[] })
               <td className="px-4 py-3 font-medium text-foreground">{c.refereeUsername}</td>
               <td className="px-4 py-3 text-muted">L{c.level}</td>
               <td className="px-4 py-3 text-right font-semibold text-foreground">
-                {formatUsdFromCents(c.commissionCents)}
+                {formatUsdtFromCents(c.commissionCents)}
               </td>
               <td className="px-4 py-3 text-center">
                 <span
