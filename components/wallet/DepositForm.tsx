@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import CoinIcon from "@/components/ui/CoinIcon";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -159,11 +159,38 @@ export default function DepositForm({ wallets, tokens }: Props) {
   // eslint-disable-next-line react-hooks/incompatible-library
   const amount = watch("amount");
   const minDeposit = selectedToken?.minDeposit ?? 0;
-  const usdPreviewCents =
-    amount > 0 && selectedToken?.usdPriceCents
-      ? Math.round(amount * selectedToken.usdPriceCents)
-      : 0;
+  const usdPriceCents = selectedToken?.usdPriceCents ?? 0;
+  const canPriceConvert = usdPriceCents > 0;
   const minOk = amount === 0 || amount >= minDeposit;
+
+  // USD input state. The form still submits a token-denominated `amount`;
+  // when a price is available we drive that value from `usdInput`.
+  const [usdInput, setUsdInput] = useState<string>("");
+
+  const setUsdAmount = (raw: string) => {
+    setUsdInput(raw);
+    const usd = Number.parseFloat(raw);
+    if (!Number.isFinite(usd) || usd <= 0 || !canPriceConvert) {
+      setValue("amount", 0);
+      return;
+    }
+    const tokenAmt = Number((usd / (usdPriceCents / 100)).toFixed(8));
+    setValue("amount", Number.isFinite(tokenAmt) ? tokenAmt : 0);
+  };
+
+  // Re-derive token amount when the user switches token (price changes).
+  useEffect(() => {
+    if (!canPriceConvert) return;
+    const usd = Number.parseFloat(usdInput);
+    if (!Number.isFinite(usd) || usd <= 0) return;
+    const tokenAmt = Number((usd / (usdPriceCents / 100)).toFixed(8));
+    setValue("amount", Number.isFinite(tokenAmt) ? tokenAmt : 0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usdPriceCents]);
+
+  const minDepositUsdCents = minDeposit > 0 && usdPriceCents > 0
+    ? Math.round(minDeposit * usdPriceCents)
+    : 0;
 
   const pickToken = (symbol: string) => {
     setSelectedSymbol(symbol);
@@ -609,49 +636,91 @@ export default function DepositForm({ wallets, tokens }: Props) {
       {/* Amount */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Amount ({selectedToken?.symbol ?? "TOKEN"})
+          Amount ({canPriceConvert ? "USD" : selectedToken?.symbol ?? "TOKEN"})
         </label>
-        {minDeposit > 0 && selectedToken && (
-          <div className="flex flex-wrap gap-2">
-            {[1, 2, 5, 10].map((mult) => {
-              const value = Number((minDeposit * mult).toFixed(8));
-              return (
+        {canPriceConvert ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {[100, 250, 500, 1000].map((preset) => (
                 <button
-                  key={mult}
+                  key={preset}
                   type="button"
-                  onClick={() => setValue("amount", value)}
+                  onClick={() => setUsdAmount(String(preset))}
                   className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    amount === value
+                    usdInput === String(preset)
                       ? "bg-brand text-background"
                       : "border border-border bg-background/30 text-foreground hover:border-brand"
                   }`}
                 >
-                  {mult}× min
+                  ${preset.toLocaleString("en-US")}
                 </button>
-              );
-            })}
-          </div>
-        )}
-        <input
-          type="number"
-          min={0}
-          step="any"
-          placeholder={`Enter ${selectedToken?.symbol ?? "amount"}`}
-          value={amount ? amount : ""}
-          className="mt-1 w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-          onChange={(e) => {
-            const v = Number.parseFloat(e.target.value);
-            setValue("amount", Number.isFinite(v) ? v : 0);
-          }}
-        />
-        {usdPreviewCents > 0 && (
-          <p className="text-xs text-muted">
-            ≈{" "}
-            {(usdPreviewCents / 100).toLocaleString("en-US", {
-              style: "currency",
-              currency: "USD",
-            })}
-          </p>
+              ))}
+            </div>
+            <input
+              type="number"
+              min={0}
+              step="any"
+              placeholder="Enter USD amount"
+              value={usdInput}
+              className="mt-1 w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
+              onChange={(e) => setUsdAmount(e.target.value)}
+            />
+            {amount > 0 && selectedToken && (
+              <p className="text-xs text-muted">
+                ≈ {formatTokenAmount(amount, selectedToken.decimals)}{" "}
+                {selectedToken.symbol}
+              </p>
+            )}
+            {minDepositUsdCents > 0 && (
+              <p className="text-[11px] text-muted">
+                Min deposit{" "}
+                <span className="font-semibold text-foreground">
+                  {(minDepositUsdCents / 100).toLocaleString("en-US", {
+                    style: "currency",
+                    currency: "USD",
+                  })}
+                </span>{" "}
+                ({formatTokenAmount(minDeposit, selectedToken?.decimals)}{" "}
+                {selectedToken?.symbol})
+              </p>
+            )}
+          </>
+        ) : (
+          <>
+            {minDeposit > 0 && selectedToken && (
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 5, 10].map((mult) => {
+                  const value = Number((minDeposit * mult).toFixed(8));
+                  return (
+                    <button
+                      key={mult}
+                      type="button"
+                      onClick={() => setValue("amount", value)}
+                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                        amount === value
+                          ? "bg-brand text-background"
+                          : "border border-border bg-background/30 text-foreground hover:border-brand"
+                      }`}
+                    >
+                      {mult}× min
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <input
+              type="number"
+              min={0}
+              step="any"
+              placeholder={`Enter ${selectedToken?.symbol ?? "amount"}`}
+              value={amount ? amount : ""}
+              className="mt-1 w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
+              onChange={(e) => {
+                const v = Number.parseFloat(e.target.value);
+                setValue("amount", Number.isFinite(v) ? v : 0);
+              }}
+            />
+          </>
         )}
         {amount > 0 && !minOk && selectedToken && (
           <p className="text-xs text-down">

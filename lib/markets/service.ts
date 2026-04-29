@@ -2,6 +2,7 @@ import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { getPreviewCandles, getPreviewMarketTokens, getPreviewTradePeriods } from "@/lib/markets/preview-data";
+import { getLiveUsdPrices } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { publicCandlesQuerySchema, publicCandlesResultSchema, publicTokenSchema, publicTokensResultSchema, publicTradePeriodSchema, publicTradePeriodsResultSchema } from "@/schemas/market";
 import type { ChartTimeframeValue, PublicCandle, PublicCandlesResult, PublicTokensResult, PublicTradePeriodsResult } from "@/types/market";
@@ -19,6 +20,7 @@ interface TokenRow {
   name: string;
   price_offset_cents: number | string;
   price_scale: number | string;
+  shadow_symbol: string | null;
   symbol: string;
   volatility_factor: number | string;
   decimals: number | string | null;
@@ -113,10 +115,17 @@ const aggregateCandles = (rows: CandleRow[], bucketSeconds: number): PublicCandl
   return Array.from(candlesByBucket.values());
 };
 
-const mapLiveToken = (row: TokenRow) => {
+const mapLiveToken = (row: TokenRow, liveUsd?: number) => {
   const basePriceCents = toNumber(row.base_price_cents);
+  const liveCents = liveUsd && liveUsd > 0 ? Math.round(liveUsd * 100) : 0;
+  // Prefer a freshly-fetched live price, then DB-cached cron values, then
+  // the configured base price as a last resort. The DB columns are stale
+  // or NULL for many tokens because the cron only refreshes a subset.
   const priceCents =
-    toNumber(row.last_price_cents) || toNumber(row.last_shadow_price_cents) || basePriceCents;
+    liveCents ||
+    toNumber(row.last_price_cents) ||
+    toNumber(row.last_shadow_price_cents) ||
+    basePriceCents;
   const shadowOffsetPercent =
     (toNumber(row.price_scale) - 1) * 100 +
     (toNumber(row.price_offset_cents) / Math.max(basePriceCents, 1)) * 100;
@@ -155,7 +164,7 @@ export const listMarketTokens = async (): Promise<PublicTokensResult> => {
   const { data, error } = await adminClient
     .from("tokens")
     .select(
-      "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, swap_fee_bps, min_withdrawal, withdraw_fee_bps",
+      "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, swap_fee_bps, min_withdrawal, withdraw_fee_bps, shadow_symbol",
     )
     .eq("is_enabled", true)
     .order("symbol", { ascending: true });
@@ -168,8 +177,17 @@ export const listMarketTokens = async (): Promise<PublicTokensResult> => {
     return getPreviewMarketTokens();
   }
 
+  const rows = data as TokenRow[];
+
+  // Refresh prices for every enabled token via Binance/CoinGecko. The function
+  // has a 5s in-memory cache, so repeated page loads share the call. Failures
+  // are swallowed inside getLiveUsdPrices and we fall back to DB values.
+  const livePrices = await getLiveUsdPrices(
+    rows.map((row) => ({ symbol: row.symbol, shadowSymbol: row.shadow_symbol })),
+  );
+
   return publicTokensResultSchema.parse({
-    items: data.map((row) => mapLiveToken(row as TokenRow)),
+    items: rows.map((row) => mapLiveToken(row, livePrices[row.symbol])),
   });
 };
 
