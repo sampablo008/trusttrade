@@ -86,11 +86,6 @@ export interface SetForcedOutcomeInput {
   reason?: string;
 }
 
-export interface AdjustBalanceInput {
-  deltaCents: number;
-  note: string;
-}
-
 export interface AdjustTokenBalanceInput {
   tokenId: string;
   deltaAmount: number;

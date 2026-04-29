@@ -22,8 +22,6 @@ const outcomeToChoice = (o: TradeOutcome | null): ForcedChoice =>
 const choiceToOutcome = (c: ForcedChoice): TradeOutcome | null =>
   c === "auto" ? null : c;
 
-const USD_TARGET = "__USD__";
-
 export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [tab, setTab] = useState<RoleTab>("user");
   const [users, setUsers] = useState<AdminUser[]>(initialData.items);
@@ -31,7 +29,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [search, setSearch] = useState("");
   const [offset, setOffset] = useState(0);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
-  const [adjustTarget, setAdjustTarget] = useState<string>(USD_TARGET);
+  const [adjustTarget, setAdjustTarget] = useState<string>("");
   const [adjustSign, setAdjustSign] = useState<AdjustSign>("credit");
   const [adjustAmount, setAdjustAmount] = useState("");
   const [adjustNote, setAdjustNote] = useState("");
@@ -59,6 +57,10 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
         setUsers((prev) =>
           prev.map((x) => (x.userId === fetched.userId ? fetched : x)),
         );
+        // Default-select the first token (highest USD value).
+        if (fetched.tokenBalances && fetched.tokenBalances.length > 0) {
+          setAdjustTarget(fetched.tokenBalances[0].tokenId);
+        }
       }
     })();
     return () => {
@@ -106,7 +108,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
       return;
     }
     setExpandedUserId(userId);
-    setAdjustTarget(USD_TARGET);
+    setAdjustTarget("");
     setAdjustSign("credit");
     setAdjustAmount("");
     setAdjustNote("");
@@ -141,7 +143,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   };
 
   const handleAdjust = async () => {
-    if (!expandedUser) return;
+    if (!expandedUser || !adjustTarget) return;
     const amount = parseFloat(adjustAmount);
     if (!isFinite(amount) || amount <= 0 || !adjustNote.trim()) return;
     const signed = adjustSign === "debit" ? -amount : amount;
@@ -149,19 +151,18 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
     setAdjustError(null);
     setAdjustSubmitting(true);
     try {
-      const isUsd = adjustTarget === USD_TARGET;
-      const url = isUsd
-        ? `/api/admin/users/${expandedUser.userId}/adjust-balance`
-        : `/api/admin/users/${expandedUser.userId}/adjust-token-balance`;
-      const body = isUsd
-        ? { deltaCents: Math.round(signed * 100), note: adjustNote }
-        : { tokenId: adjustTarget, deltaAmount: signed, note: adjustNote };
-
-      const res = await fetch(url, {
-        body: JSON.stringify(body),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
+      const res = await fetch(
+        `/api/admin/users/${expandedUser.userId}/adjust-token-balance`,
+        {
+          body: JSON.stringify({
+            tokenId: adjustTarget,
+            deltaAmount: signed,
+            note: adjustNote,
+          }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        },
+      );
       const data = (await res.json()) as
         | { user: AdminUser }
         | { error: { code: string; message: string } };
@@ -182,9 +183,7 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   };
 
   const adjustTokenSelected: AdminTokenBalance | null =
-    adjustTarget !== USD_TARGET
-      ? expandedUser?.tokenBalances?.find((t) => t.tokenId === adjustTarget) ?? null
-      : null;
+    expandedUser?.tokenBalances?.find((t) => t.tokenId === adjustTarget) ?? null;
 
   const openHistory = (userId: string) => {
     setHistoryUserId(userId);
@@ -678,7 +677,9 @@ function UserDetail({
           onChange={(e) => setAdjustTarget(e.target.value)}
           className="rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-foreground focus:outline-none focus:border-brand"
         >
-          <option value={USD_TARGET}>USD (cents balance)</option>
+          <option value="" disabled>
+            Select a token…
+          </option>
           {user.tokenBalances?.map((tb) => (
             <option key={tb.tokenId} value={tb.tokenId}>
               {tb.symbol} — {tb.name}
@@ -690,29 +691,22 @@ function UserDetail({
           <label className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
             Amount in{" "}
             <span className="text-foreground">
-              {adjustTarget === USD_TARGET
-                ? "USD"
-                : adjustTokenSelected?.symbol ?? ""}
+              {adjustTokenSelected?.symbol ?? "—"}
             </span>
           </label>
           <div className="relative">
             <input
               type="number"
               min="0"
-              step={adjustTarget === USD_TARGET ? "0.01" : "any"}
+              step="any"
               value={adjustAmount}
               onChange={(e) => setAdjustAmount(e.target.value)}
               placeholder="0.00"
-              className="w-full rounded-full border border-border bg-background/40 px-4 py-2 pr-20 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand"
+              disabled={!adjustTarget}
+              className="w-full rounded-full border border-border bg-background/40 px-4 py-2 pr-20 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand disabled:opacity-40"
             />
-            <span
-              className={`pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${
-                adjustTarget === USD_TARGET
-                  ? "bg-foreground/10 text-foreground"
-                  : "bg-brand/15 text-brand"
-              }`}
-            >
-              {adjustTarget === USD_TARGET ? "USD" : adjustTokenSelected?.symbol ?? ""}
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-brand">
+              {adjustTokenSelected?.symbol ?? ""}
             </span>
           </div>
           {previewUsd != null && (
@@ -740,7 +734,9 @@ function UserDetail({
 
         <button
           onClick={onAdjust}
-          disabled={!adjustAmount || !adjustNote || adjustSubmitting}
+          disabled={
+            !adjustTarget || !adjustAmount || !adjustNote || adjustSubmitting
+          }
           className={`rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:opacity-40 ${
             adjustSign === "credit"
               ? "bg-[#0ecb81] text-background hover:brightness-110"
@@ -750,9 +746,7 @@ function UserDetail({
           {adjustSubmitting
             ? "Applying…"
             : `${adjustSign === "credit" ? "Credit" : "Debit"} ${
-                adjustTarget === USD_TARGET
-                  ? "USD balance"
-                  : adjustTokenSelected?.symbol ?? "token"
+                adjustTokenSelected?.symbol ?? "token"
               }`}
         </button>
       </div>

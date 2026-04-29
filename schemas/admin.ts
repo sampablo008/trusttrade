@@ -82,11 +82,6 @@ export const setForcedOutcomeInputSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-export const adjustBalanceInputSchema = z.object({
-  deltaCents: z.number().int().refine((v) => v !== 0, "Delta must be non-zero"),
-  note: z.string().min(3).max(500),
-});
-
 export const adjustTokenBalanceInputSchema = z.object({
   tokenId: z.string().uuid(),
   deltaAmount: z.number().refine((v) => v !== 0, "Delta must be non-zero"),

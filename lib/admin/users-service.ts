@@ -2,9 +2,7 @@ import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getBinanceUsdPrices } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
-import { applyBalanceAdjustment } from "@/lib/transactions/adjust-balance";
 import {
-  adjustBalanceInputSchema,
   adjustTokenBalanceInputSchema,
   adminUserListResultSchema,
   adminUserSchema,
@@ -15,7 +13,6 @@ import type {
   AdminTokenBalance,
   AdminUser,
   AdminUserListResult,
-  AdjustBalanceInput,
   AdjustTokenBalanceInput,
   FreezeUserInput,
   SetForcedOutcomeInput,
@@ -72,22 +69,6 @@ const mapUserRow = (
     username: row.username,
     tokenBalances: tokenBalances ?? undefined,
   });
-
-const ensureUserBalanceRow = async (
-  admin: ReturnType<typeof createSupabaseAdminClient>,
-  userId: string,
-) => {
-  const { error } = await admin.from("user_balances").insert({
-    balance_cents: 0,
-    locked_bonus_cents: 0,
-    locked_in_trades_cents: 0,
-    user_id: userId,
-  });
-
-  if (error && error.code !== "23505") {
-    throw new ApiClientError(error.message, 500, "BALANCE_ROW_ENSURE_FAILED", error);
-  }
-};
 
 export const listAdminUsers = async (
   search = "",
@@ -266,35 +247,6 @@ export const freezeUser = async (
     note: parsed.reason ?? (parsed.isFrozen ? "Frozen" : "Unfrozen"),
     target_id: userId,
     target_type: "profiles",
-  });
-
-  return getAdminUser(userId);
-};
-
-export const adjustBalance = async (
-  userId: string,
-  input: unknown,
-  adminId: string,
-): Promise<AdminUser> => {
-  const parsed = adjustBalanceInputSchema.parse(input) as AdjustBalanceInput;
-
-  const admin = createSupabaseAdminClient();
-  await ensureUserBalanceRow(admin, userId);
-
-  await applyBalanceAdjustment(admin, {
-    deltaCents: parsed.deltaCents,
-    memo: parsed.note,
-    unlockTradesCents: 0,
-    userId,
-  });
-
-  await admin.from("admin_actions").insert({
-    action_type: "adjust_balance",
-    admin_user_id: adminId,
-    after_state: { delta_cents: parsed.deltaCents },
-    note: parsed.note,
-    target_id: userId,
-    target_type: "user_balances",
   });
 
   return getAdminUser(userId);

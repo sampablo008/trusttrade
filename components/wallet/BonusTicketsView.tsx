@@ -1,7 +1,7 @@
 "use client";
 
 import { Gift, Lock, Unlock, Clock } from "lucide-react";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatUsdtFromCents } from "@/lib/utils/format";
 import type { BonusTicket } from "@/types/bonus";
 
 interface Props {
@@ -65,7 +65,7 @@ export default function BonusTicketsView({ tickets }: Props) {
                   </span>
                 </div>
                 <p className="font-display text-2xl text-foreground">
-                  {formatUsdFromCents(ticket.amountCents)}
+                  {formatUsdtFromCents(ticket.amountCents)}
                 </p>
                 {ticket.note && (
                   <p className="text-xs text-muted">{ticket.note}</p>
@@ -90,8 +90,8 @@ export default function BonusTicketsView({ tickets }: Props) {
                 <div className="flex items-center justify-between text-xs text-muted">
                   <span>Wager progress</span>
                   <span>
-                    {formatUsdFromCents(ticket.wagerProgressCents)} /{" "}
-                    {formatUsdFromCents(ticket.wagerRequiredCents)}
+                    {formatUsdtFromCents(ticket.wagerProgressCents)} /{" "}
+                    {formatUsdtFromCents(ticket.wagerRequiredCents)}
                   </span>
                 </div>
                 <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
