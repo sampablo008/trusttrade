@@ -3,6 +3,8 @@ import { ApiClientError } from "@/lib/api/client";
 
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
 const CACHE_TTL_MS = 60_000;
+const REDIS_TTL_SECONDS = 60;
+const REDIS_KEY_PREFIX = "tp:price:usd:";
 
 interface CacheEntry {
   expiresAt: number;
@@ -10,6 +12,64 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
+
+type RedisClient = {
+  mget: (...keys: string[]) => Promise<(string | number | null)[]>;
+  set: (key: string, value: string, opts: { ex: number }) => Promise<unknown>;
+};
+
+let redis: RedisClient | null = null;
+let redisInitialized = false;
+
+const getRedis = async (): Promise<RedisClient | null> => {
+  if (redisInitialized) return redis;
+  redisInitialized = true;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  const { Redis } = await import("@upstash/redis");
+  redis = new Redis({ url, token }) as unknown as RedisClient;
+  return redis;
+};
+
+const readFromRedis = async (
+  ids: string[],
+): Promise<Record<string, number>> => {
+  const client = await getRedis();
+  if (!client || ids.length === 0) return {};
+  try {
+    const values = await client.mget(...ids.map((id) => REDIS_KEY_PREFIX + id));
+    const out: Record<string, number> = {};
+    ids.forEach((id, idx) => {
+      const raw = values[idx];
+      if (raw == null) return;
+      const num = typeof raw === "number" ? raw : Number(raw);
+      if (Number.isFinite(num) && num > 0) out[id] = num;
+    });
+    return out;
+  } catch (err) {
+    console.error("[markets/prices] redis mget failed, falling back", err);
+    return {};
+  }
+};
+
+const writeToRedis = async (entries: Record<string, number>): Promise<void> => {
+  const client = await getRedis();
+  if (!client) return;
+  const keys = Object.keys(entries);
+  if (keys.length === 0) return;
+  try {
+    await Promise.all(
+      keys.map((id) =>
+        client.set(REDIS_KEY_PREFIX + id, String(entries[id]), {
+          ex: REDIS_TTL_SECONDS,
+        }),
+      ),
+    );
+  } catch (err) {
+    console.error("[markets/prices] redis set failed, ignoring", err);
+  }
+};
 
 const previewUsdPrices: Record<string, number> = {
   bitcoin: 65_000,
@@ -79,12 +139,26 @@ export const getUsdPrices = async (
 
   if (missing.length === 0) return fresh;
 
+  const redisHits = await readFromRedis(missing);
+  const stillMissing: string[] = [];
+  for (const id of missing) {
+    const usd = redisHits[id];
+    if (usd != null) {
+      cache.set(id, { usd, expiresAt: now + CACHE_TTL_MS });
+      fresh[id] = usd;
+    } else {
+      stillMissing.push(id);
+    }
+  }
+
+  if (stillMissing.length === 0) return fresh;
+
   let fetched: Record<string, number> = {};
   try {
-    fetched = await fetchFromCoinGecko(missing);
+    fetched = await fetchFromCoinGecko(stillMissing);
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
-      for (const id of missing) {
+      for (const id of stillMissing) {
         fresh[id] = previewPrice(id);
       }
       return fresh;
@@ -92,13 +166,15 @@ export const getUsdPrices = async (
     throw err;
   }
 
-  for (const id of missing) {
+  for (const id of stillMissing) {
     const usd = fetched[id];
     if (usd != null) {
       cache.set(id, { usd, expiresAt: now + CACHE_TTL_MS });
       fresh[id] = usd;
     }
   }
+
+  await writeToRedis(fetched);
 
   return fresh;
 };
