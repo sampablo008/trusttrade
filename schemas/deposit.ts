@@ -10,6 +10,7 @@ export const depositSchema = z.object({
   network: z.string().min(1),
   amount: z.number().nonnegative().nullable(),
   amountCents: z.number().int().nonnegative(),
+  usdValueCents: z.number().int().nonnegative().nullable().default(null),
   proofPath: z.string().min(1),
   txHash: z.string().nullable(),
   status: depositStatusSchema,

@@ -11,10 +11,15 @@ import {
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { Deposit, DepositStatus } from "@/types/deposit";
 
-const formatDepositAmount = (deposit: Deposit) =>
-  deposit.amount != null && deposit.amount > 0
-    ? formatTokenAmount(deposit.amount, deposit.tokenSymbol)
-    : formatUsdFromCents(deposit.amountCents);
+const formatDepositAmount = (deposit: Deposit) => {
+  if (deposit.amount != null && deposit.amount > 0) {
+    const tokenStr = formatTokenAmount(deposit.amount, deposit.tokenSymbol);
+    return deposit.usdValueCents != null && deposit.usdValueCents > 0
+      ? `${tokenStr} (≈ ${formatUsdFromCents(deposit.usdValueCents)})`
+      : tokenStr;
+  }
+  return formatUsdFromCents(deposit.amountCents);
+};
 
 const STATUS_COLORS: Record<DepositStatus, string> = {
   pending: "bg-yellow-400/15 text-yellow-400",

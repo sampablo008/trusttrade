@@ -1,10 +1,16 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
-import { getUsdPrices } from "@/lib/markets/prices";
+import { getLiveUsdPrices } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { swapQuoteSchema, swapRecordSchema, swapsResultSchema } from "@/schemas/swap";
-import type { ExecuteSwapInput, SwapQuote, SwapRecord, SwapsResult } from "@/types/swap";
+import type {
+  ExecuteSwapInput,
+  QuoteSwapInput,
+  SwapQuote,
+  SwapRecord,
+  SwapsResult,
+} from "@/types/swap";
 import {
   previewExecuteSwap,
   previewListSwaps,
@@ -16,8 +22,8 @@ interface SideContext {
   tokenId: string | null;
   decimals: number;
   swapFeeBps: number;
-  coingeckoId: string | null;
-  basePriceCents: number;
+  minSwap: number;
+  shadowSymbol: string | null;
 }
 
 interface TokenRow {
@@ -25,8 +31,8 @@ interface TokenRow {
   symbol: string;
   decimals: number | string | null;
   swap_fee_bps: number | string | null;
-  coingecko_id: string | null;
-  base_price_cents: number | string;
+  min_swap: number | string | null;
+  shadow_symbol: string | null;
 }
 
 interface SwapRow {
@@ -65,7 +71,7 @@ const buildSideContext = async (
 
   const { data, error } = await admin
     .from("tokens")
-    .select("id, symbol, decimals, swap_fee_bps, coingecko_id, base_price_cents")
+    .select("id, symbol, decimals, swap_fee_bps, min_swap, shadow_symbol")
     .eq("symbol", symbol)
     .maybeSingle();
 
@@ -81,30 +87,37 @@ const buildSideContext = async (
     tokenId: row.id,
     decimals: row.decimals != null ? Math.round(toNum(row.decimals)) : 8,
     swapFeeBps: row.swap_fee_bps != null ? Math.round(toNum(row.swap_fee_bps)) : 0,
-    coingeckoId: row.coingecko_id ?? null,
-    basePriceCents: Math.round(toNum(row.base_price_cents)),
+    minSwap: toNum(row.min_swap),
+    shadowSymbol: row.shadow_symbol ?? null,
   };
 };
 
-const resolveUsdPriceCents = async (side: SideContext): Promise<number> => {
-  if (side.symbol === "USD") return 100;
-  if (side.coingeckoId) {
-    try {
-      const prices = await getUsdPrices([side.coingeckoId]);
-      const usd = prices[side.coingeckoId];
-      if (usd != null && usd > 0) return Math.round(usd * 100);
-    } catch {
-      // fall through to base price
+const resolvePriceCentsForSides = async (
+  sides: SideContext[],
+): Promise<Record<string, number>> => {
+  const live = await getLiveUsdPrices(
+    sides.map((s) => ({ symbol: s.symbol, shadowSymbol: s.shadowSymbol })),
+  );
+  const out: Record<string, number> = {};
+  for (const side of sides) {
+    if (side.symbol === "USD") {
+      out[side.symbol] = 100;
+      continue;
     }
+    const usd = live[side.symbol];
+    if (usd == null || !(usd > 0)) {
+      // Never fall back to base_price_cents for swaps — that placeholder is
+      // typically $1 and produces wildly wrong conversions (e.g. 7000 USDT
+      // → 7000 BTC). Refuse the swap until the live feed is back.
+      throw new ApiClientError(
+        `Live USD price unavailable for ${side.symbol}. Try again in a moment.`,
+        503,
+        "PRICE_UNAVAILABLE",
+      );
+    }
+    out[side.symbol] = Math.round(usd * 100);
   }
-  if (side.basePriceCents <= 0) {
-    throw new ApiClientError(
-      `No USD price available for ${side.symbol}.`,
-      502,
-      "PRICE_UNAVAILABLE",
-    );
-  }
-  return side.basePriceCents;
+  return out;
 };
 
 const computeQuote = (
@@ -139,13 +152,54 @@ const computeQuote = (
   });
 };
 
-export const quoteSwap = async (input: ExecuteSwapInput): Promise<SwapQuote> => {
+// Inverts the quote math: given a desired toAmount, what fromAmount produces
+// it after fee? toAmount = (fromAmount - fee) * fromPrice / toPrice
+// → fromAmount = toAmount * toPrice / fromPrice / (1 - feeBps/10000)
+const fromAmountForToAmount = (
+  fromSide: SideContext,
+  toAmount: number,
+  fromPriceCents: number,
+  toPriceCents: number,
+): number => {
+  const netRatio = 1 - fromSide.swapFeeBps / 10_000;
+  if (netRatio <= 0) {
+    throw new ApiClientError("Fee makes swap impossible.", 422, "AMOUNT_BELOW_FEE");
+  }
+  const raw = (toAmount * toPriceCents) / fromPriceCents / netRatio;
+  const decimals = Math.min(fromSide.decimals, 18);
+  // Round UP so the resulting toAmount is at least the requested amount.
+  const factor = 10 ** decimals;
+  return Math.ceil(raw * factor) / factor;
+};
+
+const enforceMinSwap = (fromSide: SideContext, fromAmount: number): void => {
+  if (fromSide.minSwap > 0 && fromAmount < fromSide.minSwap) {
+    throw new ApiClientError(
+      `Minimum swap is ${fromSide.minSwap} ${fromSide.symbol}.`,
+      422,
+      "AMOUNT_BELOW_MIN",
+    );
+  }
+};
+
+export const quoteSwap = async (input: QuoteSwapInput): Promise<SwapQuote> => {
   if (input.fromSymbol === input.toSymbol) {
     throw new ApiClientError("From and to must differ.", 422, "SAME_SIDE");
   }
+  if ((input.fromAmount == null) === (input.toAmount == null)) {
+    throw new ApiClientError(
+      "Specify exactly one of fromAmount or toAmount.",
+      422,
+      "AMOUNT_INVALID",
+    );
+  }
 
   if (!getOptionalServerEnv()) {
-    return previewQuoteSwap(input.fromSymbol, input.toSymbol, input.fromAmount);
+    const amt =
+      input.fromAmount ??
+      // preview path: roughly invert at $65k/$3.2k/$1 placeholders
+      (input.toAmount as number);
+    return previewQuoteSwap(input.fromSymbol, input.toSymbol, amt);
   }
 
   const admin = createSupabaseAdminClient();
@@ -153,11 +207,16 @@ export const quoteSwap = async (input: ExecuteSwapInput): Promise<SwapQuote> => 
     buildSideContext(admin, input.fromSymbol),
     buildSideContext(admin, input.toSymbol),
   ]);
-  const [fromPriceCents, toPriceCents] = await Promise.all([
-    resolveUsdPriceCents(fromSide),
-    resolveUsdPriceCents(toSide),
-  ]);
-  return computeQuote(fromSide, toSide, input.fromAmount, fromPriceCents, toPriceCents);
+  const prices = await resolvePriceCentsForSides([fromSide, toSide]);
+  const fromPrice = prices[fromSide.symbol];
+  const toPrice = prices[toSide.symbol];
+
+  const fromAmount =
+    input.fromAmount ??
+    fromAmountForToAmount(fromSide, input.toAmount as number, fromPrice, toPrice);
+
+  enforceMinSwap(fromSide, fromAmount);
+  return computeQuote(fromSide, toSide, fromAmount, fromPrice, toPrice);
 };
 
 const mapSwapRow = (row: SwapRow): SwapRecord =>
@@ -194,10 +253,10 @@ export const executeSwap = async (
     buildSideContext(admin, input.fromSymbol),
     buildSideContext(admin, input.toSymbol),
   ]);
-  const [fromPriceCents, toPriceCents] = await Promise.all([
-    resolveUsdPriceCents(fromSide),
-    resolveUsdPriceCents(toSide),
-  ]);
+  enforceMinSwap(fromSide, input.fromAmount);
+  const prices = await resolvePriceCentsForSides([fromSide, toSide]);
+  const fromPriceCents = prices[fromSide.symbol];
+  const toPriceCents = prices[toSide.symbol];
 
   const { data, error } = await admin.rpc("execute_swap", {
     p_user_id: userId,

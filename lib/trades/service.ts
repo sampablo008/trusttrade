@@ -46,6 +46,7 @@ interface TradeRow {
   direction: "long" | "short";
   end_time: string;
   entry_price_cents: number | string | bigint;
+  exit_price_cents: number | string | bigint | null;
   id: string;
   outcome: "win" | "lose" | "void" | null;
   payout_bps: number | string;
@@ -70,6 +71,7 @@ const mapTradeRow = (row: TradeRow): UserTrade =>
     direction: row.direction,
     endTime: row.end_time,
     entryPriceCents: toNumber(row.entry_price_cents),
+    exitPriceCents: row.exit_price_cents != null ? toNumber(row.exit_price_cents) : null,
     id: row.id,
     outcome: row.outcome ?? null,
     payoutBps: toNumber(row.payout_bps),
@@ -84,7 +86,7 @@ const mapTradeRow = (row: TradeRow): UserTrade =>
   });
 
 const TRADE_SELECT =
-  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens!token_id(symbol)";
+  "id, user_id, token_id, period_id, direction, stake_cents, payout_bps, entry_price_cents, exit_price_cents, strike_price_cents, status, outcome, started_at, end_time, tokens!token_id(symbol)";
 
 export const listActiveTrades = async (userId: string): Promise<ActiveTradesResult> => {
   if (!getOptionalServerEnv()) {
@@ -112,17 +114,27 @@ export const listSettledTrades = async (
   userId: string,
   limit: number,
   offset: number,
+  outcome?: "win" | "lose" | "void",
 ): Promise<SettledTradesResult> => {
   if (!getOptionalServerEnv()) {
-    return getPreviewSettledTrades();
+    const result = await getPreviewSettledTrades();
+    if (!outcome) return result;
+    const filtered = result.items.filter((t) => t.outcome === outcome);
+    return { items: filtered, total: filtered.length };
   }
 
   const admin = createSupabaseAdminClient();
-  const { data, error, count } = await admin
+  let query = admin
     .from("user_trades")
     .select(TRADE_SELECT, { count: "exact" })
     .eq("user_id", userId)
-    .in("status", ["settled", "cancelled"])
+    .in("status", ["settled", "cancelled"]);
+
+  if (outcome) {
+    query = query.eq("outcome", outcome);
+  }
+
+  const { data, error, count } = await query
     .order("end_time", { ascending: false })
     .range(offset, offset + limit - 1);
 

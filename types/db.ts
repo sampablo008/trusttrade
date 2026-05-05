@@ -647,7 +647,7 @@ export type Database = {
           amount_cents: number
           created_at: string
           id: string
-          network: Database["public"]["Enums"]["deposit_network"]
+          network: string
           proof_path: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -662,7 +662,7 @@ export type Database = {
           amount_cents: number
           created_at?: string
           id?: string
-          network: Database["public"]["Enums"]["deposit_network"]
+          network: string
           proof_path: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -677,7 +677,7 @@ export type Database = {
           amount_cents?: number
           created_at?: string
           id?: string
-          network?: Database["public"]["Enums"]["deposit_network"]
+          network?: string
           proof_path?: string
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -802,6 +802,7 @@ export type Database = {
           is_frozen: boolean
           last_login_at: string | null
           role: Database["public"]["Enums"]["user_role"]
+          signup_bonus_claimed_at: string | null
           updated_at: string
           user_id: string
           username: string
@@ -814,6 +815,7 @@ export type Database = {
           is_frozen?: boolean
           last_login_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          signup_bonus_claimed_at?: string | null
           updated_at?: string
           user_id: string
           username: string
@@ -826,6 +828,7 @@ export type Database = {
           is_frozen?: boolean
           last_login_at?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          signup_bonus_claimed_at?: string | null
           updated_at?: string
           user_id?: string
           username?: string
@@ -1371,6 +1374,7 @@ export type Database = {
           direction: Database["public"]["Enums"]["trade_direction"]
           end_time: string
           entry_price_cents: number
+          exit_price_cents: number | null
           id: string
           metadata: Json
           outcome: Database["public"]["Enums"]["trade_outcome"] | null
@@ -1392,6 +1396,7 @@ export type Database = {
           direction: Database["public"]["Enums"]["trade_direction"]
           end_time: string
           entry_price_cents: number
+          exit_price_cents?: number | null
           id?: string
           metadata?: Json
           outcome?: Database["public"]["Enums"]["trade_outcome"] | null
@@ -1413,6 +1418,7 @@ export type Database = {
           direction?: Database["public"]["Enums"]["trade_direction"]
           end_time?: string
           entry_price_cents?: number
+          exit_price_cents?: number | null
           id?: string
           metadata?: Json
           outcome?: Database["public"]["Enums"]["trade_outcome"] | null
@@ -1642,7 +1648,7 @@ export type Database = {
           amount_cents: number
           created_at: string
           id: string
-          network: Database["public"]["Enums"]["deposit_network"]
+          network: string
           proof_path: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -1820,6 +1826,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claim_signup_bonus: {
+        Args: { p_user_id: string }
+        Returns: {
+          amount_cents: number
+          created_at: string
+          expires_at: string
+          id: string
+          kind: Database["public"]["Enums"]["bonus_ticket_kind"]
+          note: string | null
+          reference_id: string | null
+          reference_type: string | null
+          released_at: string | null
+          status: Database["public"]["Enums"]["bonus_ticket_status"]
+          updated_at: string
+          user_id: string
+          wager_progress_cents: number
+          wager_required_cents: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "bonus_tickets"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       expire_bonus_tickets: { Args: never; Returns: number }
       get_commission_bps: {
         Args: { p_level: number; p_user_id: string }
@@ -1947,7 +1978,7 @@ export type Database = {
           amount_cents: number
           created_at: string
           id: string
-          network: Database["public"]["Enums"]["deposit_network"]
+          network: string
           proof_path: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2083,7 +2114,7 @@ export type Database = {
       submit_deposit: {
         Args: {
           p_amount_cents: number
-          p_network: Database["public"]["Enums"]["deposit_network"]
+          p_network: string
           p_proof_path: string
           p_token_id: string
           p_tx_hash?: string
@@ -2094,7 +2125,7 @@ export type Database = {
           amount_cents: number
           created_at: string
           id: string
-          network: Database["public"]["Enums"]["deposit_network"]
+          network: string
           proof_path: string
           reviewed_at: string | null
           reviewed_by: string | null
@@ -2128,7 +2159,6 @@ export type Database = {
       bonus_ticket_kind: "signup" | "commission" | "gift" | "admin"
       bonus_ticket_status: "locked" | "released" | "expired"
       commission_status: "pending" | "approved" | "rejected" | "clawed_back"
-      deposit_network: "TRC20" | "ERC20" | "BEP20" | "BTC"
       deposit_status: "pending" | "approved" | "rejected"
       expiry_policy: "auto_lose" | "auto_win" | "void" | "leave_pending"
       invitation_source: "admin" | "user"
@@ -2291,7 +2321,6 @@ export const Constants = {
       bonus_ticket_kind: ["signup", "commission", "gift", "admin"],
       bonus_ticket_status: ["locked", "released", "expired"],
       commission_status: ["pending", "approved", "rejected", "clawed_back"],
-      deposit_network: ["TRC20", "ERC20", "BEP20", "BTC"],
       deposit_status: ["pending", "approved", "rejected"],
       expiry_policy: ["auto_lose", "auto_win", "void", "leave_pending"],
       invitation_source: ["admin", "user"],

@@ -26,10 +26,17 @@ interface DepositRow {
   reviewed_at: string | null;
   created_at: string;
   tokens?:
-    | { symbol: string; coingecko_id?: string | null }
-    | { symbol: string; coingecko_id?: string | null }[]
+    | { symbol: string; coingecko_id?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }
+    | { symbol: string; coingecko_id?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }[]
     | null;
 }
+
+const resolveTokenPriceCents = (tokens: DepositRow["tokens"]): number => {
+  if (!tokens) return 0;
+  const t = Array.isArray(tokens) ? tokens[0] : tokens;
+  if (!t) return 0;
+  return toNum(t.last_price_cents ?? t.base_price_cents ?? 0);
+};
 
 const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
@@ -44,15 +51,21 @@ const resolveSymbol = (tokens: DepositRow["tokens"]): string => {
   return tokens.symbol;
 };
 
-const mapRow = (row: DepositRow): Deposit =>
-  depositSchema.parse({
+const mapRow = (row: DepositRow): Deposit => {
+  const amount = row.amount != null ? toNum(row.amount) : null;
+  const priceCents = resolveTokenPriceCents(row.tokens);
+  const usdValueCents = amount != null && priceCents > 0
+    ? Math.round(amount * priceCents)
+    : null;
+  return depositSchema.parse({
     id: row.id,
     userId: row.user_id,
     tokenId: row.token_id,
     tokenSymbol: resolveSymbol(row.tokens),
     network: row.network,
-    amount: row.amount != null ? toNum(row.amount) : null,
+    amount,
     amountCents: toNum(row.amount_cents),
+    usdValueCents,
     proofPath: row.proof_path,
     txHash: row.tx_hash ?? null,
     status: row.status,
@@ -61,9 +74,10 @@ const mapRow = (row: DepositRow): Deposit =>
     reviewedAt: row.reviewed_at ?? null,
     createdAt: row.created_at,
   });
+};
 
 const SELECT =
-  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, coingecko_id)";
+  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, coingecko_id, last_price_cents, base_price_cents)";
 
 export const listAdminDeposits = async (
   filters: AdminDepositFilters,

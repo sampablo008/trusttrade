@@ -9,6 +9,7 @@ interface HistoryItem {
   network: string;
   amount?: number | null;
   amountCents: number;
+  usdValueCents?: number | null;
   status: string;
   createdAt: string;
 }
@@ -89,6 +90,11 @@ export default function WalletHistoryList({
                     ? formatTokenAmount(item.amount, item.tokenSymbol)
                     : formatUsdFromCents(item.amountCents)}
                 </span>
+                {item.usdValueCents != null && item.usdValueCents > 0 && (
+                  <span className="font-mono text-[11px] tabular-nums text-muted">
+                    ≈ {formatUsdFromCents(item.usdValueCents)}
+                  </span>
+                )}
                 <TransactionStatusPill status={item.status} />
               </div>
             </div>

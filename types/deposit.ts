@@ -8,6 +8,7 @@ export interface Deposit {
   network: string;
   amount: number | null;
   amountCents: number;
+  usdValueCents: number | null;
   proofPath: string;
   txHash: string | null;
   status: DepositStatus;

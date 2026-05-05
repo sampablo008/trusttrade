@@ -16,6 +16,7 @@ export const publicTokenSchema = z.object({
   decimals: z.number().int().min(0).max(30).default(8),
   minDeposit: z.number().nonnegative().default(0),
   swapFeeBps: z.number().int().nonnegative().default(0),
+  minSwap: z.number().nonnegative().default(0),
   minWithdrawal: z.number().nonnegative().default(0),
   withdrawFeeBps: z.number().int().nonnegative().default(0),
 });
@@ -87,6 +88,7 @@ export const adminTokenSchema = z.object({
   decimals: z.number().int().min(0).max(30),
   minDeposit: z.number().nonnegative(),
   swapFeeBps: z.number().int().min(0).max(5000),
+  minSwap: z.number().nonnegative(),
   coingeckoId: z.string().nullable(),
   minWithdrawal: z.number().nonnegative(),
   withdrawFeeBps: z.number().int().min(0).max(5000),
@@ -119,6 +121,7 @@ export const upsertAdminTokenInputSchema = z.object({
   decimals: z.coerce.number().int().min(0).max(30).default(8),
   minDeposit: z.coerce.number().nonnegative().default(0),
   swapFeeBps: z.coerce.number().int().min(0).max(5000).default(100),
+  minSwap: z.coerce.number().nonnegative().default(0),
   coingeckoId: z
     .string()
     .trim()

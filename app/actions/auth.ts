@@ -29,6 +29,7 @@ interface ResolvedIdentity {
   userId: string | null;
   username: string;
   emailVerified: boolean;
+  signupBonusPending: boolean;
 }
 
 const resolveIdentity = async (email: string): Promise<ResolvedIdentity | null> => {
@@ -38,13 +39,14 @@ const resolveIdentity = async (email: string): Promise<ResolvedIdentity | null> 
       userId: null,
       username: getUsernameFromEmail(email),
       emailVerified: true,
+      signupBonusPending: false,
     };
   }
 
   const admin = createSupabaseAdminClient();
   const { data, error } = await admin
     .from("profiles")
-    .select("user_id, role, username")
+    .select("user_id, role, username, signup_bonus_claimed_at")
     .ilike("email", email)
     .maybeSingle();
 
@@ -58,6 +60,7 @@ const resolveIdentity = async (email: string): Promise<ResolvedIdentity | null> 
     userId: data.user_id,
     username: data.username,
     emailVerified,
+    signupBonusPending: data.signup_bonus_claimed_at == null,
   };
 };
 
@@ -98,7 +101,9 @@ export const signInPreview = async (
       ? isAdminRoute(nextPath)
         ? nextPath
         : "/admin"
-      : nextPath;
+      : identity.signupBonusPending
+        ? "/welcome"
+        : nextPath;
   const cookieStore = await cookies();
   const secure = process.env.NODE_ENV === "production";
   const baseCookie = {

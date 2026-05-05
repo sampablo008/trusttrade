@@ -4,8 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
+  ArrowLeftRight,
   ChevronDown,
   Download,
+  Gift,
   LogOut,
   PieChart,
   Settings,
@@ -16,7 +18,7 @@ import {
 import { signOutPreview } from "@/app/actions/auth";
 import BrandLogo from "@/components/brand/BrandLogo";
 import { usePwaInstall } from "@/hooks/usePwaInstall";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatUsdFromCents, formatUsdtFromCents } from "@/lib/utils/format";
 
 interface AppHeaderNavProps {
   balanceCents: number;
@@ -24,12 +26,14 @@ interface AppHeaderNavProps {
   displayName: string | null;
   username: string | null;
   avatarUrl: string | null;
+  pendingBonusCents?: number;
 }
 
 const NAV_LINKS = [
   { href: "/trade/BTC", label: "Trade", icon: TrendingUp },
   { href: "/portfolio", label: "Portfolio", icon: PieChart },
   { href: "/wallet", label: "Wallet", icon: WalletIcon },
+  { href: "/swap", label: "Swap", icon: ArrowLeftRight },
 ];
 
 export default function AppHeaderNav({
@@ -38,6 +42,7 @@ export default function AppHeaderNav({
   displayName,
   username,
   avatarUrl,
+  pendingBonusCents = 0,
 }: AppHeaderNavProps) {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -51,7 +56,7 @@ export default function AppHeaderNav({
     <header className="sticky top-0 z-40 border-b border-border/60 bg-background/75 backdrop-blur-xl">
       <div className="mx-auto flex w-full max-w-350 items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/trade/BTC" aria-label="TrustTrade home">
+        <Link href="/" aria-label="TrustTrade home">
           <BrandLogo size={32} wordmarkClassName="hidden sm:block" />
         </Link>
 
@@ -78,6 +83,23 @@ export default function AppHeaderNav({
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          {pendingBonusCents > 0 && (
+            <Link
+              href="/welcome"
+              className="group relative inline-flex items-center gap-2 overflow-hidden rounded-full border border-brand/40 bg-brand-soft px-3 py-2 text-xs font-semibold text-brand transition hover:border-brand sm:px-4"
+            >
+              <span
+                aria-hidden
+                className="absolute inset-0 -translate-x-full bg-linear-to-r from-transparent via-white/20 to-transparent transition duration-700 group-hover:translate-x-full"
+              />
+              <Gift size={14} className="animate-pulse" />
+              <span className="hidden sm:inline">
+                Claim {formatUsdtFromCents(pendingBonusCents)}
+              </span>
+              <span className="sm:hidden">Gift</span>
+            </Link>
+          )}
+
           {/* Balance pill */}
           <Link
             href="/wallet"

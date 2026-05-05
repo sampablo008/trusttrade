@@ -32,7 +32,18 @@ interface WithdrawalRow {
   paid_by: string | null;
   paid_at: string | null;
   created_at: string;
+  tokens?:
+    | { last_price_cents?: number | null; base_price_cents?: number | null }
+    | { last_price_cents?: number | null; base_price_cents?: number | null }[]
+    | null;
 }
+
+const resolveTokenPriceCents = (tokens: WithdrawalRow["tokens"]): number => {
+  if (!tokens) return 0;
+  const t = Array.isArray(tokens) ? tokens[0] : tokens;
+  if (!t) return 0;
+  return toNum(t.last_price_cents ?? t.base_price_cents ?? 0);
+};
 
 const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
@@ -41,15 +52,21 @@ const toNum = (v: number | bigint | string | null | undefined): number => {
   return v;
 };
 
-const mapRow = (row: WithdrawalRow): Withdrawal =>
-  withdrawalSchema.parse({
+const mapRow = (row: WithdrawalRow): Withdrawal => {
+  const amount = row.amount != null ? toNum(row.amount) : null;
+  const priceCents = resolveTokenPriceCents(row.tokens);
+  const usdValueCents = amount != null && priceCents > 0
+    ? Math.round(amount * priceCents)
+    : null;
+  return withdrawalSchema.parse({
     id: row.id,
     userId: row.user_id,
     tokenId: row.token_id,
-    amount: row.amount != null ? toNum(row.amount) : null,
+    amount,
     feeAmount: row.fee_amount != null ? toNum(row.fee_amount) : null,
     netAmount: row.net_amount != null ? toNum(row.net_amount) : null,
     amountCents: toNum(row.amount_cents),
+    usdValueCents,
     feeCents: toNum(row.fee_cents),
     netAmountCents: toNum(row.net_amount_cents),
     tokenSymbol: row.token_symbol,
@@ -65,9 +82,10 @@ const mapRow = (row: WithdrawalRow): Withdrawal =>
     paidAt: row.paid_at ?? null,
     createdAt: row.created_at,
   });
+};
 
 const SELECT =
-  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at";
+  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at, tokens(last_price_cents, base_price_cents)";
 
 export const listAdminWithdrawals = async (
   filters: AdminWithdrawalFilters,

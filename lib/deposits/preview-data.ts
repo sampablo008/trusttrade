@@ -18,6 +18,7 @@ const makeDeposit = (overrides: Partial<Deposit> = {}): Deposit => ({
   network: "TRC20",
   amount: 500,
   amountCents: 0,
+  usdValueCents: 500_00,
   proofPath: "deposit-proofs/preview/proof.webp",
   txHash: null,
   status: "pending",

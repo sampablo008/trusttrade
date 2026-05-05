@@ -27,8 +27,19 @@ interface DepositRow {
   reviewed_by: string | null;
   reviewed_at: string | null;
   created_at: string;
-  tokens?: { symbol: string } | { symbol: string }[] | null;
+  tokens?:
+    | { symbol: string; last_price_cents?: number | null; base_price_cents?: number | null }
+    | { symbol: string; last_price_cents?: number | null; base_price_cents?: number | null }[]
+    | null;
 }
+
+const resolveTokenPriceCents = (tokens: DepositRow["tokens"]): number => {
+  if (!tokens) return 0;
+  const t = Array.isArray(tokens) ? tokens[0] : tokens;
+  if (!t) return 0;
+  const v = t.last_price_cents ?? t.base_price_cents ?? 0;
+  return typeof v === "bigint" ? Number(v) : Number(v) || 0;
+};
 
 const toNum = (v: number | bigint | string | null | undefined): number => {
   if (v == null) return 0;
@@ -43,15 +54,21 @@ const resolveSymbol = (tokens: DepositRow["tokens"]): string => {
   return tokens.symbol;
 };
 
-const mapDepositRow = (row: DepositRow): Deposit =>
-  depositSchema.parse({
+const mapDepositRow = (row: DepositRow): Deposit => {
+  const amount = row.amount != null ? toNum(row.amount) : null;
+  const priceCents = resolveTokenPriceCents(row.tokens);
+  const usdValueCents = amount != null && priceCents > 0
+    ? Math.round(amount * priceCents)
+    : null;
+  return depositSchema.parse({
     id: row.id,
     userId: row.user_id,
     tokenId: row.token_id,
     tokenSymbol: resolveSymbol(row.tokens),
     network: row.network,
-    amount: row.amount != null ? toNum(row.amount) : null,
+    amount,
     amountCents: toNum(row.amount_cents),
+    usdValueCents,
     proofPath: row.proof_path,
     txHash: row.tx_hash ?? null,
     status: row.status,
@@ -60,9 +77,10 @@ const mapDepositRow = (row: DepositRow): Deposit =>
     reviewedAt: row.reviewed_at ?? null,
     createdAt: row.created_at,
   });
+};
 
 const DEPOSIT_SELECT =
-  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol)";
+  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, last_price_cents, base_price_cents)";
 
 export const listUserDeposits = async (userId: string): Promise<DepositsResult> => {
   if (!getOptionalServerEnv()) {

@@ -38,6 +38,7 @@ function stubToken(symbol: string, name: string): PublicToken {
     decimals: 8,
     minDeposit: 0,
     swapFeeBps: 0,
+    minSwap: 0,
     minWithdrawal: 0,
     withdrawFeeBps: 0,
   };

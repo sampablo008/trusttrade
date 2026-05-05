@@ -15,7 +15,7 @@ export async function GET(request: Request) {
       return Response.json({ data: result });
     }
 
-    const result = await listSettledTrades(userId, query.limit, query.offset);
+    const result = await listSettledTrades(userId, query.limit, query.offset, query.outcome);
     return Response.json({ data: result });
   } catch (error) {
     if (error instanceof ApiClientError) {

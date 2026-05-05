@@ -15,12 +15,15 @@ interface SwapSide {
   decimals: number;
   usdPriceCents: number;
   swapFeeBps: number;
+  minSwap: number;
 }
 
 interface Props {
   tokens: PublicToken[];
   balances: WalletBalancesResult;
 }
+
+type EditingSide = "from" | "to";
 
 const buildSides = (tokens: PublicToken[]): SwapSide[] =>
   tokens.map((t) => ({
@@ -30,6 +33,7 @@ const buildSides = (tokens: PublicToken[]): SwapSide[] =>
     decimals: t.decimals,
     usdPriceCents: t.priceCents,
     swapFeeBps: t.swapFeeBps,
+    minSwap: t.minSwap,
   }));
 
 const balanceFor = (
@@ -38,19 +42,23 @@ const balanceFor = (
 ): number =>
   balances.tokens.find((x) => x.symbol === side.symbol)?.balance ?? 0;
 
+const formatMinSwap = (side: SwapSide): string =>
+  formatTokenAmount(side.minSwap, side.symbol, Math.min(side.decimals, 8));
+
 export default function SwapForm({ tokens, balances }: Props) {
   const sides = useMemo(() => buildSides(tokens), [tokens]);
   const [fromSymbol, setFromSymbol] = useState(
     balances.tokens[0]?.symbol ?? sides[0]?.symbol ?? "",
   );
   const [toSymbol, setToSymbol] = useState(
-    // default the destination to a different token than `from`
     sides.find((s) => s.symbol !== (balances.tokens[0]?.symbol ?? sides[0]?.symbol))?.symbol ??
       sides[1]?.symbol ??
       sides[0]?.symbol ??
       "",
   );
-  const [amountStr, setAmountStr] = useState("");
+  const [fromAmountStr, setFromAmountStr] = useState("");
+  const [toAmountStr, setToAmountStr] = useState("");
+  const [editing, setEditing] = useState<EditingSide>("from");
   const [quote, setQuote] = useState<SwapQuote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [quoting, setQuoting] = useState(false);
@@ -60,14 +68,18 @@ export default function SwapForm({ tokens, balances }: Props) {
 
   const fromSide = sides.find((s) => s.symbol === fromSymbol) ?? sides[0];
   const toSide = sides.find((s) => s.symbol === toSymbol) ?? sides[0];
-  const amount = Number.parseFloat(amountStr);
-  const validAmount = Number.isFinite(amount) && amount > 0;
+  const inputStr = editing === "from" ? fromAmountStr : toAmountStr;
+  const inputAmount = Number.parseFloat(inputStr);
+  const validInput = Number.isFinite(inputAmount) && inputAmount > 0;
   const fromBalance = fromSide ? balanceFor(fromSide, balances) : 0;
-  const sufficient = validAmount && amount <= fromBalance;
   const sameSide = fromSymbol === toSymbol;
+  const fromAmountNum = quote?.fromAmount ?? (editing === "from" ? inputAmount : NaN);
+  const sufficient = Number.isFinite(fromAmountNum) && fromAmountNum > 0 && fromAmountNum <= fromBalance;
+  const belowMin =
+    fromSide && fromSide.minSwap > 0 && Number.isFinite(fromAmountNum) && fromAmountNum < fromSide.minSwap;
 
   useEffect(() => {
-    if (!validAmount || sameSide) {
+    if (!validInput || sameSide) {
       setQuote(null);
       setQuoteError(null);
       return;
@@ -80,7 +92,11 @@ export default function SwapForm({ tokens, balances }: Props) {
         const res = await fetch("/api/swaps/quote", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fromSymbol, toSymbol, fromAmount: amount }),
+          body: JSON.stringify(
+            editing === "from"
+              ? { fromSymbol, toSymbol, fromAmount: inputAmount }
+              : { fromSymbol, toSymbol, toAmount: inputAmount },
+          ),
         });
         const json = (await res.json()) as
           | { data: SwapQuote }
@@ -88,6 +104,17 @@ export default function SwapForm({ tokens, balances }: Props) {
         if (cancelled) return;
         if ("data" in json) {
           setQuote(json.data);
+          // Mirror the computed side back into the other input so the user
+          // sees both numbers without overwriting what they're typing.
+          if (editing === "from") {
+            setToAmountStr(
+              formatTokenAmount(json.data.toAmount, json.data.toSymbol, Math.min(toSide?.decimals ?? 8, 8)),
+            );
+          } else {
+            setFromAmountStr(
+              formatTokenAmount(json.data.fromAmount, json.data.fromSymbol, Math.min(fromSide?.decimals ?? 8, 8)),
+            );
+          }
         } else {
           setQuote(null);
           setQuoteError(json.error?.message ?? "Quote failed.");
@@ -105,37 +132,43 @@ export default function SwapForm({ tokens, balances }: Props) {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [fromSymbol, toSymbol, amount, validAmount, sameSide]);
+  }, [fromSymbol, toSymbol, inputAmount, validInput, sameSide, editing, fromSide?.decimals, toSide?.decimals]);
 
   const flip = () => {
     const prevFrom = fromSymbol;
+    const prevFromStr = fromAmountStr;
     setFromSymbol(toSymbol);
     setToSymbol(prevFrom);
+    setFromAmountStr(toAmountStr);
+    setToAmountStr(prevFromStr);
+    setEditing(editing === "from" ? "to" : "from");
     setQuote(null);
   };
 
   const handleMax = () => {
     if (!fromSide) return;
     const decimals = Math.min(fromSide.decimals, 8);
-    setAmountStr(Number(fromBalance.toFixed(decimals)).toString());
+    setFromAmountStr(Number(fromBalance.toFixed(decimals)).toString());
+    setEditing("from");
   };
 
   const submit = async () => {
-    if (!quote || !validAmount || !sufficient) return;
+    if (!quote || !sufficient || belowMin) return;
     setSubmitting(true);
     setSubmitError(null);
     try {
       const res = await fetch("/api/swaps", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fromSymbol, toSymbol, fromAmount: amount }),
+        body: JSON.stringify({ fromSymbol, toSymbol, fromAmount: quote.fromAmount }),
       });
       const json = (await res.json()) as
         | { data: unknown }
         | { error: { message: string } };
       if ("data" in json) {
         setSuccess(quote);
-        setAmountStr("");
+        setFromAmountStr("");
+        setToAmountStr("");
         setQuote(null);
       } else {
         setSubmitError(json.error?.message ?? "Swap failed.");
@@ -170,9 +203,10 @@ export default function SwapForm({ tokens, balances }: Props) {
     );
   }
 
+  const canSubmit = !!quote && sufficient && !belowMin && !sameSide && !quoting;
+
   return (
     <div className="flex flex-col gap-4">
-      {/* From — allow USD (bonus pool) as a source */}
       <SideCard
         label="You pay"
         sides={sides}
@@ -181,12 +215,21 @@ export default function SwapForm({ tokens, balances }: Props) {
           if (s === toSymbol) setToSymbol(fromSymbol);
           setFromSymbol(s);
         }}
-        amount={amountStr}
-        onAmountChange={setAmountStr}
+        amount={fromAmountStr}
+        onAmountChange={(v) => {
+          setFromAmountStr(v);
+          setEditing("from");
+        }}
         balance={fromBalance}
         balanceSymbol={fromSide?.symbol ?? ""}
+        usdPriceCents={fromSide?.usdPriceCents ?? 0}
         showMax
         onMax={handleMax}
+        helper={
+          fromSide && fromSide.minSwap > 0
+            ? `Min: ${formatMinSwap(fromSide)}`
+            : undefined
+        }
       />
 
       <div className="flex justify-center">
@@ -199,7 +242,6 @@ export default function SwapForm({ tokens, balances }: Props) {
         </button>
       </div>
 
-      {/* To */}
       <SideCard
         label="You receive"
         sides={sides}
@@ -208,19 +250,20 @@ export default function SwapForm({ tokens, balances }: Props) {
           if (s === fromSymbol) setFromSymbol(toSymbol);
           setToSymbol(s);
         }}
-        amount={
-          quote ? formatTokenAmount(quote.toAmount, toSide?.symbol ?? "", toSide?.decimals ?? 8) : ""
-        }
+        amount={toAmountStr}
+        onAmountChange={(v) => {
+          setToAmountStr(v);
+          setEditing("to");
+        }}
         balance={toSide ? balanceFor(toSide, balances) : 0}
         balanceSymbol={toSide?.symbol ?? ""}
-        readOnly
+        usdPriceCents={toSide?.usdPriceCents ?? 0}
       />
 
-      {/* Quote panel */}
       <div className="rounded-2xl border border-border bg-background/30 p-4 text-sm">
         {sameSide ? (
           <p className="text-muted">Pick two different sides.</p>
-        ) : !validAmount ? (
+        ) : !validInput ? (
           <p className="text-muted">Enter an amount to get a quote.</p>
         ) : quoting ? (
           <p className="flex items-center gap-2 text-muted">
@@ -245,6 +288,12 @@ export default function SwapForm({ tokens, balances }: Props) {
               </dd>
             </div>
             <div className="flex justify-between">
+              <dt>You pay</dt>
+              <dd className="font-mono font-semibold text-foreground">
+                {formatTokenAmount(quote.fromAmount, quote.fromSymbol, 8)}
+              </dd>
+            </div>
+            <div className="flex justify-between">
               <dt>You receive</dt>
               <dd className="font-mono font-semibold text-foreground">
                 {formatTokenAmount(quote.toAmount, quote.toSymbol, 8)}
@@ -253,7 +302,7 @@ export default function SwapForm({ tokens, balances }: Props) {
             <div className="flex justify-between text-xs">
               <dt>USD reference</dt>
               <dd className="text-muted">
-                {formatUsdFromCents(Math.round(amount * quote.fromUsdPriceCents))}
+                {formatUsdFromCents(Math.round(quote.fromAmount * quote.fromUsdPriceCents))}
               </dd>
             </div>
           </dl>
@@ -270,18 +319,24 @@ export default function SwapForm({ tokens, balances }: Props) {
       <button
         type="button"
         onClick={submit}
-        disabled={!quote || !sufficient || submitting || sameSide}
+        disabled={!canSubmit || submitting}
         className="rounded-2xl bg-brand px-6 py-4 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
         {submitting
           ? "Swapping…"
           : sameSide
             ? "Pick two different sides"
-            : !validAmount
+            : !validInput
               ? "Enter amount"
-              : !sufficient
-                ? `Insufficient ${fromSide?.symbol ?? ""}`
-                : `Swap ${fromSide?.symbol} → ${toSide?.symbol}`}
+              : quoting
+                ? "Fetching live rate…"
+                : !quote
+                  ? "Waiting for quote…"
+                  : belowMin
+                    ? `Below min ${formatMinSwap(fromSide!)}`
+                    : !sufficient
+                      ? `Insufficient ${fromSide?.symbol ?? ""}`
+                      : `Swap ${fromSide?.symbol} → ${toSide?.symbol}`}
       </button>
     </div>
   );
@@ -296,9 +351,10 @@ interface SideCardProps {
   onAmountChange?: (v: string) => void;
   balance: number;
   balanceSymbol: string;
-  readOnly?: boolean;
+  usdPriceCents: number;
   showMax?: boolean;
   onMax?: () => void;
+  helper?: string;
 }
 
 function SideCard({
@@ -310,11 +366,17 @@ function SideCard({
   onAmountChange,
   balance,
   balanceSymbol,
-  readOnly,
+  usdPriceCents,
   showMax,
   onMax,
+  helper,
 }: SideCardProps) {
   const side = sides.find((s) => s.symbol === selected);
+  const parsedAmount = Number.parseFloat(amount);
+  const usdValueCents =
+    Number.isFinite(parsedAmount) && parsedAmount > 0
+      ? Math.round(parsedAmount * usdPriceCents)
+      : null;
   return (
     <div className="rounded-2xl border border-border bg-background/30 p-4">
       <div className="flex items-center justify-between text-xs text-muted">
@@ -330,7 +392,7 @@ function SideCard({
         <select
           value={selected}
           onChange={(e) => onSelect(e.target.value)}
-          className="rounded-xl border border-border bg-background/40 px-3 py-2 text-sm font-semibold text-foreground focus:border-brand focus:outline-none"
+          className="shrink-0 rounded-xl border border-border bg-background/40 px-3 py-2 text-sm font-semibold text-foreground focus:border-brand focus:outline-none"
         >
           {sides.map((s) => (
             <option key={s.symbol} value={s.symbol}>
@@ -338,34 +400,42 @@ function SideCard({
             </option>
           ))}
         </select>
-        <div className="flex flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <input
-            type={readOnly ? "text" : "number"}
+            type="number"
             value={amount}
             placeholder="0.00"
             min={0}
             step="any"
-            readOnly={readOnly}
+            inputMode="decimal"
+            size={1}
             onChange={(e) => onAmountChange?.(e.target.value)}
-            className="flex-1 bg-transparent text-right text-2xl font-semibold text-foreground outline-none"
+            className="min-w-0 flex-1 bg-transparent text-right text-2xl font-semibold text-foreground outline-none"
           />
           {showMax && (
             <button
               type="button"
               onClick={onMax}
-              className="rounded-full border border-border bg-background/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted transition hover:border-brand hover:text-foreground"
+              className="shrink-0 rounded-full border border-border bg-background/40 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted transition hover:border-brand hover:text-foreground"
             >
               Max
             </button>
           )}
         </div>
       </div>
-      {side && (
-        <p className="mt-2 flex items-center gap-1.5 text-xs text-muted">
-          <CoinIcon symbol={side.symbol} iconPath={side.iconPath} size={12} />
-          {side.name}
-        </p>
-      )}
+      <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted">
+        {side ? (
+          <p className="flex items-center gap-1.5">
+            <CoinIcon symbol={side.symbol} iconPath={side.iconPath} size={12} />
+            {side.name}
+          </p>
+        ) : <span />}
+        <span className="font-mono text-muted">
+          {usdValueCents !== null
+            ? `≈ ${formatUsdFromCents(usdValueCents)}`
+            : helper ?? ""}
+        </span>
+      </div>
     </div>
   );
 }

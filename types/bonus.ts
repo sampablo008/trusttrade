@@ -21,3 +21,14 @@ export interface BonusTicketsResult {
   items: BonusTicket[];
   totalLockedCents: number;
 }
+
+export interface SignupBonusStatus {
+  state: "pending" | "claimed" | "unavailable";
+  amountCents: number;
+  claimedAt: string | null;
+}
+
+export interface SignupBonusClaimResult {
+  ticket: BonusTicket;
+  amountCents: number;
+}

@@ -25,6 +25,7 @@ export const withdrawalSchema = z.object({
   feeAmount: z.number().nonnegative().nullable(),
   netAmount: z.number().nonnegative().nullable(),
   amountCents: z.number().int().nonnegative(),
+  usdValueCents: z.number().int().nonnegative().nullable().default(null),
   feeCents: z.number().int().min(0),
   netAmountCents: z.number().int().min(0),
   tokenSymbol: z.string().min(1),

@@ -18,6 +18,7 @@ const makeWithdrawal = (overrides: Partial<Withdrawal> = {}): Withdrawal => ({
   feeAmount: 0,
   netAmount: 100,
   amountCents: 0,
+  usdValueCents: 100_00,
   feeCents: 0,
   netAmountCents: 0,
   tokenSymbol: "USDT",

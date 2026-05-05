@@ -23,3 +23,16 @@ export const bonusTicketsResultSchema = z.object({
   items: z.array(bonusTicketSchema),
   totalLockedCents: z.number().int().min(0),
 });
+
+export const signupBonusStateSchema = z.enum(["pending", "claimed", "unavailable"]);
+
+export const signupBonusStatusSchema = z.object({
+  state: signupBonusStateSchema,
+  amountCents: z.number().int().min(0),
+  claimedAt: z.string().nullable(),
+});
+
+export const signupBonusClaimResultSchema = z.object({
+  ticket: bonusTicketSchema,
+  amountCents: z.number().int().positive(),
+});

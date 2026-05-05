@@ -107,8 +107,35 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
         </div>
       </div>
 
+      {/* Trade details */}
+      <div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-2 rounded-xl border border-border/50 bg-background/30 p-2.5 text-[11px]">
+        <div>
+          <p className="text-muted">Started</p>
+          <p className="font-mono text-foreground">
+            {new Date(trade.startedAt).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            })}
+          </p>
+        </div>
+        <div>
+          <p className="text-muted">Entry Price</p>
+          <p className="font-mono text-foreground tabular-nums">
+            ${(trade.entryPriceCents / 100).toLocaleString("en-US", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </p>
+        </div>
+        <div>
+          <p className="text-muted">Rate of Return</p>
+          <p className="font-mono font-semibold text-brand">{profitPct}%</p>
+        </div>
+      </div>
+
       {/* Time progress + countdown */}
-      <div className="mt-3.5 flex items-center gap-3">
+      <div className="mt-3 flex items-center gap-3">
         <div className="relative h-1 flex-1 overflow-hidden rounded-full bg-white/8">
           <div
             className={[

@@ -36,3 +36,10 @@ export interface ExecuteSwapInput {
   toSymbol: string;
   fromAmount: number;
 }
+
+export interface QuoteSwapInput {
+  fromSymbol: string;
+  toSymbol: string;
+  fromAmount?: number;
+  toAmount?: number;
+}

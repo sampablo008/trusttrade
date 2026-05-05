@@ -7,6 +7,7 @@ export interface UserTrade {
   direction: TradeDirection;
   endTime: string;
   entryPriceCents: number;
+  exitPriceCents: number | null;
   id: string;
   outcome: TradeOutcome | null;
   payoutBps: number;

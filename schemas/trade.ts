@@ -9,6 +9,7 @@ export const userTradeSchema = z.object({
   direction: tradeDirectionSchema,
   endTime: z.string(),
   entryPriceCents: z.number().int().positive(),
+  exitPriceCents: z.number().int().positive().nullable().default(null),
   id: z.string().uuid(),
   outcome: tradeOutcomeSchema.nullable(),
   payoutBps: z.number().int().positive(),
@@ -73,6 +74,7 @@ export const updateProfileInputSchema = z.object({
 export const listTradesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().nonnegative().default(0),
+  outcome: tradeOutcomeSchema.optional(),
   status: tradeStatusSchema.optional(),
   tokenId: z.string().uuid().optional(),
 });

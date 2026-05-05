@@ -21,6 +21,7 @@ export interface Withdrawal {
   feeAmount: number | null;
   netAmount: number | null;
   amountCents: number;
+  usdValueCents: number | null;
   feeCents: number;
   netAmountCents: number;
   tokenSymbol: string;

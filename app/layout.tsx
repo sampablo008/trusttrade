@@ -5,6 +5,7 @@ import QueryProvider from "@/components/providers/QueryProvider";
 import CookieBanner from "@/components/ui/CookieBanner";
 import { siteConfig, siteMetadata, siteViewport } from "@/lib/config/site";
 import "./globals.css";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -84,16 +85,12 @@ export default function RootLayout({
           {children}
           <Toaster
             theme="dark"
-            position="bottom-right"
-            toastOptions={{
-              style: {
-                background: "var(--color-surface-soft)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-foreground)",
-              },
-            }}
+            richColors
+            closeButton
+            position="top-center"
           />
           <CookieBanner />
+          <SpeedInsights />
         </QueryProvider>
       </body>
     </html>

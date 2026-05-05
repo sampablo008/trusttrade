@@ -11,9 +11,9 @@ interface CoinIconProps {
 export default function CoinIcon({ symbol, iconPath, size = 24, className = "" }: CoinIconProps) {
   if (iconPath) {
     return (
-      <div
+      <span
         style={{ width: size, height: size }}
-        className={`relative shrink-0 overflow-hidden rounded-full ${className}`}
+        className={`relative inline-block shrink-0 overflow-hidden rounded-full align-middle ${className}`}
       >
         <Image
           src={buildMediaUrl("token-icons", iconPath)}
@@ -22,7 +22,7 @@ export default function CoinIcon({ symbol, iconPath, size = 24, className = "" }
           className="object-contain"
           unoptimized
         />
-      </div>
+      </span>
     );
   }
 

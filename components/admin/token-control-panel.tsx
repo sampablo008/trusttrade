@@ -32,6 +32,7 @@ interface TokenFormState {
   decimals: string;
   minDeposit: string;
   swapFeeBps: string;
+  minSwap: string;
   coingeckoId: string;
   minWithdrawal: string;
   withdrawFeeBps: string;
@@ -53,6 +54,7 @@ const createEmptyDraft = (): TokenFormState => ({
   decimals: "8",
   minDeposit: "0",
   swapFeeBps: "100",
+  minSwap: "0",
   coingeckoId: "",
   minWithdrawal: "0",
   withdrawFeeBps: "0",
@@ -72,6 +74,7 @@ const mapTokenToDraft = (token: AdminToken): TokenFormState => ({
   decimals: String(token.decimals),
   minDeposit: String(token.minDeposit),
   swapFeeBps: String(token.swapFeeBps),
+  minSwap: String(token.minSwap),
   coingeckoId: token.coingeckoId ?? "",
   minWithdrawal: String(token.minWithdrawal),
   withdrawFeeBps: String(token.withdrawFeeBps),
@@ -204,6 +207,7 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
       decimals: draft.decimals,
       minDeposit: draft.minDeposit,
       swapFeeBps: draft.swapFeeBps,
+      minSwap: draft.minSwap,
       coingeckoId: draft.coingeckoId.trim() || null,
       minWithdrawal: draft.minWithdrawal,
       withdrawFeeBps: draft.withdrawFeeBps,
@@ -554,6 +558,19 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
               className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
             />
             <p className="text-[11px] text-muted">Charged when this token is the FROM side. 100 bps = 1%.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Min swap (native units)
+            </label>
+            <input
+              inputMode="decimal"
+              value={draft.minSwap}
+              onChange={(event) => updateDraft("minSwap", event.target.value)}
+              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            />
+            <p className="text-[11px] text-muted">Smallest accepted swap from this token, in its native units.</p>
           </div>
 
           <div className="space-y-2">

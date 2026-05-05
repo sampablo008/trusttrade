@@ -15,6 +15,7 @@ export interface PublicToken {
   decimals: number;
   minDeposit: number;
   swapFeeBps: number;
+  minSwap: number;
   minWithdrawal: number;
   withdrawFeeBps: number;
 }
@@ -71,6 +72,7 @@ export interface AdminToken {
   decimals: number;
   minDeposit: number;
   swapFeeBps: number;
+  minSwap: number;
   coingeckoId: string | null;
   minWithdrawal: number;
   withdrawFeeBps: number;
@@ -94,6 +96,7 @@ export interface UpsertAdminTokenInput {
   decimals: number;
   minDeposit: number;
   swapFeeBps: number;
+  minSwap: number;
   coingeckoId: string | null;
   minWithdrawal: number;
   withdrawFeeBps: number;

@@ -1,6 +1,7 @@
 import "server-only";
 import AppHeaderNav from "@/components/layout/AppHeaderNav";
 import { assertAuthenticated } from "@/lib/auth/session";
+import { getSignupBonusStatus } from "@/lib/bonus/service";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { buildMediaUrl } from "@/lib/media/path";
 import { getProfile } from "@/lib/trades/service";
@@ -50,6 +51,14 @@ export default async function AppShell({ children }: AppShellProps) {
 
   const avatarUrl = profile.avatarPath ? buildMediaUrl("avatars", profile.avatarPath) : null;
 
+  let pendingBonusCents = 0;
+  if (userId) {
+    const status = await getSignupBonusStatus(userId).catch(() => null);
+    if (status?.state === "pending") {
+      pendingBonusCents = status.amountCents;
+    }
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeaderNav
@@ -58,6 +67,7 @@ export default async function AppShell({ children }: AppShellProps) {
         displayName={profile.displayName}
         username={profile.username ?? session.username}
         avatarUrl={avatarUrl}
+        pendingBonusCents={pendingBonusCents}
       />
       <div className="flex-1 pb-[calc(env(safe-area-inset-bottom)+72px)] lg:pb-0">{children}</div>
     </div>

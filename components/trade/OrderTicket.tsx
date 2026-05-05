@@ -240,6 +240,9 @@ export default function OrderTicket({
           <span className="font-mono font-semibold text-foreground">
             {formatTokenAmount(stakeTokenAmount, token.symbol, token.decimals)}
           </span>{" "}
+          <span className="text-muted/80">
+            (≈ {formatUsdFromCents(activeStakeCents)})
+          </span>{" "}
           from your {token.symbol} balance · payout returns to {token.symbol}
         </div>
       )}

@@ -12,10 +12,15 @@ import {
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { Withdrawal, WithdrawalStatus } from "@/types/withdrawal";
 
-const formatWithdrawalAmount = (w: Withdrawal) =>
-  w.amount != null && w.amount > 0
-    ? formatTokenAmount(w.amount, w.tokenSymbol)
-    : formatUsdFromCents(w.amountCents);
+const formatWithdrawalAmount = (w: Withdrawal) => {
+  if (w.amount != null && w.amount > 0) {
+    const tokenStr = formatTokenAmount(w.amount, w.tokenSymbol);
+    return w.usdValueCents != null && w.usdValueCents > 0
+      ? `${tokenStr} (≈ ${formatUsdFromCents(w.usdValueCents)})`
+      : tokenStr;
+  }
+  return formatUsdFromCents(w.amountCents);
+};
 
 const STATUS_BADGE: Record<WithdrawalStatus, string> = {
   pending: "bg-yellow-400/15 text-yellow-400",

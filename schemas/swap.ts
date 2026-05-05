@@ -6,11 +6,17 @@ export const swapSideSymbolSchema = z
   .toUpperCase()
   .regex(/^[A-Z0-9]{2,12}$/, "Invalid symbol.");
 
-export const swapQuoteInputSchema = z.object({
-  fromSymbol: swapSideSymbolSchema,
-  toSymbol: swapSideSymbolSchema,
-  fromAmount: z.number().positive(),
-});
+export const swapQuoteInputSchema = z
+  .object({
+    fromSymbol: swapSideSymbolSchema,
+    toSymbol: swapSideSymbolSchema,
+    fromAmount: z.number().positive().optional(),
+    toAmount: z.number().positive().optional(),
+  })
+  .refine(
+    (v) => (v.fromAmount != null) !== (v.toAmount != null),
+    { message: "Specify exactly one of fromAmount or toAmount." },
+  );
 
 export const swapQuoteSchema = z.object({
   fromSymbol: z.string(),
