@@ -104,16 +104,12 @@ export default function SwapForm({ tokens, balances }: Props) {
         if (cancelled) return;
         if ("data" in json) {
           setQuote(json.data);
-          // Mirror the computed side back into the other input so the user
-          // sees both numbers without overwriting what they're typing.
           if (editing === "from") {
-            setToAmountStr(
-              formatTokenAmount(json.data.toAmount, json.data.toSymbol, Math.min(toSide?.decimals ?? 8, 8)),
-            );
+            const dp = Math.min(toSide?.decimals ?? 8, 8);
+            setToAmountStr(Number(json.data.toAmount.toFixed(dp)).toString());
           } else {
-            setFromAmountStr(
-              formatTokenAmount(json.data.fromAmount, json.data.fromSymbol, Math.min(fromSide?.decimals ?? 8, 8)),
-            );
+            const dp = Math.min(fromSide?.decimals ?? 8, 8);
+            setFromAmountStr(Number(json.data.fromAmount.toFixed(dp)).toString());
           }
         } else {
           setQuote(null);
