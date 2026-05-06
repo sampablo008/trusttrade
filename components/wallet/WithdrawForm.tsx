@@ -2,10 +2,20 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertCircle, ArrowDownToLine, CheckCircle, Lock, ShieldCheck, X } from "lucide-react";
+import {
+  AlertCircle,
+  ArrowDownToLine,
+  CheckCircle,
+  Lock,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+  X,
+} from "lucide-react";
 import CoinIcon from "@/components/ui/CoinIcon";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { PublicToken } from "@/types/market";
+import type { PrimaryAddress } from "@/types/primary-address";
 import type { WalletBalancesResult } from "@/types/wallet-balance";
 
 const NETWORKS = ["TRC20", "ERC20", "BEP20", "BTC"];
@@ -14,6 +24,7 @@ interface Props {
   balances: WalletBalancesResult;
   tokens: PublicToken[];
   hasWithdrawalPin: boolean;
+  initialPrimaryAddresses: PrimaryAddress[];
 }
 
 interface WithdrawableToken {
@@ -28,7 +39,28 @@ interface WithdrawableToken {
   withdrawFeeBps: number;
 }
 
-export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Props) {
+const norm = (s: string) => s.trim().toUpperCase();
+
+const findPrimary = (
+  list: PrimaryAddress[],
+  symbol: string,
+  network: string,
+): PrimaryAddress | null =>
+  list.find(
+    (item) =>
+      norm(item.tokenSymbol) === norm(symbol) &&
+      norm(item.network) === norm(network),
+  ) ?? null;
+
+const truncateAddress = (addr: string) =>
+  addr.length > 16 ? `${addr.slice(0, 8)}…${addr.slice(-8)}` : addr;
+
+export default function WithdrawForm({
+  balances,
+  tokens,
+  hasWithdrawalPin,
+  initialPrimaryAddresses,
+}: Props) {
   const withdrawable = useMemo<WithdrawableToken[]>(() => {
     return balances.tokens
       .filter((b) => b.balance > 0)
@@ -48,16 +80,29 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
       });
   }, [balances.tokens, tokens]);
 
+  const [primaryAddresses, setPrimaryAddresses] = useState<PrimaryAddress[]>(
+    initialPrimaryAddresses,
+  );
   const [selectedSymbol, setSelectedSymbol] = useState(withdrawable[0]?.symbol ?? "");
   const [network, setNetwork] = useState("TRC20");
   const [amountStr, setAmountStr] = useState("");
-  const [destination, setDestination] = useState("");
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [bindOpen, setBindOpen] = useState(false);
+  const [bindMode, setBindMode] = useState<"set" | "change">("set");
+  const [bindAddress, setBindAddress] = useState("");
+  const [bindPin, setBindPin] = useState("");
+  const [bindStatus, setBindStatus] = useState<"idle" | "loading">("idle");
+  const [bindError, setBindError] = useState<string | null>(null);
+  const [removeOpen, setRemoveOpen] = useState(false);
+  const [removePin, setRemovePin] = useState("");
+  const [removeStatus, setRemoveStatus] = useState<"idle" | "loading">("idle");
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [withdrawalPin, setWithdrawalPin] = useState("");
   const [submitStatus, setSubmitStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const selected = withdrawable.find((t) => t.symbol === selectedSymbol);
+  const primary = selected ? findPrimary(primaryAddresses, selected.symbol, network) : null;
   const amount = Number.parseFloat(amountStr);
   const validAmount = Number.isFinite(amount) && amount > 0;
   const minOk = !selected || amount >= selected.minWithdrawal;
@@ -66,8 +111,7 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
     ? Number((amount * (selected.withdrawFeeBps / 10000)).toFixed(8))
     : 0;
   const net = Math.max(amount - fee, 0);
-  const canReview =
-    !!selected && validAmount && minOk && balanceOk && destination.trim().length >= 10;
+  const canReview = !!selected && !!primary && validAmount && minOk && balanceOk;
 
   if (!hasWithdrawalPin) {
     return (
@@ -115,7 +159,7 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
   }
 
   const submitWithPin = async () => {
-    if (!selected) return;
+    if (!selected || !primary) return;
     if (!/^\d{6}$/.test(withdrawalPin)) {
       setErrorMsg("Enter your 6-digit withdrawal PIN.");
       return;
@@ -131,7 +175,7 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
         tokenSymbol: selected.symbol,
         network,
         amount,
-        destinationAddress: destination.trim(),
+        destinationAddress: primary.address,
         withdrawalPin,
       }),
     });
@@ -143,6 +187,106 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
       const json = (await res.json()) as { error?: { message?: string } };
       setErrorMsg(json.error?.message ?? "Withdrawal request failed.");
       setSubmitStatus("error");
+    }
+  };
+
+  const openBind = (mode: "set" | "change") => {
+    setBindMode(mode);
+    setBindAddress(mode === "change" && primary ? primary.address : "");
+    setBindPin("");
+    setBindError(null);
+    setBindStatus("idle");
+    setBindOpen(true);
+  };
+
+  const submitBind = async () => {
+    if (!selected) return;
+    if (bindAddress.trim().length < 8) {
+      setBindError("Address looks too short.");
+      return;
+    }
+    if (!/^\d{6}$/.test(bindPin)) {
+      setBindError("Enter your 6-digit withdrawal PIN.");
+      return;
+    }
+    if (bindMode === "change" && primary && bindAddress.trim() === primary.address) {
+      setBindError("New address must differ from the current one.");
+      return;
+    }
+
+    setBindStatus("loading");
+    setBindError(null);
+    const res = await fetch("/api/me/primary-addresses", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokenSymbol: selected.symbol,
+        network,
+        address: bindAddress.trim(),
+        withdrawalPin: bindPin,
+      }),
+    });
+
+    if (res.ok) {
+      const json = (await res.json()) as { data: PrimaryAddress };
+      setPrimaryAddresses((list) => {
+        const without = list.filter(
+          (p) =>
+            !(
+              norm(p.tokenSymbol) === norm(json.data.tokenSymbol) &&
+              norm(p.network) === norm(json.data.network)
+            ),
+        );
+        return [...without, json.data];
+      });
+      setBindOpen(false);
+    } else {
+      const json = (await res.json()) as { error?: { message?: string } };
+      setBindError(json.error?.message ?? "Failed to save address.");
+      setBindStatus("idle");
+    }
+  };
+
+  const openRemove = () => {
+    setRemovePin("");
+    setRemoveError(null);
+    setRemoveStatus("idle");
+    setRemoveOpen(true);
+  };
+
+  const submitRemove = async () => {
+    if (!selected || !primary) return;
+    if (!/^\d{6}$/.test(removePin)) {
+      setRemoveError("Enter your 6-digit withdrawal PIN.");
+      return;
+    }
+    setRemoveStatus("loading");
+    setRemoveError(null);
+    const res = await fetch("/api/me/primary-addresses", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tokenSymbol: selected.symbol,
+        network,
+        withdrawalPin: removePin,
+      }),
+    });
+
+    if (res.ok) {
+      setPrimaryAddresses((list) =>
+        list.filter(
+          (p) =>
+            !(
+              norm(p.tokenSymbol) === norm(selected.symbol) &&
+              norm(p.network) === norm(network)
+            ),
+        ),
+      );
+      setRemoveOpen(false);
+    } else {
+      const json = (await res.json()) as { error?: { message?: string } };
+      setRemoveError(json.error?.message ?? "Failed to remove address.");
+      setRemoveStatus("idle");
     }
   };
 
@@ -202,44 +346,6 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
         </div>
       )}
 
-      {/* Amount */}
-      <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Amount ({selected?.symbol ?? "TOKEN"})
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={0}
-            step="any"
-            placeholder={`Enter amount in ${selected?.symbol ?? ""}`}
-            value={amountStr}
-            onChange={(e) => setAmountStr(e.target.value)}
-            className="w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={() => selected && setAmountStr(String(selected.balance))}
-            className="rounded-full border border-border bg-background/40 px-3 py-2 text-xs font-semibold text-muted transition hover:border-brand hover:text-foreground"
-          >
-            Max
-          </button>
-        </div>
-        {selected && validAmount && (
-          <p className="text-xs text-muted">
-            ≈ {formatUsdFromCents(Math.round(amount * selected.usdPriceCents))}
-          </p>
-        )}
-        {validAmount && !minOk && selected && (
-          <p className="text-xs text-down">
-            Below min withdrawal ({formatTokenAmount(selected.minWithdrawal, selected.symbol, selected.decimals)}).
-          </p>
-        )}
-        {validAmount && !balanceOk && (
-          <p className="text-xs text-down">Amount exceeds available balance.</p>
-        )}
-      </div>
-
       {/* Network */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
@@ -263,22 +369,104 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
         </div>
       </div>
 
-      {/* Destination */}
+      {/* Primary address */}
+      {selected && (
+        <div className="flex flex-col gap-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+            Primary {selected.symbol} address ({network})
+          </label>
+          {primary ? (
+            <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-2 min-w-0">
+                <ShieldCheck size={14} className="shrink-0 text-brand" />
+                <span className="truncate font-mono text-sm text-foreground">
+                  {primary.address}
+                </span>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={() => openBind("change")}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background/40 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:border-brand"
+                >
+                  <Pencil size={12} />
+                  Change
+                </button>
+                <button
+                  type="button"
+                  onClick={openRemove}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-background/40 px-3 py-1.5 text-xs font-semibold text-down transition hover:border-down"
+                >
+                  <Trash2 size={12} />
+                  Remove
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 rounded-2xl border border-dashed border-border bg-background/20 p-4 text-sm">
+              <div className="flex items-start gap-2 text-muted">
+                <Lock size={14} className="mt-0.5 shrink-0 text-brand" />
+                <p>
+                  Bind a primary {selected.symbol} address on {network}. Once bound,
+                  withdrawals can only go to this address. Changing it later requires
+                  your withdrawal PIN.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openBind("set")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-full bg-brand px-4 py-2 text-xs font-semibold text-background transition hover:brightness-110"
+              >
+                <ShieldCheck size={12} />
+                Bind primary address
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Amount */}
       <div className="flex flex-col gap-2">
         <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Destination address
+          Amount ({selected?.symbol ?? "TOKEN"})
         </label>
-        <input
-          type="text"
-          value={destination}
-          onChange={(e) => setDestination(e.target.value)}
-          placeholder="Paste your wallet address"
-          className="w-full rounded-xl border border-border bg-background/30 px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-        />
+        <div className="flex items-center gap-2">
+          <input
+            type="number"
+            min={0}
+            step="any"
+            placeholder={`Enter amount in ${selected?.symbol ?? ""}`}
+            value={amountStr}
+            onChange={(e) => setAmountStr(e.target.value)}
+            disabled={!primary}
+            className="w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+          />
+          <button
+            type="button"
+            onClick={() => selected && setAmountStr(String(selected.balance))}
+            disabled={!primary}
+            className="rounded-full border border-border bg-background/40 px-3 py-2 text-xs font-semibold text-muted transition hover:border-brand hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Max
+          </button>
+        </div>
+        {selected && validAmount && (
+          <p className="text-xs text-muted">
+            ≈ {formatUsdFromCents(Math.round(amount * selected.usdPriceCents))}
+          </p>
+        )}
+        {validAmount && !minOk && selected && (
+          <p className="text-xs text-down">
+            Below min withdrawal ({formatTokenAmount(selected.minWithdrawal, selected.symbol, selected.decimals)}).
+          </p>
+        )}
+        {validAmount && !balanceOk && (
+          <p className="text-xs text-down">Amount exceeds available balance.</p>
+        )}
       </div>
 
       {/* Net preview */}
-      {selected && validAmount && minOk && balanceOk && (
+      {selected && primary && validAmount && minOk && balanceOk && (
         <div className="rounded-2xl border border-border bg-background/30 p-4 text-sm">
           <dl className="flex flex-col gap-1.5 text-muted">
             <div className="flex justify-between">
@@ -324,7 +512,7 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
         Review withdrawal
       </button>
 
-      {reviewOpen && selected && (
+      {reviewOpen && selected && primary && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
           <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-surface shadow-2xl">
             <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -358,15 +546,7 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
               <dl className="flex flex-col gap-2 text-sm">
                 <Row label="Token" value={selected.symbol} />
                 <Row label="Network" value={network} />
-                <Row
-                  label="Destination"
-                  value={
-                    destination.length > 16
-                      ? `${destination.slice(0, 8)}…${destination.slice(-8)}`
-                      : destination
-                  }
-                  mono
-                />
+                <Row label="Destination" value={truncateAddress(primary.address)} mono />
                 <Row
                   label="Fee"
                   value={`${formatTokenAmount(fee, selected.symbol, selected.decimals)} (${(selected.withdrawFeeBps / 100).toFixed(2)}%)`}
@@ -426,6 +606,56 @@ export default function WithdrawForm({ balances, tokens, hasWithdrawalPin }: Pro
           </div>
         </div>
       )}
+
+      {bindOpen && selected && (
+        <PinModal
+          title={bindMode === "set" ? "Bind primary address" : "Change primary address"}
+          description={
+            bindMode === "set"
+              ? `This address will be locked as the only allowed destination for ${selected.symbol} on ${network}.`
+              : `Enter the new ${selected.symbol} address for ${network}. Your withdrawal PIN is required.`
+          }
+          submitLabel={bindMode === "set" ? "Bind & save" : "Change & save"}
+          isLoading={bindStatus === "loading"}
+          onClose={() => setBindOpen(false)}
+          onSubmit={submitBind}
+          error={bindError}
+        >
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor="bindAddress"
+              className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted"
+            >
+              {selected.symbol} address ({network})
+            </label>
+            <input
+              id="bindAddress"
+              type="text"
+              autoFocus
+              value={bindAddress}
+              onChange={(e) => setBindAddress(e.target.value)}
+              placeholder="Paste your wallet address"
+              className="rounded-xl border border-border bg-background/40 px-4 py-2.5 font-mono text-sm text-foreground placeholder:text-muted outline-none focus:border-brand"
+            />
+          </div>
+          <PinInput id="bindPin" value={bindPin} onChange={setBindPin} />
+        </PinModal>
+      )}
+
+      {removeOpen && selected && primary && (
+        <PinModal
+          title="Remove primary address"
+          description={`Remove ${truncateAddress(primary.address)} as the bound primary address for ${selected.symbol} on ${network}? You'll need to bind a new one before withdrawing.`}
+          submitLabel="Remove"
+          submitVariant="danger"
+          isLoading={removeStatus === "loading"}
+          onClose={() => setRemoveOpen(false)}
+          onSubmit={submitRemove}
+          error={removeError}
+        >
+          <PinInput id="removePin" value={removePin} onChange={setRemovePin} />
+        </PinModal>
+      )}
     </div>
   );
 }
@@ -437,6 +667,116 @@ function Row({ label, value, mono }: { label: string; value: string; mono?: bool
       <dd className={`text-sm font-semibold text-foreground ${mono ? "font-mono" : ""}`}>
         {value}
       </dd>
+    </div>
+  );
+}
+
+function PinInput({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/30 px-4 py-4">
+      <label
+        htmlFor={id}
+        className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted"
+      >
+        Withdrawal PIN
+      </label>
+      <input
+        id={id}
+        type="password"
+        inputMode="numeric"
+        autoComplete="off"
+        pattern="\d{6}"
+        maxLength={6}
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value.replace(/\D/g, "").slice(0, 6))
+        }
+        className="rounded-xl border border-border bg-background/40 px-4 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none focus:border-brand"
+      />
+    </div>
+  );
+}
+
+function PinModal({
+  title,
+  description,
+  submitLabel,
+  submitVariant = "brand",
+  isLoading,
+  error,
+  onClose,
+  onSubmit,
+  children,
+}: {
+  title: string;
+  description: string;
+  submitLabel: string;
+  submitVariant?: "brand" | "danger";
+  isLoading: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSubmit: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+      <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-surface shadow-2xl">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={16} className="text-brand" />
+            <h3 className="font-display text-base text-foreground">{title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted transition hover:border-brand hover:text-foreground"
+            aria-label="Close"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-4 px-6 py-5">
+          <p className="text-sm text-muted">{description}</p>
+          {children}
+          {error && (
+            <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
+              <AlertCircle size={14} className="text-down" />
+              <p className="text-xs text-down">{error}</p>
+            </div>
+          )}
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isLoading}
+              className="flex-1 rounded-xl border border-border bg-background/40 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-border/80 disabled:opacity-40"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={isLoading}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-background shadow-lg transition hover:brightness-110 disabled:opacity-40 ${
+                submitVariant === "danger"
+                  ? "bg-down shadow-down/25"
+                  : "bg-brand shadow-brand/25"
+              }`}
+            >
+              {isLoading ? "Saving…" : submitLabel}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

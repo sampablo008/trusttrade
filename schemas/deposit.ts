@@ -7,6 +7,7 @@ export const depositSchema = z.object({
   userId: z.string().uuid(),
   tokenId: z.string().uuid(),
   tokenSymbol: z.string(),
+  iconPath: z.string().nullable().default(null),
   network: z.string().min(1),
   amount: z.number().nonnegative().nullable(),
   amountCents: z.number().int().nonnegative(),

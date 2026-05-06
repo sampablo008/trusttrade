@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { ArrowDownToLine, ArrowUpRight } from "lucide-react";
+import CoinIcon from "@/components/ui/CoinIcon";
 import TransactionStatusPill from "@/components/wallet/TransactionStatusPill";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 
 interface HistoryItem {
   id: string;
   tokenSymbol: string;
+  iconPath?: string | null;
   network: string;
   amount?: number | null;
   amountCents: number;
@@ -65,17 +67,15 @@ export default function WalletHistoryList({
               key={item.id}
               className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/30 px-4 py-3 transition hover:border-border"
             >
-              <div
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}
-              >
-                <span className="font-mono text-[10px] font-bold">
-                  {item.tokenSymbol.slice(0, 3)}
-                </span>
-              </div>
-              <div className="flex flex-col leading-tight">
-                <span className="text-sm font-semibold text-foreground">
-                  {item.tokenSymbol}{" "}
-                  <span className="text-muted">· {item.network}</span>
+              <CoinIcon
+                symbol={item.tokenSymbol}
+                iconPath={item.iconPath ?? null}
+                size={32}
+              />
+              <div className="flex min-w-0 flex-col leading-tight">
+                <span className="truncate text-sm font-semibold text-foreground">
+                  {item.tokenSymbol}
+                  <span className="text-muted"> · {item.network}</span>
                 </span>
                 <span className="text-xs text-muted">
                   {new Date(item.createdAt).toLocaleString(undefined, {

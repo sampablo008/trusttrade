@@ -3,16 +3,18 @@ import { ArrowLeft, ShieldCheck, Zap } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import WithdrawForm from "@/components/wallet/WithdrawForm";
 import { hasWithdrawalPin } from "@/lib/account/pin-service";
+import { listPrimaryAddresses } from "@/lib/account/primary-address-service";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { listMarketTokens } from "@/lib/markets/service";
 import { getWalletBalances } from "@/lib/wallet-balances/service";
 
 export default async function WithdrawPage() {
   const { userId } = await assertUserApi();
-  const [balances, pinSet, tokensResult] = await Promise.all([
+  const [balances, pinSet, tokensResult, primaryAddresses] = await Promise.all([
     getWalletBalances(userId),
     hasWithdrawalPin(userId),
     listMarketTokens(),
+    listPrimaryAddresses(userId),
   ]);
 
   return (
@@ -53,6 +55,7 @@ export default async function WithdrawPage() {
               balances={balances}
               tokens={tokensResult.items}
               hasWithdrawalPin={pinSet}
+              initialPrimaryAddresses={primaryAddresses.items}
             />
           </section>
 

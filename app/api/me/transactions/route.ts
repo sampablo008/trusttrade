@@ -8,7 +8,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const limit = Math.min(parseInt(url.searchParams.get("limit") ?? "50", 10), 100);
     const offset = parseInt(url.searchParams.get("offset") ?? "0", 10);
-    const result = await listTransactions(userId, limit, offset);
+    const result = await listTransactions(userId, limit, offset, ["admin_credit", "admin_debit"]);
     return Response.json({ data: result });
   } catch (error) {
     if (error instanceof ApiClientError) {

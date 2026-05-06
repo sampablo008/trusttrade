@@ -25,6 +25,7 @@ export interface Withdrawal {
   feeCents: number;
   netAmountCents: number;
   tokenSymbol: string;
+  iconPath: string | null;
   network: string;
   destinationAddress: string;
   status: WithdrawalStatus;

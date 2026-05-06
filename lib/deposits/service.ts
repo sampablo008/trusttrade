@@ -28,8 +28,8 @@ interface DepositRow {
   reviewed_at: string | null;
   created_at: string;
   tokens?:
-    | { symbol: string; last_price_cents?: number | null; base_price_cents?: number | null }
-    | { symbol: string; last_price_cents?: number | null; base_price_cents?: number | null }[]
+    | { symbol: string; icon_path?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }
+    | { symbol: string; icon_path?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }[]
     | null;
 }
 
@@ -54,6 +54,12 @@ const resolveSymbol = (tokens: DepositRow["tokens"]): string => {
   return tokens.symbol;
 };
 
+const resolveIconPath = (tokens: DepositRow["tokens"]): string | null => {
+  if (!tokens) return null;
+  const t = Array.isArray(tokens) ? tokens[0] : tokens;
+  return t?.icon_path ?? null;
+};
+
 const mapDepositRow = (row: DepositRow): Deposit => {
   const amount = row.amount != null ? toNum(row.amount) : null;
   const priceCents = resolveTokenPriceCents(row.tokens);
@@ -65,6 +71,7 @@ const mapDepositRow = (row: DepositRow): Deposit => {
     userId: row.user_id,
     tokenId: row.token_id,
     tokenSymbol: resolveSymbol(row.tokens),
+    iconPath: resolveIconPath(row.tokens),
     network: row.network,
     amount,
     amountCents: toNum(row.amount_cents),
@@ -80,7 +87,7 @@ const mapDepositRow = (row: DepositRow): Deposit => {
 };
 
 const DEPOSIT_SELECT =
-  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, last_price_cents, base_price_cents)";
+  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, icon_path, last_price_cents, base_price_cents)";
 
 export const listUserDeposits = async (userId: string): Promise<DepositsResult> => {
   if (!getOptionalServerEnv()) {

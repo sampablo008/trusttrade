@@ -29,6 +29,7 @@ export const withdrawalSchema = z.object({
   feeCents: z.number().int().min(0),
   netAmountCents: z.number().int().min(0),
   tokenSymbol: z.string().min(1),
+  iconPath: z.string().nullable().default(null),
   network: z.string().min(1),
   destinationAddress: z.string().min(1),
   status: withdrawalStatusSchema,

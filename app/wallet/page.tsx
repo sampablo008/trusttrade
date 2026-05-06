@@ -20,7 +20,7 @@ export default async function WalletPage() {
     listUserDeposits(userId),
     listUserWithdrawals(userId),
     listBonusTickets(userId),
-    listTransactions(userId, 20, 0),
+    listTransactions(userId, 20, 0, ["admin_credit", "admin_debit"]),
   ]);
 
   return (
@@ -103,7 +103,6 @@ export default async function WalletPage() {
                     <th className="px-4 py-3">Kind</th>
                     <th className="px-4 py-3">Memo</th>
                     <th className="px-4 py-3 text-right">Amount</th>
-                    <th className="px-4 py-3 text-right">Balance after</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -133,9 +132,6 @@ export default async function WalletPage() {
                       >
                         {tx.amountCents >= 0 ? "+" : ""}
                         {formatUsdFromCents(tx.amountCents)}
-                      </td>
-                      <td className="px-4 py-3 text-right font-mono text-foreground tabular-nums">
-                        {tx.balanceAfterCents === null ? "—" : formatUsdFromCents(tx.balanceAfterCents)}
                       </td>
                     </tr>
                   ))}

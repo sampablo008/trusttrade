@@ -5,6 +5,7 @@ export interface Deposit {
   userId: string;
   tokenId: string;
   tokenSymbol: string;
+  iconPath: string | null;
   network: string;
   amount: number | null;
   amountCents: number;

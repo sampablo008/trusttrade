@@ -1,5 +1,6 @@
 import "server-only";
 import { verifyWithdrawalPin } from "@/lib/account/pin-service";
+import { getPrimaryAddress } from "@/lib/account/primary-address-service";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -37,10 +38,16 @@ interface WithdrawalRow {
   paid_at: string | null;
   created_at: string;
   tokens?:
-    | { last_price_cents?: number | null; base_price_cents?: number | null }
-    | { last_price_cents?: number | null; base_price_cents?: number | null }[]
+    | { icon_path?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }
+    | { icon_path?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }[]
     | null;
 }
+
+const resolveIconPath = (tokens: WithdrawalRow["tokens"]): string | null => {
+  if (!tokens) return null;
+  const t = Array.isArray(tokens) ? tokens[0] : tokens;
+  return t?.icon_path ?? null;
+};
 
 const resolveTokenPriceCents = (tokens: WithdrawalRow["tokens"]): number => {
   if (!tokens) return 0;
@@ -75,6 +82,7 @@ const mapRow = (row: WithdrawalRow): Withdrawal => {
     feeCents: toNum(row.fee_cents),
     netAmountCents: toNum(row.net_amount_cents),
     tokenSymbol: row.token_symbol,
+    iconPath: resolveIconPath(row.tokens),
     network: row.network,
     destinationAddress: row.destination_address,
     status: row.status,
@@ -90,7 +98,7 @@ const mapRow = (row: WithdrawalRow): Withdrawal => {
 };
 
 const SELECT =
-  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at, tokens(last_price_cents, base_price_cents)";
+  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at, tokens(icon_path, last_price_cents, base_price_cents)";
 
 export const listUserWithdrawals = async (userId: string): Promise<WithdrawalsResult> => {
   if (!getOptionalServerEnv()) {
@@ -120,6 +128,26 @@ export const requestWithdrawal = async (
 ): Promise<Withdrawal> => {
   await verifyWithdrawalPin(userId, input.withdrawalPin);
 
+  const primary = await getPrimaryAddress(
+    userId,
+    input.tokenSymbol,
+    input.network,
+  );
+  if (!primary) {
+    throw new ApiClientError(
+      "Bind a primary withdrawal address for this token and network first.",
+      400,
+      "PRIMARY_ADDRESS_NOT_SET",
+    );
+  }
+  if (primary.address !== input.destinationAddress.trim()) {
+    throw new ApiClientError(
+      "Destination must match your bound primary address.",
+      400,
+      "DEST_MISMATCH",
+    );
+  }
+
   if (!getOptionalServerEnv()) {
     return previewRequestWithdrawal(input);
   }
@@ -147,6 +175,8 @@ export const requestWithdrawal = async (
   if (error) {
     const msg = error.message ?? "Withdrawal failed.";
     const code = msg.includes("DEST_REQUIRED") ? "DEST_REQUIRED"
+      : msg.includes("PRIMARY_ADDRESS_NOT_SET") ? "PRIMARY_ADDRESS_NOT_SET"
+      : msg.includes("DEST_MISMATCH") ? "DEST_MISMATCH"
       : msg.includes("BELOW_MIN_WITHDRAW") ? "BELOW_MIN_WITHDRAW"
       : msg.includes("INSUFFICIENT_TOKEN_BALANCE") ? "INSUFFICIENT_TOKEN_BALANCE"
       : msg.includes("FEE_EXCEEDS_AMOUNT") ? "FEE_EXCEEDS_AMOUNT"

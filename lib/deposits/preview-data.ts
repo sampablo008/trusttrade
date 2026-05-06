@@ -15,6 +15,7 @@ const makeDeposit = (overrides: Partial<Deposit> = {}): Deposit => ({
   userId: PREVIEW_USER_ID,
   tokenId: PREVIEW_TOKEN_ID,
   tokenSymbol: "USDT",
+  iconPath: null,
   network: "TRC20",
   amount: 500,
   amountCents: 0,

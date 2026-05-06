@@ -22,6 +22,7 @@ const makeWithdrawal = (overrides: Partial<Withdrawal> = {}): Withdrawal => ({
   feeCents: 0,
   netAmountCents: 0,
   tokenSymbol: "USDT",
+  iconPath: null,
   network: "TRC20",
   destinationAddress: "TPreviewAddress1234567890",
   status: "pending",

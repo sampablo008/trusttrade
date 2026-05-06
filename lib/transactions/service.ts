@@ -114,19 +114,29 @@ export const listTransactions = async (
   userId: string,
   limit: number,
   offset: number,
+  excludeKinds: string[] = [],
 ): Promise<TransactionsResult> => {
   if (!getOptionalServerEnv()) {
-    return { items: PREVIEW_TXNS, total: PREVIEW_TXNS.length };
+    const filtered = excludeKinds.length
+      ? PREVIEW_TXNS.filter((t) => !excludeKinds.includes(t.kind))
+      : PREVIEW_TXNS;
+    return { items: filtered, total: filtered.length };
   }
 
   const admin = createSupabaseAdminClient();
-  const { data, error, count } = await admin
+  let query = admin
     .from("transactions")
     .select(
       "id, user_id, kind, amount_cents, balance_after_cents, reference_id, memo, metadata, created_at",
       { count: "exact" },
     )
-    .eq("user_id", userId)
+    .eq("user_id", userId);
+
+  if (excludeKinds.length > 0) {
+    query = query.not("kind", "in", `(${excludeKinds.map((k) => `"${k}"`).join(",")})`);
+  }
+
+  const { data, error, count } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
