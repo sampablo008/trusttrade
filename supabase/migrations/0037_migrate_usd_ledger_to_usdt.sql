@@ -26,7 +26,22 @@ declare
   v_total_cents bigint;
   v_usdt_amount numeric(38, 18);
   v_migrated    int := 0;
+  v_pending     int;
 begin
+  -- Short-circuit: if there is no legacy USD ledger to migrate (e.g. a fresh
+  -- prod deploy where tokens haven't been seeded yet), skip entirely. The
+  -- USDT row is only required when we actually have something to credit.
+  select count(*) into v_pending
+  from public.user_balances
+  where balance_cents > 0
+     or locked_in_trades_cents > 0
+     or locked_bonus_cents > 0;
+
+  if v_pending = 0 then
+    raise notice 'Migration 0037: no legacy USD balances to migrate — skipping.';
+    return;
+  end if;
+
   select id into v_usdt_id from public.tokens where symbol = 'USDT';
   if v_usdt_id is null then
     raise exception 'USDT token row missing — cannot migrate USD ledger.';
