@@ -28,7 +28,6 @@ interface TokenRow {
   swap_fee_bps: number | string | null;
   min_swap: number | string | null;
   min_withdrawal: number | string | null;
-  withdraw_fee_bps: number | string | null;
 }
 
 interface TradePeriodRow {
@@ -116,7 +115,7 @@ const aggregateCandles = (rows: CandleRow[], bucketSeconds: number): PublicCandl
   return Array.from(candlesByBucket.values());
 };
 
-const mapLiveToken = (row: TokenRow, liveUsd?: number) => {
+const mapLiveToken = (row: TokenRow, liveUsd: number | undefined, withdrawFeeBps: number) => {
   const basePriceCents = toNumber(row.base_price_cents);
   const liveCents = liveUsd && liveUsd > 0 ? Math.round(liveUsd * 100) : 0;
   // Prefer a freshly-fetched live price, then DB-cached cron values, then
@@ -153,7 +152,7 @@ const mapLiveToken = (row: TokenRow, liveUsd?: number) => {
     swapFeeBps: row.swap_fee_bps != null ? Math.round(toNumber(row.swap_fee_bps)) : 0,
     minSwap: toNumber(row.min_swap),
     minWithdrawal: toNumber(row.min_withdrawal),
-    withdrawFeeBps: row.withdraw_fee_bps != null ? Math.round(toNumber(row.withdraw_fee_bps)) : 0,
+    withdrawFeeBps,
   });
 };
 
@@ -163,23 +162,29 @@ export const listMarketTokens = async (): Promise<PublicTokensResult> => {
   }
 
   const adminClient = createSupabaseAdminClient();
-  const { data, error } = await adminClient
-    .from("tokens")
-    .select(
-      "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, swap_fee_bps, min_swap, min_withdrawal, withdraw_fee_bps, shadow_symbol",
-    )
-    .eq("is_enabled", true)
-    .order("symbol", { ascending: true });
+  const [tokensRes, configRes] = await Promise.all([
+    adminClient
+      .from("tokens")
+      .select(
+        "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, swap_fee_bps, min_swap, min_withdrawal, shadow_symbol",
+      )
+      .eq("is_enabled", true)
+      .order("symbol", { ascending: true }),
+    adminClient.from("app_config").select("withdraw_fee_bps").maybeSingle(),
+  ]);
 
-  if (error) {
-    throw new ApiClientError(error.message, 500, "MARKET_TOKENS_FETCH_FAILED", error);
+  if (tokensRes.error) {
+    throw new ApiClientError(tokensRes.error.message, 500, "MARKET_TOKENS_FETCH_FAILED", tokensRes.error);
   }
 
-  if (!data?.length) {
+  if (!tokensRes.data?.length) {
     return getPreviewMarketTokens();
   }
 
-  const rows = data as TokenRow[];
+  const rows = tokensRes.data as TokenRow[];
+  const withdrawFeeBps = configRes.data?.withdraw_fee_bps != null
+    ? Math.round(toNumber(configRes.data.withdraw_fee_bps as number | string))
+    : 0;
 
   // Refresh prices for every enabled token via Binance/CoinGecko. The function
   // has a 5s in-memory cache, so repeated page loads share the call. Failures
@@ -189,7 +194,7 @@ export const listMarketTokens = async (): Promise<PublicTokensResult> => {
   );
 
   return publicTokensResultSchema.parse({
-    items: rows.map((row) => mapLiveToken(row, livePrices[row.symbol])),
+    items: rows.map((row) => mapLiveToken(row, livePrices[row.symbol], withdrawFeeBps)),
   });
 };
 

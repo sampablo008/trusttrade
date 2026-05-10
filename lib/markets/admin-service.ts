@@ -55,7 +55,6 @@ interface AdminTokenRow {
   min_swap: number | string | null;
   coingecko_id: string | null;
   min_withdrawal: number | string | null;
-  withdraw_fee_bps: number | string | null;
 }
 
 interface AdminTradePeriodRow {
@@ -88,7 +87,7 @@ const toIsoZ = (value: string): string => {
   return parsed.toISOString();
 };
 
-const mapAdminTokenRow = (row: AdminTokenRow): AdminToken =>
+const mapAdminTokenRow = (row: AdminTokenRow, withdrawFeeBps: number): AdminToken =>
   adminTokenSchema.parse({
     basePriceCents: Math.round(toNumber(row.base_price_cents)),
     createdAt: toIsoZ(row.created_at),
@@ -113,7 +112,7 @@ const mapAdminTokenRow = (row: AdminTokenRow): AdminToken =>
     minSwap: toNumber(row.min_swap),
     coingeckoId: row.coingecko_id ?? null,
     minWithdrawal: toNumber(row.min_withdrawal),
-    withdrawFeeBps: row.withdraw_fee_bps != null ? Math.round(toNumber(row.withdraw_fee_bps)) : 0,
+    withdrawFeeBps,
   });
 
 const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
@@ -130,7 +129,16 @@ const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
   });
 
 const selectAdminTokenFields =
-  "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at, decimals, min_deposit, swap_fee_bps, min_swap, coingecko_id, min_withdrawal, withdraw_fee_bps";
+  "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at, decimals, min_deposit, swap_fee_bps, min_swap, coingecko_id, min_withdrawal";
+
+const fetchGlobalWithdrawFeeBps = async (
+  client: ReturnType<typeof createSupabaseAdminClient>,
+): Promise<number> => {
+  const { data } = await client.from("app_config").select("withdraw_fee_bps").maybeSingle();
+  return data?.withdraw_fee_bps != null
+    ? Math.round(toNumber(data.withdraw_fee_bps as number | string))
+    : 0;
+};
 const selectAdminTradePeriodFields =
   "id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, is_enabled, created_at, updated_at";
 
@@ -140,17 +148,17 @@ export const listAdminTokens = async (): Promise<AdminTokensResult> => {
   }
 
   const adminClient = createSupabaseAdminClient();
-  const { data, error } = await adminClient
-    .from("tokens")
-    .select(selectAdminTokenFields)
-    .order("symbol", { ascending: true });
+  const [tokensRes, withdrawFeeBps] = await Promise.all([
+    adminClient.from("tokens").select(selectAdminTokenFields).order("symbol", { ascending: true }),
+    fetchGlobalWithdrawFeeBps(adminClient),
+  ]);
 
-  if (error) {
-    throw new ApiClientError(error.message, 500, "ADMIN_TOKENS_FETCH_FAILED", error);
+  if (tokensRes.error) {
+    throw new ApiClientError(tokensRes.error.message, 500, "ADMIN_TOKENS_FETCH_FAILED", tokensRes.error);
   }
 
   return adminTokensResultSchema.parse({
-    items: (data ?? []).map((row) => mapAdminTokenRow(row as AdminTokenRow)),
+    items: (tokensRes.data ?? []).map((row) => mapAdminTokenRow(row as AdminTokenRow, withdrawFeeBps)),
   });
 };
 
@@ -181,7 +189,6 @@ export const createAdminToken = async (payload: unknown): Promise<AdminToken> =>
       min_swap: input.minSwap,
       coingecko_id: input.coingeckoId,
       min_withdrawal: input.minWithdrawal,
-      withdraw_fee_bps: input.withdrawFeeBps,
     })
     .select(selectAdminTokenFields)
     .single();
@@ -190,7 +197,8 @@ export const createAdminToken = async (payload: unknown): Promise<AdminToken> =>
     throw new ApiClientError(error.message, 500, "ADMIN_TOKEN_CREATE_FAILED", error);
   }
 
-  return mapAdminTokenRow(data as AdminTokenRow);
+  const withdrawFeeBps = await fetchGlobalWithdrawFeeBps(adminClient);
+  return mapAdminTokenRow(data as AdminTokenRow, withdrawFeeBps);
 };
 
 export const updateAdminToken = async (id: string, payload: unknown): Promise<AdminToken> => {
@@ -220,7 +228,6 @@ export const updateAdminToken = async (id: string, payload: unknown): Promise<Ad
       min_swap: input.minSwap,
       coingecko_id: input.coingeckoId,
       min_withdrawal: input.minWithdrawal,
-      withdraw_fee_bps: input.withdrawFeeBps,
     })
     .eq("id", id)
     .select(selectAdminTokenFields)
@@ -234,7 +241,8 @@ export const updateAdminToken = async (id: string, payload: unknown): Promise<Ad
     throw new ApiClientError("Token not found.", 404, "TOKEN_NOT_FOUND");
   }
 
-  return mapAdminTokenRow(data as AdminTokenRow);
+  const withdrawFeeBps = await fetchGlobalWithdrawFeeBps(adminClient);
+  return mapAdminTokenRow(data as AdminTokenRow, withdrawFeeBps);
 };
 
 export const updateAdminTokenIconPath = async (
