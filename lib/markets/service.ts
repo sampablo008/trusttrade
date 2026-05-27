@@ -38,6 +38,8 @@ interface TradePeriodRow {
   max_amount_cents: number | string;
   min_amount_cents: number | string;
   payout_bps: number | string;
+  payout_min_bps: number | string | null;
+  payout_max_bps: number | string | null;
 }
 
 interface CandleRow {
@@ -118,19 +120,21 @@ const aggregateCandles = (rows: CandleRow[], bucketSeconds: number): PublicCandl
 const mapLiveToken = (row: TokenRow, liveUsd: number | undefined, withdrawFeeBps: number) => {
   const basePriceCents = toNumber(row.base_price_cents);
   const liveCents = liveUsd && liveUsd > 0 ? Math.round(liveUsd * 100) : 0;
-  // Prefer a freshly-fetched live price, then DB-cached cron values, then
-  // the configured base price as a last resort. The DB columns are stale
-  // or NULL for many tokens because the cron only refreshes a subset.
+  // Fallback order: live → last_price_cents (cron-refreshed) → last_shadow_price_cents.
+  // base_price_cents is intentionally NOT in this chain — it's a seed/config value
+  // that caused the "1 BTC = $1" display bug. priceCents = 0 means "price unavailable"
+  // and consumers (OrderTicket, BalanceHeader) must guard for it.
   const priceCents =
     liveCents ||
     toNumber(row.last_price_cents) ||
     toNumber(row.last_shadow_price_cents) ||
-    basePriceCents;
+    0;
   const shadowOffsetPercent =
     (toNumber(row.price_scale) - 1) * 100 +
     (toNumber(row.price_offset_cents) / Math.max(basePriceCents, 1)) * 100;
-  const dayChangePercent =
-    ((priceCents - basePriceCents) / Math.max(basePriceCents, 1)) * 100;
+  const dayChangePercent = basePriceCents > 0
+    ? ((priceCents - basePriceCents) / basePriceCents) * 100
+    : 0;
   const volumeEstimateUsd = Math.max(
     priceCents * Math.max(toNumber(row.volatility_factor), 1) * 24,
     priceCents,
@@ -143,7 +147,7 @@ const mapLiveToken = (row: TokenRow, liveUsd: number | undefined, withdrawFeeBps
     id: row.id,
     lastPriceAt: row.last_price_at,
     name: row.name,
-    priceCents: Math.max(Math.round(priceCents), 1),
+    priceCents: Math.max(Math.round(priceCents), 0),
     shadowOffsetPercent: Number(shadowOffsetPercent.toFixed(2)),
     symbol: row.symbol,
     volumeLabel: formatCompactUsd(volumeEstimateUsd),
@@ -206,7 +210,7 @@ export const listTradePeriods = async (): Promise<PublicTradePeriodsResult> => {
   const adminClient = createSupabaseAdminClient();
   const { data, error } = await adminClient
     .from("trade_periods")
-    .select("id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, is_enabled")
+    .select("id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, payout_min_bps, payout_max_bps, is_enabled")
     .eq("is_enabled", true)
     .order("duration_seconds", { ascending: true });
 
@@ -219,17 +223,27 @@ export const listTradePeriods = async (): Promise<PublicTradePeriodsResult> => {
   }
 
   return publicTradePeriodsResultSchema.parse({
-    items: data.map((row) =>
-      publicTradePeriodSchema.parse({
-        durationSeconds: Math.round(toNumber((row as TradePeriodRow).duration_seconds)),
-        id: (row as TradePeriodRow).id,
-        isEnabled: Boolean((row as TradePeriodRow).is_enabled),
-        label: (row as TradePeriodRow).label,
-        maxAmountCents: Math.round(toNumber((row as TradePeriodRow).max_amount_cents)),
-        minAmountCents: Math.round(toNumber((row as TradePeriodRow).min_amount_cents)),
-        payoutBps: Math.round(toNumber((row as TradePeriodRow).payout_bps)),
-      }),
-    ),
+    items: data.map((raw) => {
+      const row = raw as TradePeriodRow;
+      const payoutBps = Math.round(toNumber(row.payout_bps));
+      const minBps = row.payout_min_bps != null
+        ? Math.round(toNumber(row.payout_min_bps))
+        : payoutBps;
+      const maxBps = row.payout_max_bps != null
+        ? Math.round(toNumber(row.payout_max_bps))
+        : payoutBps;
+      return publicTradePeriodSchema.parse({
+        durationSeconds: Math.round(toNumber(row.duration_seconds)),
+        id: row.id,
+        isEnabled: Boolean(row.is_enabled),
+        label: row.label,
+        maxAmountCents: Math.round(toNumber(row.max_amount_cents)),
+        minAmountCents: Math.round(toNumber(row.min_amount_cents)),
+        payoutBps,
+        payoutMinBps: minBps,
+        payoutMaxBps: maxBps,
+      });
+    }),
   });
 };
 

@@ -6,6 +6,7 @@ import TokenSwitcher from "@/components/trade/TokenSwitcher";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { TOP_COINS, findTopCoin } from "@/lib/markets/top-coins";
+import { getLiveUsdPrice } from "@/lib/markets/live-prices";
 import { listMarketTokens, listTradePeriods } from "@/lib/markets/service";
 import { getBalance, listActiveTrades } from "@/lib/trades/service";
 import { getWalletBalances } from "@/lib/wallet-balances/service";
@@ -92,7 +93,18 @@ export default async function TradeSymbolPage({
   const chartTokenEntry =
     walletBalances?.tokens.find((t) => t.symbol === upperSymbol) ?? null;
   const tokenFreeBalance = chartTokenEntry?.balance ?? 0;
-  const tokenUsdPriceCents = chartTokenEntry?.usdPriceCents ?? token.priceCents;
+
+  // Resolve the chart token's USD price independent of whether the user holds it.
+  // Fallback chain: wallet entry (live-fetched on render) → token row from
+  // listMarketTokens (live + DB cache) → fresh live lookup for the chart symbol.
+  // Never fall back to base_price_cents — that's the seed value that caused 1 BTC = $1.
+  let tokenUsdPriceCents = chartTokenEntry?.usdPriceCents ?? token.priceCents;
+  if (tokenUsdPriceCents <= 0) {
+    const liveUsd = await getLiveUsdPrice(upperSymbol).catch(() => null);
+    if (liveUsd != null && liveUsd > 0) {
+      tokenUsdPriceCents = Math.round(liveUsd * 100);
+    }
+  }
 
   const iconPaths = Object.fromEntries(
     tokensResult.items.map((t) => [t.symbol, t.iconPath ?? null]),

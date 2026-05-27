@@ -32,6 +32,8 @@ export interface PublicTradePeriod {
   maxAmountCents: number;
   minAmountCents: number;
   payoutBps: number;
+  payoutMinBps: number;
+  payoutMaxBps: number;
 }
 
 export interface PublicTradePeriodsResult {
@@ -115,6 +117,8 @@ export interface AdminTradePeriod {
   maxAmountCents: number;
   minAmountCents: number;
   payoutBps: number;
+  payoutMinBps: number;
+  payoutMaxBps: number;
   updatedAt: string;
 }
 
@@ -128,7 +132,8 @@ export interface UpsertAdminTradePeriodInput {
   label: string;
   maxAmountCents: number;
   minAmountCents: number;
-  payoutBps: number;
+  payoutMinBps: number;
+  payoutMaxBps: number;
 }
 
 export interface DeleteAdminTradePeriodResult {

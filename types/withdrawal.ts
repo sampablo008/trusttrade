@@ -16,6 +16,8 @@ export type WithdrawalFlag =
 export interface Withdrawal {
   id: string;
   userId: string;
+  userUsername: string | null;
+  userEmail: string | null;
   tokenId: string | null;
   amount: number | null;
   feeAmount: number | null;

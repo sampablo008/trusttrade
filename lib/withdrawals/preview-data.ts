@@ -13,6 +13,8 @@ const now = new Date();
 const makeWithdrawal = (overrides: Partial<Withdrawal> = {}): Withdrawal => ({
   id: randomUUID(),
   userId: PREVIEW_USER_ID,
+  userUsername: "previewtrader",
+  userEmail: "preview@trusttrade.pro",
   tokenId: PREVIEW_TOKEN_ID,
   amount: 100,
   feeAmount: 0,

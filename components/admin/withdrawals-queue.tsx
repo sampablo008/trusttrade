@@ -198,8 +198,19 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
             )}
             {displayItems.map((w) => (
               <tr key={w.id} className="hover:bg-background/20">
-                <td className="px-4 py-4 font-mono text-xs text-muted">
-                  {w.userId.slice(0, 8)}…
+                <td className="px-4 py-4 align-top">
+                  {w.userUsername || w.userEmail ? (
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-sm font-semibold text-foreground">
+                        {w.userUsername ?? "—"}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {w.userEmail ?? ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-xs text-muted">{w.userId.slice(0, 8)}…</span>
+                  )}
                 </td>
                 <td className="px-4 py-4 text-sm font-semibold text-foreground">
                   {formatWithdrawalAmount(w)}

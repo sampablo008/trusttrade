@@ -9,7 +9,7 @@ export const publicTokenSchema = z.object({
   id: z.string().uuid(),
   lastPriceAt: z.string().datetime().nullable(),
   name: z.string().min(1),
-  priceCents: z.number().int().positive(),
+  priceCents: z.number().int().nonnegative(),
   shadowOffsetPercent: z.number(),
   symbol: z.string().regex(/^[A-Z0-9]{2,12}$/),
   volumeLabel: z.string().min(1),
@@ -33,6 +33,8 @@ export const publicTradePeriodSchema = z.object({
   maxAmountCents: z.number().int().positive(),
   minAmountCents: z.number().int().positive(),
   payoutBps: z.number().int().positive(),
+  payoutMinBps: z.number().int().positive(),
+  payoutMaxBps: z.number().int().positive(),
 });
 
 export const publicTradePeriodsResultSchema = z.object({
@@ -146,6 +148,8 @@ export const adminTradePeriodSchema = z.object({
   maxAmountCents: z.number().int().positive(),
   minAmountCents: z.number().int().positive(),
   payoutBps: z.number().int().positive(),
+  payoutMinBps: z.number().int().positive(),
+  payoutMaxBps: z.number().int().positive(),
   updatedAt: z.string().datetime(),
 });
 
@@ -160,11 +164,16 @@ export const upsertAdminTradePeriodInputSchema = z
     label: z.string().trim().min(1, "Label is required.").max(64, "Label is too long."),
     maxAmountCents: z.coerce.number().int().positive("Max amount must be positive."),
     minAmountCents: z.coerce.number().int().positive("Min amount must be positive."),
-    payoutBps: z.coerce.number().int().positive("Payout must be positive."),
+    payoutMinBps: z.coerce.number().int().positive("Min payout must be positive."),
+    payoutMaxBps: z.coerce.number().int().positive("Max payout must be positive."),
   })
   .refine((value) => value.maxAmountCents >= value.minAmountCents, {
     message: "Max amount must be greater than or equal to min amount.",
     path: ["maxAmountCents"],
+  })
+  .refine((value) => value.payoutMaxBps >= value.payoutMinBps, {
+    message: "Max payout must be greater than or equal to min payout.",
+    path: ["payoutMaxBps"],
   });
 
 export const deleteAdminTradePeriodResultSchema = z.object({

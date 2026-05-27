@@ -5,6 +5,8 @@ export const depositStatusSchema = z.enum(["pending", "approved", "rejected"]);
 export const depositSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
+  userUsername: z.string().nullable().default(null),
+  userEmail: z.string().nullable().default(null),
   tokenId: z.string().uuid(),
   tokenSymbol: z.string(),
   iconPath: z.string().nullable().default(null),

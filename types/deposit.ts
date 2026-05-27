@@ -3,6 +3,8 @@ export type DepositStatus = "pending" | "approved" | "rejected";
 export interface Deposit {
   id: string;
   userId: string;
+  userUsername: string | null;
+  userEmail: string | null;
   tokenId: string;
   tokenSymbol: string;
   iconPath: string | null;

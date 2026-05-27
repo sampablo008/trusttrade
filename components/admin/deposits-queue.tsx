@@ -187,8 +187,19 @@ export default function DepositsQueue({ initialDeposits }: Props) {
             )}
             {filtered.map((deposit) => (
               <tr key={deposit.id} className="hover:bg-background/20">
-                <td className="px-4 py-4 font-mono text-xs text-muted">
-                  {deposit.userId.slice(0, 8)}…
+                <td className="px-4 py-4 align-top">
+                  {deposit.userUsername || deposit.userEmail ? (
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-sm font-semibold text-foreground">
+                        {deposit.userUsername ?? "—"}
+                      </span>
+                      <span className="text-xs text-muted">
+                        {deposit.userEmail ?? ""}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="font-mono text-xs text-muted">{deposit.userId.slice(0, 8)}…</span>
+                  )}
                 </td>
                 <td className="px-4 py-4 text-sm text-foreground">
                   {deposit.tokenSymbol} · {deposit.network}

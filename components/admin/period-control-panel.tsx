@@ -22,12 +22,19 @@ interface PeriodFormState {
   label: string;
   maxAmountDollars: string;
   minAmountDollars: string;
-  profitPercent: string;
+  profitMinPercent: string;
+  profitMaxPercent: string;
 }
 
 const formatProfitPercentFromBps = (bps: number) => {
   const percent = Math.max(0, bps - 10000) / 100;
   return Number.isInteger(percent) ? String(percent) : percent.toFixed(2);
+};
+
+const formatProfitRangeFromBps = (minBps: number, maxBps: number) => {
+  const minPct = formatProfitPercentFromBps(minBps);
+  const maxPct = formatProfitPercentFromBps(maxBps);
+  return minPct === maxPct ? `${minPct}%` : `${minPct}–${maxPct}%`;
 };
 
 const formatDollarsFromCents = (cents: number) => {
@@ -41,7 +48,8 @@ const createEmptyDraft = (): PeriodFormState => ({
   label: "",
   maxAmountDollars: "1000",
   minAmountDollars: "10",
-  profitPercent: "85",
+  profitMinPercent: "80",
+  profitMaxPercent: "90",
 });
 
 const mapPeriodToDraft = (period: AdminTradePeriod): PeriodFormState => ({
@@ -50,7 +58,8 @@ const mapPeriodToDraft = (period: AdminTradePeriod): PeriodFormState => ({
   label: period.label,
   maxAmountDollars: formatDollarsFromCents(period.maxAmountCents),
   minAmountDollars: formatDollarsFromCents(period.minAmountCents),
-  profitPercent: formatProfitPercentFromBps(period.payoutBps),
+  profitMinPercent: formatProfitPercentFromBps(period.payoutMinBps),
+  profitMaxPercent: formatProfitPercentFromBps(period.payoutMaxBps),
 });
 
 const formatDuration = (seconds: number) => {
@@ -117,9 +126,18 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
     setFeedback(null);
     setErrorMessage(null);
 
-    const profitValue = Number(draft.profitPercent);
-    if (!Number.isFinite(profitValue) || profitValue < 0) {
-      setErrorMessage("Profit percent must be zero or positive.");
+    const profitMin = Number(draft.profitMinPercent);
+    const profitMax = Number(draft.profitMaxPercent);
+    if (!Number.isFinite(profitMin) || profitMin < 0) {
+      setErrorMessage("Min profit percent must be zero or positive.");
+      return;
+    }
+    if (!Number.isFinite(profitMax) || profitMax < 0) {
+      setErrorMessage("Max profit percent must be zero or positive.");
+      return;
+    }
+    if (profitMax < profitMin) {
+      setErrorMessage("Max profit percent must be greater than or equal to min.");
       return;
     }
 
@@ -140,7 +158,8 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
       label: draft.label,
       maxAmountCents: Math.round(maxDollars * 100),
       minAmountCents: Math.round(minDollars * 100),
-      payoutBps: 10000 + Math.round(profitValue * 100),
+      payoutMinBps: 10000 + Math.round(profitMin * 100),
+      payoutMaxBps: 10000 + Math.round(profitMax * 100),
     });
 
     if (!parsed.success) {
@@ -253,7 +272,7 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
                 <div className="text-right">
                   <p className="text-sm font-semibold text-foreground">{formatDuration(period.durationSeconds)}</p>
                   <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
-                    profit {formatProfitPercentFromBps(period.payoutBps)}%
+                    profit {formatProfitRangeFromBps(period.payoutMinBps, period.payoutMaxBps)}
                   </p>
                 </div>
               </button>
@@ -362,21 +381,38 @@ export default function PeriodControlPanel({ initialData }: PeriodControlPanelPr
 
           <div className="space-y-2">
             <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Profit %
+              Profit min %
             </label>
             <div className="relative">
               <input
                 inputMode="decimal"
-                value={draft.profitPercent}
-                onChange={(event) => updateDraft("profitPercent", event.target.value)}
+                value={draft.profitMinPercent}
+                onChange={(event) => updateDraft("profitMinPercent", event.target.value)}
                 className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 pr-10 text-sm text-foreground outline-none transition focus:border-brand"
               />
               <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted">
                 %
               </span>
             </div>
-            <p className="text-xs text-muted">
-              Profit on a winning trade. 10% means a $100 stake earns $10 (returns $110).
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+              Profit max %
+            </label>
+            <div className="relative">
+              <input
+                inputMode="decimal"
+                value={draft.profitMaxPercent}
+                onChange={(event) => updateDraft("profitMaxPercent", event.target.value)}
+                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 pr-10 text-sm text-foreground outline-none transition focus:border-brand"
+              />
+              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-sm text-muted">
+                %
+              </span>
+            </div>
+            <p className="md:col-span-2 text-xs text-muted">
+              Each trade samples a random profit % in the [min, max] range. Equal values = fixed payout.
             </p>
           </div>
 

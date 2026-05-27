@@ -9,6 +9,8 @@ import MobileTradeDrawer from "@/components/trade/MobileTradeDrawer";
 import OrderTicket from "@/components/trade/OrderTicket";
 import StickyCountdownBanner from "@/components/trade/StickyCountdownBanner";
 import LiveBinanceChart from "@/components/chart/LiveBinanceChart";
+import OrderBookIllusion from "@/components/chart/OrderBookIllusion";
+import { useBinanceTicker } from "@/hooks/useBinanceTicker";
 import { useSettlementPoll } from "@/hooks/useSettlementPoll";
 import { useUserStream } from "@/hooks/useUserStream";
 import { useTradingShellStore } from "@/stores/trading-shell-store";
@@ -81,6 +83,11 @@ export default function TradeShell({
   useUserStream(handleSettlement);
   const pollSettlement = useSettlementPoll(handleSettlement);
 
+  const ticker = useBinanceTicker(coin.binanceSymbol);
+  const liveCents = ticker?.price != null && ticker.price > 0
+    ? Math.round(ticker.price * 100)
+    : token.priceCents;
+
   return (
     <div className="flex h-full flex-col gap-4">
       <StickyCountdownBanner />
@@ -94,6 +101,12 @@ export default function TradeShell({
           </div>
 
           <ActivePositionsList onTradeExpire={pollSettlement} />
+        </div>
+
+        <div className="hidden lg:block lg:w-64 lg:shrink-0">
+          {liveCents > 0 ? (
+            <OrderBookIllusion lastPriceCents={liveCents} symbol={token.symbol} />
+          ) : null}
         </div>
 
         <div className="hidden w-full lg:block lg:w-88 lg:shrink-0">
