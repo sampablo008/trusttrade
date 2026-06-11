@@ -1,7 +1,5 @@
 import type { NextRequest } from "next/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const BINANCE_HOSTS = [
   "https://data-api.binance.vision",

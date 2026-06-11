@@ -1,7 +1,7 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { getOptionalServerEnv } from "@/lib/env/server";
-import { getBinanceUsdPrices } from "@/lib/markets/live-prices";
+import { getLiveUsdPrices } from "@/lib/markets/live-prices";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { walletBalancesResultSchema } from "@/schemas/wallet-balance";
 import type { TokenBalance, WalletBalancesResult } from "@/types/wallet-balance";
@@ -18,7 +18,8 @@ interface BalanceRow {
         icon_path: string | null;
         decimals: number | string | null;
         shadow_symbol: string | null;
-        base_price_cents: number | string;
+        last_price_cents: number | string | null;
+        last_shadow_price_cents: number | string | null;
       }
     | null;
 }
@@ -41,7 +42,7 @@ export const getWalletBalances = async (
   const tokenRes = await admin
     .from("user_token_balances")
     .select(
-      "token_id, balance, locked_balance, tokens(symbol, name, icon_path, decimals, shadow_symbol, base_price_cents)",
+      "token_id, balance, locked_balance, tokens(symbol, name, icon_path, decimals, shadow_symbol, last_price_cents, last_shadow_price_cents)",
     )
     .eq("user_id", userId)
     .or("balance.gt.0,locked_balance.gt.0");
@@ -56,17 +57,20 @@ export const getWalletBalances = async (
   }
 
   const rows = (tokenRes.data ?? []) as unknown as BalanceRow[];
-  const shadowSymbols = rows
-    .map((r) => r.tokens?.shadow_symbol)
-    .filter((s): s is string => Boolean(s));
-  let prices: Record<string, number> = {};
+  const priceLookups = rows
+    .filter((r) => r.tokens?.symbol)
+    .map((r) => ({
+      symbol: r.tokens!.symbol,
+      shadowSymbol: r.tokens?.shadow_symbol ?? null,
+    }));
+  let livePrices: Record<string, number> = {};
   try {
-    prices = await getBinanceUsdPrices(shadowSymbols);
+    livePrices = await getLiveUsdPrices(priceLookups);
   } catch {
-    prices = {};
+    livePrices = {};
   }
 
-  // Opportunistic write-back: keep tokens.last_shadow_price_cents warm so
+  // Opportunistic write-back: keep tokens.last_price_cents warm so
   // the trade-execution fallback chain and admin dashboards have fresh data
   // even when the cron is between ticks.
   const writebackUpdates: Array<{ tokenId: string; cents: number }> = [];
@@ -76,21 +80,27 @@ export const getWalletBalances = async (
     const balance = toNum(row.balance);
     const lockedBalance = toNum(row.locked_balance);
     const decimals = t?.decimals != null ? Math.round(toNum(t.decimals)) : 8;
-    const shadowSymbol = t?.shadow_symbol ?? null;
-    const livePriceUsd = shadowSymbol ? prices[shadowSymbol] : undefined;
+    const symbol = t?.symbol ?? "";
+    const livePriceUsd = symbol ? livePrices[symbol] : undefined;
+    const liveCents = livePriceUsd != null ? Math.round(livePriceUsd * 100) : 0;
+    // Fallback order: live → last_price_cents (cron/opportunistic) →
+    // last_shadow_price_cents. Never base_price_cents (it's just a seed value
+    // that produced the "1 BTC = $1" bug). 0 here means "price unavailable"
+    // and the UI surfaces that explicitly.
     const usdPriceCents =
-      livePriceUsd != null
-        ? Math.round(livePriceUsd * 100)
-        : Math.round(toNum(t?.base_price_cents));
-    if (livePriceUsd != null && row.token_id) {
-      writebackUpdates.push({ tokenId: row.token_id, cents: usdPriceCents });
+      liveCents ||
+      Math.round(toNum(t?.last_price_cents)) ||
+      Math.round(toNum(t?.last_shadow_price_cents)) ||
+      0;
+    if (liveCents > 0 && row.token_id) {
+      writebackUpdates.push({ tokenId: row.token_id, cents: liveCents });
     }
     const freeUsdValueCents = Math.round(balance * usdPriceCents);
     const usdValueCents = Math.round((balance + lockedBalance) * usdPriceCents);
     return {
       tokenId: row.token_id,
-      symbol: t?.symbol ?? "",
-      name: t?.name ?? t?.symbol ?? "",
+      symbol,
+      name: t?.name ?? symbol,
       iconPath: t?.icon_path ?? null,
       decimals,
       balance,
@@ -109,7 +119,12 @@ export const getWalletBalances = async (
       writebackUpdates.map((u) =>
         admin
           .from("tokens")
-          .update({ last_shadow_price_cents: u.cents, last_shadow_at: nowIso })
+          .update({
+            last_price_cents: u.cents,
+            last_price_at: nowIso,
+            last_shadow_price_cents: u.cents,
+            last_shadow_at: nowIso,
+          })
           .eq("id", u.tokenId),
       ),
     );

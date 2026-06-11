@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { KeyRound } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { PasswordInput } from "@/components/ui/PasswordInput";
+import { notify } from "@/components/ui/toast";
 
 interface FieldState {
   currentPassword: string;
@@ -18,7 +22,7 @@ const emptyState: FieldState = {
 export default function ChangePasswordForm() {
   const [form, setForm] = useState<FieldState>(emptyState);
   const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const update = (key: keyof FieldState, value: string) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -26,7 +30,7 @@ export default function ChangePasswordForm() {
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
-    setFeedback(null);
+    setError(null);
     try {
       const res = await fetch("/api/me/password", {
         method: "POST",
@@ -41,9 +45,11 @@ export default function ChangePasswordForm() {
         throw new Error(json.error?.message ?? "Could not change password.");
       }
       setForm(emptyState);
-      setFeedback({ ok: true, msg: "Password updated. We emailed a confirmation." });
+      notify.success("Password updated", "We emailed a confirmation.");
     } catch (err) {
-      setFeedback({ ok: false, msg: (err as Error).message });
+      const msg = (err as Error).message;
+      setError(msg);
+      notify.error("Could not change password", msg);
     } finally {
       setSubmitting(false);
     }
@@ -52,74 +58,55 @@ export default function ChangePasswordForm() {
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <KeyRound size={16} className="text-brand" />
+        <KeyRound size={16} className="text-brand" aria-hidden="true" />
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
           Change password
         </h3>
       </div>
 
       <div className="flex flex-col gap-3">
-        <PasswordInput
-          label="Current password"
-          value={form.currentPassword}
-          onChange={(v) => update("currentPassword", v)}
-          autoComplete="current-password"
-        />
-        <PasswordInput
+        <FormField htmlFor="current-password" label="Current password" required>
+          <PasswordInput
+            id="current-password"
+            required
+            autoComplete="current-password"
+            value={form.currentPassword}
+            onChange={(e) => update("currentPassword", e.target.value)}
+          />
+        </FormField>
+        <FormField
+          htmlFor="new-password"
           label="New password"
-          value={form.newPassword}
-          onChange={(v) => update("newPassword", v)}
-          autoComplete="new-password"
+          required
           hint="At least 8 characters, one uppercase, one number."
-        />
-        <PasswordInput
+        >
+          <PasswordInput
+            id="new-password"
+            required
+            autoComplete="new-password"
+            value={form.newPassword}
+            onChange={(e) => update("newPassword", e.target.value)}
+          />
+        </FormField>
+        <FormField
+          htmlFor="confirm-password"
           label="Confirm new password"
-          value={form.confirmPassword}
-          onChange={(v) => update("confirmPassword", v)}
-          autoComplete="new-password"
-        />
+          required
+          error={error ?? undefined}
+        >
+          <PasswordInput
+            id="confirm-password"
+            required
+            autoComplete="new-password"
+            value={form.confirmPassword}
+            onChange={(e) => update("confirmPassword", e.target.value)}
+          />
+        </FormField>
       </div>
 
-      {feedback ? (
-        <p
-          className={`text-xs font-semibold ${feedback.ok ? "text-up" : "text-down"}`}
-        >
-          {feedback.msg}
-        </p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
-      >
+      <Button type="submit" loading={submitting} className="self-start">
         {submitting ? "Updating…" : "Update password"}
-      </button>
+      </Button>
     </form>
   );
 }
-
-interface PasswordInputProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  autoComplete: string;
-  hint?: string;
-}
-
-const PasswordInput = ({ label, value, onChange, autoComplete, hint }: PasswordInputProps) => (
-  <label className="flex flex-col gap-1">
-    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-      {label}
-    </span>
-    <input
-      type="password"
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      autoComplete={autoComplete}
-      required
-      className="rounded-xl border border-border bg-background/30 px-4 py-2.5 text-sm text-foreground placeholder-muted outline-none focus:border-brand"
-    />
-    {hint ? <span className="text-[11px] text-muted">{hint}</span> : null}
-  </label>
-);

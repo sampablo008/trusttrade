@@ -13,6 +13,8 @@ const now = new Date();
 const makeDeposit = (overrides: Partial<Deposit> = {}): Deposit => ({
   id: randomUUID(),
   userId: PREVIEW_USER_ID,
+  userUsername: "previewtrader",
+  userEmail: "preview@trusttrade.pro",
   tokenId: PREVIEW_TOKEN_ID,
   tokenSymbol: "USDT",
   iconPath: null,

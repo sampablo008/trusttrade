@@ -1,8 +1,12 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
 import { loadIdentityByEmail } from "@/lib/account/profile-lookup";
-import { sendWelcomeEmail } from "@/lib/email/send";
-import { getAppEnv } from "@/lib/env/server";
+import { generateEmailOtp } from "@/lib/auth/otp";
+import {
+  sendPasswordResetCodeEmail,
+  sendVerificationCodeEmail,
+  sendWelcomeEmail,
+} from "@/lib/email/send";
 import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import {
   resendCodeInputSchema,
@@ -14,19 +18,14 @@ export const issueSignupVerification = async (params: {
   userId: string;
 }) => {
   const email = params.email.trim().toLowerCase();
-  const anon = createSupabaseAnonClient();
-  const { error } = await anon.auth.signInWithOtp({
+
+  // Generate the code via Supabase, deliver it ourselves via Resend.
+  const { code, expiresInMinutes } = await generateEmailOtp({
     email,
-    options: { shouldCreateUser: false },
+    type: "magiclink",
   });
-  if (error) {
-    throw new ApiClientError(
-      error.message,
-      500,
-      "OTP_ISSUE_FAILED",
-      error,
-    );
-  }
+
+  await sendVerificationCodeEmail({ to: email, code, expiresInMinutes });
 };
 
 export const verifyEmail = async (payload: unknown): Promise<{ ok: true }> => {
@@ -80,24 +79,17 @@ export const resendVerificationCode = async (
 
   if (input.purpose === "email_verification") {
     if (identity.emailVerified) return { ok: true };
-    const anon = createSupabaseAnonClient();
-    const { error } = await anon.auth.signInWithOtp({
+    const { code, expiresInMinutes } = await generateEmailOtp({
       email,
-      options: { shouldCreateUser: false },
+      type: "magiclink",
     });
-    if (error) {
-      console.error("[resend] verify email failed", error);
-    }
+    await sendVerificationCodeEmail({ to: email, code, expiresInMinutes });
   } else if (input.purpose === "password_reset") {
-    const { APP_URL } = getAppEnv();
-    const redirectTo = `${APP_URL.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(
-      `/reset-password?email=${encodeURIComponent(email)}`,
-    )}`;
-    const anon = createSupabaseAnonClient();
-    const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
-    if (error) {
-      console.error("[resend] password reset failed", error);
-    }
+    const { code, expiresInMinutes } = await generateEmailOtp({
+      email,
+      type: "recovery",
+    });
+    await sendPasswordResetCodeEmail({ to: email, code, expiresInMinutes });
   }
 
   return { ok: true };

@@ -24,7 +24,7 @@ export const getAppConfig = async (): Promise<AppConfig> => {
     refDefaultL5Bps: data.ref_default_l5_bps,
     refMinDepositCents: data.ref_min_deposit_cents,
     signupBonusCents: data.signup_bonus_cents,
-    withdrawFeeCents: data.withdraw_fee_cents,
+    withdrawFeeBps: data.withdraw_fee_bps,
     withdrawMinCents: data.withdraw_min_cents,
   };
 };
@@ -46,7 +46,7 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
   if (input.refDefaultL5Bps !== undefined) patch.ref_default_l5_bps = input.refDefaultL5Bps;
   if (input.refMinDepositCents !== undefined) patch.ref_min_deposit_cents = input.refMinDepositCents;
   if (input.signupBonusCents !== undefined) patch.signup_bonus_cents = input.signupBonusCents;
-  if (input.withdrawFeeCents !== undefined) patch.withdraw_fee_cents = input.withdrawFeeCents;
+  if (input.withdrawFeeBps !== undefined) patch.withdraw_fee_bps = input.withdrawFeeBps;
   if (input.withdrawMinCents !== undefined) patch.withdraw_min_cents = input.withdrawMinCents;
 
   const { data, error } = await db.from("app_config").update(patch).eq("id", 1).select("*").single();
@@ -65,7 +65,7 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
     refDefaultL5Bps: data.ref_default_l5_bps,
     refMinDepositCents: data.ref_min_deposit_cents,
     signupBonusCents: data.signup_bonus_cents,
-    withdrawFeeCents: data.withdraw_fee_cents,
+    withdrawFeeBps: data.withdraw_fee_bps,
     withdrawMinCents: data.withdraw_min_cents,
   };
 };

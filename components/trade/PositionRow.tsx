@@ -51,7 +51,7 @@ export default function PositionRow({ trade, onExpire }: PositionRowProps) {
 
   const isExpired = remainingMs <= 0;
   const isUrgent = remainingMs <= 10_000 && !isExpired;
-  const elapsed = Math.max(0, Date.now() - startMs);
+  const elapsed = Math.max(0, totalDuration - remainingMs);
   const progress = Math.min(100, (elapsed / totalDuration) * 100);
 
   const payout = calcPayout(trade);

@@ -233,7 +233,7 @@ export const previewAppConfig: AppConfig = {
   refDefaultL5Bps: 50,
   refMinDepositCents: 1000,
   signupBonusCents: 1000,
-  withdrawFeeCents: 0,
+  withdrawFeeBps: 0,
   withdrawMinCents: 5000,
 };
 

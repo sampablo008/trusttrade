@@ -36,6 +36,18 @@ interface WithdrawalRow {
     | { last_price_cents?: number | null; base_price_cents?: number | null }
     | { last_price_cents?: number | null; base_price_cents?: number | null }[]
     | null;
+  profiles?:
+    | { username: string | null; email: string | null }
+    | { username: string | null; email: string | null }[]
+    | null;
+}
+
+const resolveUserProfile = (
+  profiles: WithdrawalRow["profiles"],
+): { username: string | null; email: string | null } => {
+  if (!profiles) return { username: null, email: null };
+  const p = Array.isArray(profiles) ? profiles[0] : profiles;
+  return { username: p?.username ?? null, email: p?.email ?? null };
 }
 
 const resolveTokenPriceCents = (tokens: WithdrawalRow["tokens"]): number => {
@@ -58,9 +70,12 @@ const mapRow = (row: WithdrawalRow): Withdrawal => {
   const usdValueCents = amount != null && priceCents > 0
     ? Math.round(amount * priceCents)
     : null;
+  const userProfile = resolveUserProfile(row.profiles);
   return withdrawalSchema.parse({
     id: row.id,
     userId: row.user_id,
+    userUsername: userProfile.username,
+    userEmail: userProfile.email,
     tokenId: row.token_id,
     amount,
     feeAmount: row.fee_amount != null ? toNum(row.fee_amount) : null,
@@ -85,7 +100,27 @@ const mapRow = (row: WithdrawalRow): Withdrawal => {
 };
 
 const SELECT =
-  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at, tokens(last_price_cents, base_price_cents)";
+  "id, user_id, token_id, amount, fee_amount, net_amount, amount_cents, fee_cents, net_amount_cents, token_symbol, network, destination_address, status, flags, admin_note, payout_tx_hash, reviewed_by, reviewed_at, paid_by, paid_at, created_at, tokens(last_price_cents, base_price_cents), profiles!withdrawals_user_id_fkey(username, email)";
+
+const refetchWithdrawal = async (
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  withdrawalId: string,
+): Promise<Withdrawal> => {
+  const { data, error } = await admin
+    .from("withdrawals")
+    .select(SELECT)
+    .eq("id", withdrawalId)
+    .maybeSingle();
+  if (error || !data) {
+    throw new ApiClientError(
+      error?.message ?? "Withdrawal not found after action.",
+      500,
+      "WITHDRAWAL_REFETCH_FAILED",
+      error,
+    );
+  }
+  return refetchWithdrawal(admin, withdrawalId);
+};
 
 export const listAdminWithdrawals = async (
   filters: AdminWithdrawalFilters,
@@ -147,7 +182,7 @@ export const approveAdminWithdrawal = async (
     throw new ApiClientError(msg, code === "NOT_FOUND" ? 404 : 409, code, error);
   }
 
-  return mapRow(data as unknown as WithdrawalRow);
+  return refetchWithdrawal(admin, withdrawalId);
 };
 
 export const markWithdrawalPaid = async (
@@ -189,7 +224,7 @@ export const markWithdrawalPaid = async (
     throw new ApiClientError(msg, code === "NOT_FOUND" ? 404 : 422, code, error);
   }
 
-  return mapRow(data as unknown as WithdrawalRow);
+  return refetchWithdrawal(admin, withdrawalId);
 };
 
 export const rejectAdminWithdrawal = async (
@@ -219,5 +254,5 @@ export const rejectAdminWithdrawal = async (
     throw new ApiClientError(msg, code === "NOT_FOUND" ? 404 : 409, code, error);
   }
 
-  return mapRow(data as unknown as WithdrawalRow);
+  return refetchWithdrawal(admin, withdrawalId);
 };

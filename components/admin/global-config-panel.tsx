@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, Snowflake, RefreshCw } from "lucide-react";
-import { toast } from "sonner";
 import type { AppConfig, ExpiryPolicy, UpdateAppConfigInput } from "@/types/admin";
 import { formatUsdFromCents } from "@/lib/utils/format";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useConfirm } from "@/components/ui/ConfirmDialog";
+import { notify } from "@/components/ui/toast";
 
 async function fetchConfig(): Promise<AppConfig> {
   const res = await fetch("/api/admin/config");
@@ -32,27 +34,42 @@ const EXPIRY_LABELS: Record<ExpiryPolicy, string> = {
 
 export default function GlobalConfigPanel() {
   const qc = useQueryClient();
+  const { confirm, dialog } = useConfirm();
   const { data, isLoading } = useQuery({ queryKey: ["admin", "config"], queryFn: fetchConfig });
 
   const mutation = useMutation({
     mutationFn: patchConfig,
     onSuccess: (updated) => {
       qc.setQueryData(["admin", "config"], updated);
-      toast.success("Config updated");
+      notify.success("Config updated");
     },
-    onError: () => toast.error("Failed to update config"),
+    onError: () => notify.error("Failed to update config"),
   });
 
-  function toggle(field: keyof UpdateAppConfigInput, currentValue: unknown) {
-    mutation.mutate({ [field]: !currentValue });
+  async function onToggleFreeze() {
+    if (!data) return;
+    const enabling = !data.globalTradeFreezeEnabled;
+    // Confirm only the destructive direction — freezing halts the whole platform.
+    if (enabling) {
+      const ok = await confirm({
+        title: "Freeze all trading?",
+        description:
+          "This instantly blocks every placeTrade call across the platform. Open positions are unaffected.",
+        confirmLabel: "Freeze trading",
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    mutation.mutate({ globalTradeFreezeEnabled: enabling });
   }
 
   if (isLoading || !data) {
-    return <div className="h-64 animate-pulse rounded-2xl bg-surface" />;
+    return <Skeleton className="h-64 rounded-2xl" />;
   }
 
   return (
     <div className="space-y-4">
+      {dialog}
       {/* Trade freeze */}
       <ConfigCard
         icon={Snowflake}
@@ -61,15 +78,16 @@ export default function GlobalConfigPanel() {
         accent={data.globalTradeFreezeEnabled ? "border-down/40 bg-down/10" : ""}
       >
         <button
-          onClick={() => toggle("globalTradeFreezeEnabled", data.globalTradeFreezeEnabled)}
+          onClick={onToggleFreeze}
           disabled={mutation.isPending}
-          className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+          className={`inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm font-semibold transition focus-ring disabled:cursor-not-allowed disabled:opacity-60 ${
             data.globalTradeFreezeEnabled
               ? "bg-down text-background hover:opacity-80"
               : "bg-surface-strong text-foreground hover:bg-border"
           }`}
         >
-          {data.globalTradeFreezeEnabled ? "🧊 Frozen — click to unfreeze" : "Freeze Trading"}
+          <Snowflake size={15} aria-hidden="true" />
+          {data.globalTradeFreezeEnabled ? "Frozen — click to unfreeze" : "Freeze Trading"}
         </button>
       </ConfigCard>
 
@@ -114,10 +132,10 @@ export default function GlobalConfigPanel() {
           disabled={mutation.isPending}
         />
         <NumericField
-          label="Withdrawal Fee"
-          hint={formatUsdFromCents(data.withdrawFeeCents)}
-          value={data.withdrawFeeCents}
-          onSave={(v) => mutation.mutate({ withdrawFeeCents: v })}
+          label="Withdrawal Fee (bps)"
+          hint={`${(data.withdrawFeeBps / 100).toFixed(2)}% (${data.withdrawFeeBps} bps)`}
+          value={data.withdrawFeeBps}
+          onSave={(v) => mutation.mutate({ withdrawFeeBps: v })}
           disabled={mutation.isPending}
         />
         <NumericField
@@ -214,7 +232,7 @@ function NumericField({
   disabled: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value.toString());
+  const [draft, setDraft] = useState(String(value ?? ""));
 
   function save() {
     const parsed = isFloat ? parseFloat(draft) : parseInt(draft, 10);
@@ -248,7 +266,7 @@ function NumericField({
       ) : (
         <button
           onClick={() => {
-            setDraft(value.toString());
+            setDraft(String(value ?? ""));
             setEditing(true);
           }}
           className="mt-2 w-full text-left font-display text-xl font-bold text-foreground hover:text-brand"
@@ -272,7 +290,7 @@ function InlineBpsField({
   disabled: boolean;
 }) {
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(value.toString());
+  const [draft, setDraft] = useState(String(value ?? ""));
 
   function save() {
     const parsed = parseInt(draft, 10);
@@ -299,7 +317,7 @@ function InlineBpsField({
       ) : (
         <button
           onClick={() => {
-            setDraft(value.toString());
+            setDraft(String(value ?? ""));
             setEditing(true);
           }}
           className="mt-1 block w-full text-sm font-bold text-foreground hover:text-brand"

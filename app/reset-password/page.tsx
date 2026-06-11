@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import AuthCard from "@/components/auth/auth-card";
 import ResetPasswordForm from "@/components/auth/reset-password-form";
@@ -11,10 +12,7 @@ interface ResetPasswordPageProps {
   searchParams: Promise<{ email?: string }>;
 }
 
-export default async function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
-  const params = await searchParams;
-  const prefillEmail = (params.email ?? "").trim();
-
+export default function ResetPasswordPage({ searchParams }: ResetPasswordPageProps) {
   return (
     <AuthCard
       eyebrow="Account recovery"
@@ -23,7 +21,14 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
       backHref="/forgot-password"
       backLabel="Use a different email"
     >
-      <ResetPasswordForm prefillEmail={prefillEmail} />
+      <Suspense fallback={<ResetPasswordForm prefillEmail="" />}>
+        <ResetForm searchParams={searchParams} />
+      </Suspense>
     </AuthCard>
   );
+}
+
+async function ResetForm({ searchParams }: ResetPasswordPageProps) {
+  const params = await searchParams;
+  return <ResetPasswordForm prefillEmail={(params.email ?? "").trim()} />;
 }

@@ -66,6 +66,8 @@ interface AdminTradePeriodRow {
   max_amount_cents: number | string;
   min_amount_cents: number | string;
   payout_bps: number | string;
+  payout_min_bps: number | string | null;
+  payout_max_bps: number | string | null;
   updated_at: string;
 }
 
@@ -115,8 +117,10 @@ const mapAdminTokenRow = (row: AdminTokenRow, withdrawFeeBps: number): AdminToke
     withdrawFeeBps,
   });
 
-const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
-  adminTradePeriodSchema.parse({
+const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod => {
+  const minBps = row.payout_min_bps != null ? Math.round(toNumber(row.payout_min_bps)) : Math.round(toNumber(row.payout_bps));
+  const maxBps = row.payout_max_bps != null ? Math.round(toNumber(row.payout_max_bps)) : Math.round(toNumber(row.payout_bps));
+  return adminTradePeriodSchema.parse({
     createdAt: toIsoZ(row.created_at),
     durationSeconds: Math.round(toNumber(row.duration_seconds)),
     id: row.id,
@@ -125,8 +129,11 @@ const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod =>
     maxAmountCents: Math.round(toNumber(row.max_amount_cents)),
     minAmountCents: Math.round(toNumber(row.min_amount_cents)),
     payoutBps: Math.round(toNumber(row.payout_bps)),
+    payoutMinBps: minBps,
+    payoutMaxBps: maxBps,
     updatedAt: toIsoZ(row.updated_at),
   });
+};
 
 const selectAdminTokenFields =
   "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at, decimals, min_deposit, swap_fee_bps, min_swap, coingecko_id, min_withdrawal";
@@ -140,7 +147,7 @@ const fetchGlobalWithdrawFeeBps = async (
     : 0;
 };
 const selectAdminTradePeriodFields =
-  "id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, is_enabled, created_at, updated_at";
+  "id, label, duration_seconds, min_amount_cents, max_amount_cents, payout_bps, payout_min_bps, payout_max_bps, is_enabled, created_at, updated_at";
 
 export const listAdminTokens = async (): Promise<AdminTokensResult> => {
   if (!getOptionalServerEnv()) {
@@ -346,6 +353,7 @@ export const createAdminTradePeriod = async (payload: unknown): Promise<AdminTra
   }
 
   const adminClient = createSupabaseAdminClient();
+  const midpointBps = Math.round((input.payoutMinBps + input.payoutMaxBps) / 2);
   const { data, error } = await adminClient
     .from("trade_periods")
     .insert({
@@ -354,7 +362,9 @@ export const createAdminTradePeriod = async (payload: unknown): Promise<AdminTra
       label: input.label,
       max_amount_cents: input.maxAmountCents,
       min_amount_cents: input.minAmountCents,
-      payout_bps: input.payoutBps,
+      payout_bps: midpointBps,
+      payout_min_bps: input.payoutMinBps,
+      payout_max_bps: input.payoutMaxBps,
     })
     .select(selectAdminTradePeriodFields)
     .single();
@@ -377,6 +387,7 @@ export const updateAdminTradePeriod = async (
   }
 
   const adminClient = createSupabaseAdminClient();
+  const midpointBps = Math.round((input.payoutMinBps + input.payoutMaxBps) / 2);
   const { data, error } = await adminClient
     .from("trade_periods")
     .update({
@@ -385,7 +396,9 @@ export const updateAdminTradePeriod = async (
       label: input.label,
       max_amount_cents: input.maxAmountCents,
       min_amount_cents: input.minAmountCents,
-      payout_bps: input.payoutBps,
+      payout_bps: midpointBps,
+      payout_min_bps: input.payoutMinBps,
+      payout_max_bps: input.payoutMaxBps,
     })
     .eq("id", id)
     .select(selectAdminTradePeriodFields)

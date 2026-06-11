@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 
 function buildChips(minCents: number, maxCents: number): number[] {
@@ -45,15 +45,21 @@ export default function AmountInput({
 }: AmountInputProps) {
   const [raw, setRaw] = useState<string>(() => centsToInput(valueCents));
   const [focused, setFocused] = useState(false);
+  const [prevValueCents, setPrevValueCents] = useState(valueCents);
 
-  useEffect(() => {
-    if (focused) return;
-    const parsed = parseFloat(raw);
-    const parsedCents = Math.round((isNaN(parsed) ? 0 : parsed) * 100);
-    if (parsedCents !== valueCents) {
-      setRaw(centsToInput(valueCents));
+  // Resync the display when valueCents changes from the outside (e.g. a max/percent
+  // button) while the field isn't focused. Render-time "adjust state on prop change"
+  // pattern — never clobbers what the user is actively typing.
+  if (valueCents !== prevValueCents) {
+    setPrevValueCents(valueCents);
+    if (!focused) {
+      const parsed = parseFloat(raw);
+      const parsedCents = Math.round((isNaN(parsed) ? 0 : parsed) * 100);
+      if (parsedCents !== valueCents) {
+        setRaw(centsToInput(valueCents));
+      }
     }
-  }, [valueCents, raw, focused]);
+  }
 
   const handleInput = (v: string) => {
     if (!/^\d*\.?\d{0,2}$/.test(v)) return;
@@ -99,7 +105,7 @@ export default function AmountInput({
           "flex items-center gap-2 rounded-2xl border bg-background/40 px-4 py-3.5 transition-colors",
           isInvalid
             ? "border-down/60"
-            : "border-white/10 focus-within:border-brand/60",
+            : "border-white/10 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/30",
         ].join(" ")}
       >
         <span className="text-base font-bold text-muted">$</span>
@@ -112,7 +118,7 @@ export default function AmountInput({
           onFocus={() => setFocused(true)}
           onBlur={handleBlur}
           disabled={disabled}
-          className="flex-1 bg-transparent text-base font-bold text-foreground placeholder:text-muted outline-none"
+          className="flex-1 bg-transparent text-base font-bold text-foreground placeholder:text-muted outline-none focus-visible:outline-none!"
         />
       </div>
 

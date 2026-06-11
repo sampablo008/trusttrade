@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { AlertCircle, Check, ChevronDown, Zap } from "lucide-react";
 import CoinIcon from "@/components/ui/CoinIcon";
 import AmountInput from "@/components/trade/AmountInput";
@@ -68,16 +69,18 @@ export default function OrderTicket({
   const [isPending, startTransition] = useTransition();
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+  const priceAvailable = tokenUsdPriceCents > 0;
   const availableCents =
-    tokenUsdPriceCents > 0 ? Math.floor(tokenFreeBalance * tokenUsdPriceCents) : 0;
+    priceAvailable ? Math.floor(tokenFreeBalance * tokenUsdPriceCents) : 0;
   const stakeTokenAmount =
-    tokenUsdPriceCents > 0 ? activeStakeCents / tokenUsdPriceCents : 0;
+    priceAvailable ? activeStakeCents / tokenUsdPriceCents : 0;
 
   const selectedPeriod = periods.find((p) => p.id === selectedPeriodId && p.isEnabled) ?? null;
   const firstPeriod = periods.find((p) => p.isEnabled) ?? null;
   const activePeriod = selectedPeriod ?? firstPeriod;
 
   const canPlace =
+    priceAvailable &&
     activePeriod !== null &&
     activeStakeCents >= (activePeriod?.minAmountCents ?? 0) &&
     activeStakeCents <= Math.min(activePeriod?.maxAmountCents ?? 0, availableCents) &&
@@ -103,6 +106,12 @@ export default function OrderTicket({
           },
         );
         upsertTrade(result.trade);
+        // Reveal the actual sampled payout to the user (range pre-trade → fixed post-trade).
+        const sampledPercent = ((result.trade.payoutBps / 10_000) * 100 - 100).toFixed(0);
+        toast.success(`Trade placed · ${sampledPercent}% payout locked`, {
+          description: `${token.symbol} ${activeDirection === "long" ? "Long" : "Short"} · ${formatUsdFromCents(activeStakeCents)}`,
+          id: result.trade.id,
+        });
         onTradeSuccess?.();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Trade failed.";
@@ -113,7 +122,7 @@ export default function OrderTicket({
   };
 
   return (
-    <div className="sticky top-20 flex flex-col gap-4 overflow-hidden rounded-[28px] border border-border bg-surface-soft p-5 shadow-2xl shadow-black/40">
+    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-surface-soft p-5 shadow-2xl shadow-black/40">
       {/* Header */}
       <div className="relative flex items-center justify-between border-b border-border/60 pb-4">
         <button
@@ -123,7 +132,7 @@ export default function OrderTicket({
           aria-haspopup="listbox"
           aria-expanded={tokenMenuOpen}
           className={[
-            "flex items-center gap-2 rounded-xl px-1.5 py-1 -ml-1.5 text-left transition",
+            "-ml-1.5 flex items-center gap-2 rounded-xl px-1.5 py-1 text-left transition focus-ring",
             canSwitchToken
               ? "hover:bg-background/40"
               : "cursor-default",
@@ -202,10 +211,17 @@ export default function OrderTicket({
         )}
       </div>
 
+      {!priceAvailable && (
+        <div className="flex items-start gap-2 rounded-xl border border-[hsl(var(--color-down))]/30 bg-[hsl(var(--color-down))]/10 px-3 py-2.5 text-xs font-semibold text-[hsl(var(--color-down))]">
+          <AlertCircle size={14} className="mt-0.5 shrink-0" />
+          <span>Price feed unavailable for {token.symbol} — try again shortly.</span>
+        </div>
+      )}
+
       <LongShortToggle
         value={activeDirection}
         onChange={setActiveDirection}
-        disabled={isPending}
+        disabled={isPending || !priceAvailable}
       />
 
       <PeriodSelector
@@ -231,6 +247,8 @@ export default function OrderTicket({
         <PayoutPreview
           stakeCents={activeStakeCents}
           payoutBps={activePeriod.payoutBps}
+          payoutMinBps={activePeriod.payoutMinBps}
+          payoutMaxBps={activePeriod.payoutMaxBps}
         />
       )}
 
@@ -259,7 +277,7 @@ export default function OrderTicket({
         disabled={!canPlace}
         onClick={handlePlace}
         className={[
-          "group flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-bold tracking-wide transition-all",
+          "group mt-auto flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-bold tracking-wide transition-all focus-ring",
           "bg-brand text-white shadow-lg shadow-brand/25 hover:brightness-110",
           !canPlace ? "cursor-not-allowed opacity-50" : "",
           isPending ? "animate-pulse" : "",

@@ -20,6 +20,8 @@ export const withdrawalFlagSchema = z.enum([
 export const withdrawalSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
+  userUsername: z.string().nullable().default(null),
+  userEmail: z.string().nullable().default(null),
   tokenId: z.string().uuid().nullable(),
   amount: z.number().nonnegative().nullable(),
   feeAmount: z.number().nonnegative().nullable(),

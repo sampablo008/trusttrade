@@ -1,7 +1,16 @@
 import "server-only";
 import { ApiClientError } from "@/lib/api/client";
-import { sendPasswordChangedEmail } from "@/lib/email/send";
-import { getAppEnv } from "@/lib/env/server";
+import { loadIdentityByEmail } from "@/lib/account/profile-lookup";
+import { generateEmailOtp } from "@/lib/auth/otp";
+import {
+  establishSession,
+  resolveIdentity,
+  resolveRedirectPath,
+} from "@/lib/auth/session";
+import {
+  sendPasswordChangedEmail,
+  sendPasswordResetCodeEmail,
+} from "@/lib/email/send";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import {
@@ -15,21 +24,29 @@ export interface RequestContext {
 
 export const requestPasswordReset = async (
   payload: unknown,
-  _context: RequestContext = {},
+  context: RequestContext = {},
 ): Promise<{ ok: true }> => {
   const input = forgotPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
 
-  const { APP_URL } = getAppEnv();
-  const redirectTo = `${APP_URL.replace(/\/$/, "")}/auth/callback?next=${encodeURIComponent(
-    `/reset-password?email=${encodeURIComponent(email)}`,
-  )}`;
+  // Anti-enumeration: unknown emails get the same "ok" without any work.
+  const identity = await loadIdentityByEmail(email);
+  if (!identity) return { ok: true };
 
-  const anon = createSupabaseAnonClient();
-  const { error } = await anon.auth.resetPasswordForEmail(email, { redirectTo });
-  if (error) {
-    // Always return ok to avoid enumeration; log for observability.
-    console.error("[password-reset] email send failed", error);
+  // Best-effort delivery: never leak failures to the caller, but log loudly.
+  try {
+    const { code, expiresInMinutes } = await generateEmailOtp({
+      email,
+      type: "recovery",
+    });
+    await sendPasswordResetCodeEmail({
+      to: email,
+      code,
+      expiresInMinutes,
+      requestIp: context.requestIp ?? null,
+    });
+  } catch (err) {
+    console.error("[password-reset] otp send failed", err);
   }
 
   return { ok: true };
@@ -38,7 +55,7 @@ export const requestPasswordReset = async (
 export const confirmPasswordReset = async (
   payload: unknown,
   context: RequestContext = {},
-): Promise<{ ok: true }> => {
+): Promise<{ ok: true; redirectTo: string }> => {
   const input = resetPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
   const code = input.code.trim();
@@ -78,5 +95,15 @@ export const confirmPasswordReset = async (
     requestIp: context.requestIp ?? null,
   }).catch(() => undefined);
 
-  return { ok: true };
+  // Log the user in directly: a successful recovery OTP proves email ownership,
+  // so establish the session and hand the client a destination.
+  const identity = await resolveIdentity(email);
+  if (!identity) {
+    // Password was updated but we can't resolve a profile — fall back to login.
+    return { ok: true, redirectTo: "/login?reset=1" };
+  }
+
+  await establishSession({ ...identity, emailVerified: true });
+
+  return { ok: true, redirectTo: resolveRedirectPath(identity, "/trade") };
 };

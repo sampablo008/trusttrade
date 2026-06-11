@@ -3,7 +3,7 @@
 import { useDeferredValue, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertTriangle, CheckCircle2, KeyRound, UserPlus } from "lucide-react";
+import { AlertTriangle, Check, CheckCircle2, KeyRound, UserPlus } from "lucide-react";
 import { fetchJson } from "@/lib/api/client";
 import {
   invitedSignupSchema,
@@ -11,6 +11,10 @@ import {
   inviteValidationResultSchema,
 } from "@/schemas/invites";
 import type { InviteSignupResult, InviteValidationResult } from "@/types/invites";
+import { Button } from "@/components/ui/Button";
+import { FormField, Label } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 interface SignupFormValues {
   code: string;
@@ -128,7 +132,7 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
     <div className="grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
       <section className="flex flex-col rounded-[32px] border border-border bg-surface-soft p-6">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-brand/20 bg-brand-soft px-4 py-2 text-xs uppercase tracking-[0.26em] text-brand">
-          <KeyRound size={14} />
+          <KeyRound size={14} aria-hidden="true" />
           Step 1 of 2
         </div>
         <div className="mt-5 space-y-4">
@@ -142,30 +146,29 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
         </div>
 
         <div className="mt-8 rounded-[24px] border border-border bg-background/30 p-5">
-          <label
-            className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-            htmlFor="signup-code"
-          >
+          <Label htmlFor="signup-code" required>
             Invite code
-          </label>
-          <input
+          </Label>
+          <Input
             id="signup-code"
             placeholder="Paste your invite code"
-            className="mt-3 w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+            className="mt-3"
+            invalid={Boolean(inviteError) && !inviteResult?.isValid}
+            aria-describedby="signup-code-status"
             {...register("code")}
           />
 
-          <div className="mt-4 min-h-7">
+          <div className="mt-4 min-h-7" id="signup-code-status" aria-live="polite">
             {inviteResult?.isValid ? (
               <div className="inline-flex items-center gap-2 text-sm text-up">
-                <CheckCircle2 size={16} />
+                <CheckCircle2 size={16} aria-hidden="true" />
                 {inviteResult.message} {inviteResult.mode === "preview" ? "(preview mode)" : ""}
               </div>
             ) : null}
 
             {!inviteResult?.isValid && inviteError ? (
               <div className="inline-flex items-center gap-2 text-sm text-down">
-                <AlertTriangle size={16} />
+                <AlertTriangle size={16} aria-hidden="true" />
                 {inviteError}
               </div>
             ) : null}
@@ -198,72 +201,60 @@ export default function SignupForm({ initialCode = "" }: SignupFormProps) {
                 : "border border-border bg-background/30 text-muted"
             }`}
           >
-            <UserPlus size={14} />
+            <UserPlus size={14} aria-hidden="true" />
             {revealForm ? "Ready" : "Locked"}
           </div>
         </div>
 
         {revealForm ? (
           <form className="mt-8 space-y-5" onSubmit={onSubmit}>
-            <div className="space-y-2">
-              <label
-                className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-                htmlFor="signup-username"
-              >
-                Username
-              </label>
-              <input
+            <FormField htmlFor="signup-username" label="Username" required>
+              <Input
                 id="signup-username"
-                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+                autoComplete="username"
                 {...register("username", { required: true })}
               />
               <UsernameChecklist username={watch("username") ?? ""} />
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <label
-                className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-                htmlFor="signup-email"
-              >
-                Email
-              </label>
-              <input
+            <FormField
+              htmlFor="signup-email"
+              label="Email"
+              required
+              error={errors.email ? errors.email.message ?? "Email is required." : undefined}
+            >
+              <Input
                 id="signup-email"
                 type="email"
-                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+                autoComplete="email"
+                invalid={Boolean(errors.email)}
                 {...register("email", { required: true })}
               />
-              {errors.email ? (
-                <p className="text-sm text-down">{errors.email.message ?? "Email is required."}</p>
-              ) : null}
-            </div>
+            </FormField>
 
-            <div className="space-y-2">
-              <label
-                className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-                htmlFor="signup-password"
-              >
-                Password
-              </label>
-              <input
+            <FormField htmlFor="signup-password" label="Password" required>
+              <PasswordInput
                 id="signup-password"
-                type="password"
-                className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+                autoComplete="new-password"
                 {...register("password")}
               />
               <PasswordChecklist password={pw} />
-            </div>
+            </FormField>
 
-            {submitError ? <p className="text-sm text-down">{submitError}</p> : null}
-            {submitSuccess ? <p className="text-sm text-up">{submitSuccess}</p> : null}
+            {submitError ? (
+              <p role="alert" className="text-sm text-down">
+                {submitError}
+              </p>
+            ) : null}
+            {submitSuccess ? (
+              <p role="status" className="text-sm text-up">
+                {submitSuccess}
+              </p>
+            ) : null}
 
-            <button
-              type="submit"
-              disabled={isPending}
-              className="inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-4 text-sm font-semibold text-background transition hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isPending ? "Creating account..." : "Create account"}
-            </button>
+            <Button type="submit" fullWidth size="lg" loading={isPending}>
+              {isPending ? "Creating account…" : "Create account"}
+            </Button>
           </form>
         ) : (
           <div className="mt-8 flex flex-1 items-center rounded-[24px] border border-dashed border-border bg-background/20 p-6 text-sm leading-7 text-muted">
@@ -296,8 +287,8 @@ function RuleChecklist({ value, rules }: { value: string; rules: { label: string
         const ok = rule.test(value);
         return (
           <li key={rule.label} className={`flex items-center gap-2 text-xs ${ok ? "text-up" : "text-muted"}`}>
-            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border text-[10px] font-bold ${ok ? "border-up bg-up/10 text-up" : "border-border"}`}>
-              {ok ? "✓" : ""}
+            <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${ok ? "border-up bg-up/10 text-up" : "border-border"}`}>
+              {ok ? <Check className="h-2.5 w-2.5" aria-hidden="true" /> : null}
             </span>
             {rule.label}
           </li>

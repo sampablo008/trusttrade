@@ -168,6 +168,8 @@ const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
       maxAmountCents: 50000,
       minAmountCents: 1000,
       payoutBps: 18500,
+      payoutMinBps: 18000,
+      payoutMaxBps: 19000,
       updatedAt: "2026-04-19T12:00:00.000Z",
     }),
   ],
@@ -182,6 +184,8 @@ const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
       maxAmountCents: 100000,
       minAmountCents: 1000,
       payoutBps: 18500,
+      payoutMinBps: 18000,
+      payoutMaxBps: 19000,
       updatedAt: "2026-04-19T12:00:00.000Z",
     }),
   ],
@@ -196,6 +200,8 @@ const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
       maxAmountCents: 150000,
       minAmountCents: 2500,
       payoutBps: 18500,
+      payoutMinBps: 18000,
+      payoutMaxBps: 19000,
       updatedAt: "2026-04-19T12:00:00.000Z",
     }),
   ],
@@ -210,6 +216,8 @@ const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
       maxAmountCents: 250000,
       minAmountCents: 5000,
       payoutBps: 18500,
+      payoutMinBps: 18000,
+      payoutMaxBps: 19000,
       updatedAt: "2026-04-19T12:00:00.000Z",
     }),
   ],
@@ -224,6 +232,8 @@ const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
       maxAmountCents: 500000,
       minAmountCents: 10000,
       payoutBps: 18500,
+      payoutMinBps: 18000,
+      payoutMaxBps: 19000,
       updatedAt: "2026-04-19T12:00:00.000Z",
     }),
   ],
@@ -238,6 +248,8 @@ const previewTradePeriodRegistry = new Map<string, AdminTradePeriod>([
       maxAmountCents: 1000000,
       minAmountCents: 25000,
       payoutBps: 18500,
+      payoutMinBps: 18000,
+      payoutMaxBps: 19000,
       updatedAt: "2026-04-19T12:00:00.000Z",
     }),
   ],
@@ -363,6 +375,8 @@ export const getPreviewTradePeriods = (): PublicTradePeriodsResult =>
           maxAmountCents: period.maxAmountCents,
           minAmountCents: period.minAmountCents,
           payoutBps: period.payoutBps,
+          payoutMinBps: period.payoutMinBps,
+          payoutMaxBps: period.payoutMaxBps,
         }),
       ),
   });
@@ -506,6 +520,7 @@ export const createPreviewAdminTradePeriod = (
   }
 
   const now = new Date().toISOString();
+  const midpointBps = Math.round((input.payoutMinBps + input.payoutMaxBps) / 2);
   const period = parsePreviewAdminTradePeriod({
     createdAt: now,
     durationSeconds: input.durationSeconds,
@@ -514,7 +529,9 @@ export const createPreviewAdminTradePeriod = (
     label: input.label,
     maxAmountCents: input.maxAmountCents,
     minAmountCents: input.minAmountCents,
-    payoutBps: input.payoutBps,
+    payoutBps: midpointBps,
+    payoutMinBps: input.payoutMinBps,
+    payoutMaxBps: input.payoutMaxBps,
     updatedAt: now,
   });
 
@@ -540,6 +557,7 @@ export const updatePreviewAdminTradePeriod = (
 
   previewTradePeriodRegistry.delete(existing.label);
 
+  const midpointBps = Math.round((input.payoutMinBps + input.payoutMaxBps) / 2);
   const period = parsePreviewAdminTradePeriod({
     ...existing,
     durationSeconds: input.durationSeconds,
@@ -547,7 +565,9 @@ export const updatePreviewAdminTradePeriod = (
     label: input.label,
     maxAmountCents: input.maxAmountCents,
     minAmountCents: input.minAmountCents,
-    payoutBps: input.payoutBps,
+    payoutBps: midpointBps,
+    payoutMinBps: input.payoutMinBps,
+    payoutMaxBps: input.payoutMaxBps,
     updatedAt: new Date().toISOString(),
   });
 

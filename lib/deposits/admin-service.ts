@@ -29,6 +29,18 @@ interface DepositRow {
     | { symbol: string; coingecko_id?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }
     | { symbol: string; coingecko_id?: string | null; last_price_cents?: number | null; base_price_cents?: number | null }[]
     | null;
+  profiles?:
+    | { username: string | null; email: string | null }
+    | { username: string | null; email: string | null }[]
+    | null;
+}
+
+const resolveUserProfile = (
+  profiles: DepositRow["profiles"],
+): { username: string | null; email: string | null } => {
+  if (!profiles) return { username: null, email: null };
+  const p = Array.isArray(profiles) ? profiles[0] : profiles;
+  return { username: p?.username ?? null, email: p?.email ?? null };
 }
 
 const resolveTokenPriceCents = (tokens: DepositRow["tokens"]): number => {
@@ -57,9 +69,12 @@ const mapRow = (row: DepositRow): Deposit => {
   const usdValueCents = amount != null && priceCents > 0
     ? Math.round(amount * priceCents)
     : null;
+  const userProfile = resolveUserProfile(row.profiles);
   return depositSchema.parse({
     id: row.id,
     userId: row.user_id,
+    userUsername: userProfile.username,
+    userEmail: userProfile.email,
     tokenId: row.token_id,
     tokenSymbol: resolveSymbol(row.tokens),
     network: row.network,
@@ -77,7 +92,27 @@ const mapRow = (row: DepositRow): Deposit => {
 };
 
 const SELECT =
-  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, coingecko_id, last_price_cents, base_price_cents)";
+  "id, user_id, token_id, network, amount, amount_cents, proof_path, tx_hash, status, admin_note, reviewed_by, reviewed_at, created_at, tokens(symbol, coingecko_id, last_price_cents, base_price_cents), profiles!deposits_user_id_fkey(username, email)";
+
+const refetchDeposit = async (
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  depositId: string,
+): Promise<Deposit> => {
+  const { data, error } = await admin
+    .from("deposits")
+    .select(SELECT)
+    .eq("id", depositId)
+    .maybeSingle();
+  if (error || !data) {
+    throw new ApiClientError(
+      error?.message ?? "Deposit not found after action.",
+      500,
+      "DEPOSIT_REFETCH_FAILED",
+      error,
+    );
+  }
+  return mapRow(data as unknown as DepositRow);
+};
 
 export const listAdminDeposits = async (
   filters: AdminDepositFilters,
@@ -199,8 +234,7 @@ export const approveAdminDeposit = async (
     throw new ApiClientError(msg, code === "DEPOSIT_NOT_FOUND" ? 404 : 409, code, error);
   }
 
-  const row = data as unknown as DepositRow;
-  return mapRow({ ...row, tokens: null });
+  return refetchDeposit(admin, depositId);
 };
 
 export const rejectAdminDeposit = async (
@@ -230,6 +264,5 @@ export const rejectAdminDeposit = async (
     throw new ApiClientError(msg, code === "DEPOSIT_NOT_FOUND" ? 404 : 409, code, error);
   }
 
-  const row = data as unknown as DepositRow;
-  return mapRow({ ...row, tokens: null });
+  return refetchDeposit(admin, depositId);
 };

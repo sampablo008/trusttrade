@@ -15,6 +15,24 @@
   --warning: #ffbf5f;
   --grid: rgba(125, 146, 184, 0.14);
   --shadow-deep: 0 36px 120px rgba(3, 6, 15, 0.55);
+
+  /* Elevation ramp for cards/sheets/modals — additive names (no Tailwind collision) */
+  --shadow-card: 0 8px 24px rgba(3, 6, 15, 0.45);
+  --shadow-pop: 0 20px 60px rgba(3, 6, 15, 0.5);
+
+  /* Motion — Expo.out for entrances, snappier ease-in for exits */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-quick: cubic-bezier(0.4, 0, 1, 1);
+  --motion-fast: 150ms;
+  --motion-base: 220ms;
+  --motion-slow: 320ms;
+
+  /* Layering — replaces scattered z-40/z-50 */
+  --z-dropdown: 30;
+  --z-sticky: 40;
+  --z-drawer: 50;
+  --z-modal: 60;
+  --z-toast: 70;
 }
 
 @theme inline {
@@ -33,6 +51,33 @@
   --color-grid: var(--grid);
   --font-sans: var(--font-manrope);
   --font-display: var(--font-syne);
+
+  /* Elevation utilities (shadow-card / shadow-pop / shadow-deep) */
+  --shadow-card: var(--shadow-card);
+  --shadow-pop: var(--shadow-pop);
+  --shadow-deep: var(--shadow-deep);
+
+  /* Easing utilities (ease-out-expo / ease-in-quick) */
+  --ease-out-expo: var(--ease-out-expo);
+  --ease-in-quick: var(--ease-in-quick);
+}
+
+/* Single visible focus style for keyboard users — the #1 a11y gap.
+   Mouse clicks stay clean via :focus-visible. */
+@utility focus-ring {
+  outline: none;
+  &:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+}
+
+/* Press feedback for tappables (cards/buttons) — settle on release */
+@utility press {
+  transition: transform var(--motion-fast) var(--ease-out-expo);
+  &:active {
+    transform: scale(0.97);
+  }
 }
 
 * {
@@ -78,9 +123,40 @@ button {
   cursor: pointer;
 }
 
+/* Global keyboard focus fallback — applies even to not-yet-migrated controls.
+   Mouse interaction stays ring-free via :focus-visible. */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
 ::selection {
   background: rgba(61, 156, 255, 0.3);
   color: var(--foreground);
+}
+
+/* Respect reduced-motion: quiet ambient/decorative animation, keep layout intact */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ticker-track,
+  .live-panel,
+  .chart-scan::after,
+  .landing-orb {
+    animation: none !important;
+  }
+
+  ::view-transition-old(trade-chart),
+  ::view-transition-new(trade-chart) {
+    animation: none !important;
+  }
 }
 
 @keyframes ticker-slide {
@@ -102,6 +178,33 @@ button {
   50% {
     border-color: rgba(61, 156, 255, 0.45);
   }
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Skeleton shimmer block — the missing loading primitive */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-strong);
+}
+
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(139, 167, 212, 0.08),
+    transparent
+  );
+  animation: skeleton-shimmer 1.6s ease-in-out infinite;
 }
 
 .ticker-track {
@@ -166,5 +269,27 @@ button {
 
   to {
     transform: translateY(100%);
+  }
+}
+
+/* Recent-trades tape: gentle entrance for the newest row only */
+@keyframes tape-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tape-in {
+  animation: tape-in 260ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tape-in {
+    animation: none;
   }
 }

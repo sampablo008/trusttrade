@@ -10,13 +10,14 @@ import {
   AlertCircle,
   Check,
   CheckCircle,
-  Copy,
   FileImage,
   QrCode,
   Upload,
   X,
   ExternalLink,
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { compressImage } from "@/lib/media/compress";
 import { buildMediaUrl } from "@/lib/media/path";
 import { TOP_COINS } from "@/lib/markets/top-coins";
@@ -125,7 +126,6 @@ export default function DepositForm({ wallets, tokens }: Props) {
   );
   const [proofFile, setProofFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
   const [submitStatus, setSubmitStatus] = useState<
     "idle" | "loading" | "success" | "error"
   >("idle");
@@ -203,13 +203,6 @@ export default function DepositForm({ wallets, tokens }: Props) {
       networksForToken.length === 1 ? networksForToken[0] : "";
     setSelectedNetwork(autoNetwork);
     setValue("network", autoNetwork);
-  };
-
-  const handleCopy = async () => {
-    if (!selectedWallet?.address) return;
-    await navigator.clipboard.writeText(selectedWallet.address);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -417,17 +410,11 @@ export default function DepositForm({ wallets, tokens }: Props) {
                 <code className="break-all font-mono text-sm text-foreground">
                   {selectedWallet.address}
                 </code>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="shrink-0 rounded-full border border-border bg-background/30 p-2 transition hover:border-brand"
-                >
-                  {copied ? (
-                    <CheckCircle size={16} className="text-up" />
-                  ) : (
-                    <Copy size={16} className="text-muted" />
-                  )}
-                </button>
+                <CopyButton
+                  value={selectedWallet.address}
+                  label="Copy deposit address"
+                  className="shrink-0 border border-border bg-background/30 p-2"
+                />
               </div>
             </div>
             {selectedWallet.memo && (
@@ -599,17 +586,11 @@ export default function DepositForm({ wallets, tokens }: Props) {
                 <code className="break-all font-mono text-sm text-foreground">
                   {selectedWallet.address}
                 </code>
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="shrink-0 rounded-full border border-border bg-background/30 p-2 transition hover:border-brand"
-                >
-                  {copied ? (
-                    <CheckCircle size={16} className="text-up" />
-                  ) : (
-                    <Copy size={16} className="text-muted" />
-                  )}
-                </button>
+                <CopyButton
+                  value={selectedWallet.address}
+                  label="Copy deposit address"
+                  className="shrink-0 border border-border bg-background/30 p-2"
+                />
               </div>
               {selectedWallet.memo && (
                 <p className="mt-2 text-xs text-muted">
@@ -803,13 +784,9 @@ export default function DepositForm({ wallets, tokens }: Props) {
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={!canSubmit}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-4 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
-      >
+      <Button type="submit" fullWidth size="lg" loading={isLoading} disabled={!canSubmit}>
         {isLoading ? "Uploading & submitting…" : "Submit deposit"}
-      </button>
+      </Button>
 
       {!canSubmit && !isLoading && (
         <p className="text-center text-[11px] text-muted">

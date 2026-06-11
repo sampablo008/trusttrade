@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { signInPreview } from "@/app/actions/auth";
 import type { LoginActionState } from "@/schemas/auth";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 const initialState: LoginActionState = {};
 
@@ -13,67 +17,64 @@ export default function LoginForm() {
   const [state, action, pending] = useActionState(signInPreview, initialState);
   const nextPath = searchParams.get("next") ?? "/trade";
 
+  const emailError = state.errors?.email?.[0];
+  const passwordError = state.errors?.password?.[0];
+
   return (
     <form action={action} className="space-y-5">
       <input name="nextPath" type="hidden" value={nextPath} />
 
-      <div className="space-y-2">
-        <label
-          className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <input
+      <FormField htmlFor="email" label="Email" required error={emailError}>
+        <Input
           required
           id="email"
           name="email"
           type="email"
+          autoComplete="email"
           placeholder="you@trusttrade.pro"
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+          invalid={Boolean(emailError)}
+          aria-describedby={emailError ? "email-error" : undefined}
         />
-        {state.errors?.email?.length ? (
-          <p className="text-sm text-down">{state.errors.email[0]}</p>
-        ) : null}
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <label
-            className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-            htmlFor="password"
-          >
-            Password
-          </label>
+      <FormField
+        htmlFor="password"
+        label="Password"
+        required
+        error={passwordError}
+        action={
           <Link
             href="/forgot-password"
-            className="text-[11px] font-semibold uppercase tracking-[0.24em] text-brand transition hover:text-foreground"
+            className="rounded text-[11px] font-semibold uppercase tracking-[0.24em] text-brand transition focus-ring hover:text-foreground"
           >
             Forgot?
           </Link>
-        </div>
-        <input
+        }
+      >
+        <PasswordInput
           required
           id="password"
           name="password"
-          type="password"
+          autoComplete="current-password"
           placeholder="At least 8 characters"
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+          invalid={Boolean(passwordError)}
+          aria-describedby={passwordError ? "password-error" : undefined}
         />
-        {state.errors?.password?.length ? (
-          <p className="text-sm text-down">{state.errors.password[0]}</p>
-        ) : null}
-      </div>
+      </FormField>
 
-      {state.message ? <p className="text-sm text-warning">{state.message}</p> : null}
+      {state.message ? (
+        <p
+          role="alert"
+          aria-live="polite"
+          className="rounded-[20px] border border-down/30 bg-down/10 px-4 py-3 text-sm leading-6 text-down"
+        >
+          {state.message}
+        </p>
+      ) : null}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-4 text-sm font-semibold text-background transition hover:bg-foreground disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {pending ? "Signing in..." : "Sign in"}
-      </button>
+      <Button type="submit" fullWidth size="lg" loading={pending}>
+        {pending ? "Signing in…" : "Sign in"}
+      </Button>
     </form>
   );
 }

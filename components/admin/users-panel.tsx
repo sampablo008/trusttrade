@@ -1,9 +1,12 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { ChevronDown, Plus, Minus } from "lucide-react";
+import { ChevronDown, Plus, Minus, Snowflake, CheckCircle2 } from "lucide-react";
 import BalanceHistoryDrawer from "@/components/admin/balance-history-drawer";
 import CoinIcon from "@/components/ui/CoinIcon";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { AdminTokenBalance, AdminUser } from "@/types/admin";
 import type { TradeOutcome } from "@/types/trade";
@@ -215,19 +218,18 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
           ))}
         </div>
 
-        <form onSubmit={handleSearch} className="flex flex-1 min-w-[260px] gap-3">
-          <input
+        <form onSubmit={handleSearch} className="flex min-w-65 flex-1 gap-3">
+          <label htmlFor="user-search" className="sr-only">
+            Search username or email
+          </label>
+          <Input
+            id="user-search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search username or email…"
-            className="flex-1 rounded-full border border-border bg-background/30 px-5 py-2.5 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand"
+            className="flex-1 rounded-full px-5 py-2.5"
           />
-          <button
-            type="submit"
-            className="rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background transition hover:bg-brand"
-          >
-            Search
-          </button>
+          <Button type="submit">Search</Button>
         </form>
       </div>
 
@@ -297,13 +299,13 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                       </td>
                       <td className="px-4 py-3">
                         {u.isFrozen ? (
-                          <span className="rounded-full bg-[#f6465d]/15 px-2 py-0.5 text-xs font-semibold text-[#f6465d]">
+                          <Badge tone="down" icon={<Snowflake size={11} aria-hidden="true" />}>
                             Frozen
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="rounded-full bg-[#0ecb81]/15 px-2 py-0.5 text-xs font-semibold text-[#0ecb81]">
+                          <Badge tone="up" icon={<CheckCircle2 size={11} aria-hidden="true" />}>
                             Active
-                          </span>
+                          </Badge>
                         )}
                       </td>
                       <td
@@ -324,9 +326,9 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                                 className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                                   active
                                     ? c === "win"
-                                      ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                                      ? "bg-up/20 text-up"
                                       : c === "lose"
-                                      ? "bg-[#f6465d]/20 text-[#f6465d]"
+                                      ? "bg-down/20 text-down"
                                       : "bg-foreground/10 text-foreground"
                                     : "text-muted hover:text-foreground"
                                 }`}
@@ -385,20 +387,22 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
           Showing {offset + 1}–{Math.min(offset + limit, total)} of {total}
         </span>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={offset === 0}
             onClick={() => fetchUsers(search, Math.max(offset - limit, 0), tab)}
-            className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
           >
             Prev
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
             disabled={offset + limit >= total}
             onClick={() => fetchUsers(search, offset + limit, tab)}
-            className="rounded-full border border-border bg-background/30 px-4 py-1.5 font-semibold transition hover:border-brand disabled:opacity-40"
           >
             Next
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -534,9 +538,9 @@ function UserDetail({
                   className={`rounded-full px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
                     active
                       ? c === "win"
-                        ? "bg-[#0ecb81]/20 text-[#0ecb81]"
+                        ? "bg-up/20 text-up"
                         : c === "lose"
-                        ? "bg-[#f6465d]/20 text-[#f6465d]"
+                        ? "bg-down/20 text-down"
                         : "bg-foreground text-background"
                       : "bg-background/30 text-muted hover:text-foreground"
                   }`}
@@ -552,8 +556,8 @@ function UserDetail({
           onClick={onFreeze}
           className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
             user.isFrozen
-              ? "bg-[#0ecb81]/15 text-[#0ecb81] hover:bg-[#0ecb81]/25"
-              : "bg-[#f6465d]/15 text-[#f6465d] hover:bg-[#f6465d]/25"
+              ? "bg-up/15 text-up hover:bg-up/25"
+              : "bg-down/15 text-down hover:bg-down/25"
           }`}
         >
           {user.isFrozen ? "Unfreeze account" : "Freeze account"}
@@ -631,8 +635,8 @@ function UserDetail({
           <div className="inline-flex items-center rounded-full border border-border bg-background/40 p-0.5">
             {(
               [
-                { id: "credit", label: "Credit", icon: Plus, color: "text-[#0ecb81]" },
-                { id: "debit", label: "Debit", icon: Minus, color: "text-[#f6465d]" },
+                { id: "credit", label: "Credit", icon: Plus, color: "text-up" },
+                { id: "debit", label: "Debit", icon: Minus, color: "text-down" },
               ] as const
             ).map((opt) => {
               const Icon = opt.icon;
@@ -645,8 +649,8 @@ function UserDetail({
                   className={`flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide transition ${
                     active
                       ? opt.id === "credit"
-                        ? "bg-[#0ecb81]/20 text-[#0ecb81]"
-                        : "bg-[#f6465d]/20 text-[#f6465d]"
+                        ? "bg-up/20 text-up"
+                        : "bg-down/20 text-down"
                       : "text-muted hover:text-foreground"
                   }`}
                 >
@@ -713,7 +717,7 @@ function UserDetail({
         />
 
         {adjustError && (
-          <p className="rounded-2xl bg-[#f6465d]/10 px-3 py-2 text-[11px] font-semibold text-[#f6465d]">
+          <p className="rounded-2xl bg-down/10 px-3 py-2 text-[11px] font-semibold text-down">
             {adjustError}
           </p>
         )}
@@ -725,8 +729,8 @@ function UserDetail({
           }
           className={`rounded-full px-5 py-2.5 text-sm font-semibold transition disabled:opacity-40 ${
             adjustSign === "credit"
-              ? "bg-[#0ecb81] text-background hover:brightness-110"
-              : "bg-[#f6465d] text-background hover:brightness-110"
+              ? "bg-up text-background hover:brightness-110"
+              : "bg-down text-background hover:brightness-110"
           }`}
         >
           {adjustSubmitting

@@ -12,12 +12,7 @@ interface LoginPageProps {
   }>;
 }
 
-export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const params = await searchParams;
-  const showSignupNotice = params.signup === "1";
-  const showResetNotice = params.reset === "1";
-  const showVerifiedNotice = params.verified === "1";
-
+export default function LoginPage({ searchParams }: LoginPageProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
       <header className="flex items-center justify-between">
@@ -91,23 +86,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           </div>
 
-          {showSignupNotice ? (
-            <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
-              Account created. Sign in below to open your trading desk.
-            </div>
-          ) : null}
-
-          {showResetNotice ? (
-            <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
-              Password updated. Sign in with your new password.
-            </div>
-          ) : null}
-
-          {showVerifiedNotice ? (
-            <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
-              Email verified. Sign in to start trading.
-            </div>
-          ) : null}
+          <Suspense fallback={null}>
+            <LoginNotices searchParams={searchParams} />
+          </Suspense>
 
           <div className="mt-8 rounded-[28px] border border-border bg-background/35 p-5">
             <Suspense
@@ -131,5 +112,25 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         </section>
       </div>
     </main>
+  );
+}
+
+async function LoginNotices({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const notice =
+    params.signup === "1"
+      ? "Account created. Sign in below to open your trading desk."
+      : params.reset === "1"
+        ? "Password updated. Sign in with your new password."
+        : params.verified === "1"
+          ? "Email verified. Sign in to start trading."
+          : null;
+
+  if (!notice) return null;
+
+  return (
+    <div className="mt-6 rounded-[24px] border border-up/30 bg-up/10 px-5 py-4 text-sm leading-7 text-up">
+      {notice}
+    </div>
   );
 }

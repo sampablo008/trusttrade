@@ -1,4 +1,5 @@
 import "server-only";
+import { Suspense } from "react";
 import AppHeaderNav from "@/components/layout/AppHeaderNav";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getSignupBonusStatus } from "@/lib/bonus/service";
@@ -12,7 +13,34 @@ interface AppShellProps {
   children: React.ReactNode;
 }
 
-export default async function AppShell({ children }: AppShellProps) {
+/**
+ * Static app frame. The nav chrome paints instantly as part of the route's
+ * static shell; per-user header data (balance, avatar, bonus) streams in via
+ * `<AppHeaderData>` so navigation is never blocked on it.
+ */
+export default function AppShell({ children }: AppShellProps) {
+  return (
+    <div className="flex min-h-screen flex-col">
+      <Suspense
+        fallback={
+          <AppHeaderNav
+            availableCents={0}
+            balanceCents={0}
+            displayName={null}
+            username={null}
+            avatarUrl={null}
+            pendingBonusCents={0}
+          />
+        }
+      >
+        <AppHeaderData />
+      </Suspense>
+      <div className="flex-1 pb-[calc(env(safe-area-inset-bottom)+72px)] lg:pb-0">{children}</div>
+    </div>
+  );
+}
+
+async function AppHeaderData() {
   const session = await assertAuthenticated();
   const userId = session.userId;
 
@@ -60,16 +88,13 @@ export default async function AppShell({ children }: AppShellProps) {
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <AppHeaderNav
-        availableCents={availableCents}
-        balanceCents={totalCents}
-        displayName={profile.displayName}
-        username={profile.username ?? session.username}
-        avatarUrl={avatarUrl}
-        pendingBonusCents={pendingBonusCents}
-      />
-      <div className="flex-1 pb-[calc(env(safe-area-inset-bottom)+72px)] lg:pb-0">{children}</div>
-    </div>
+    <AppHeaderNav
+      availableCents={availableCents}
+      balanceCents={totalCents}
+      displayName={profile.displayName}
+      username={profile.username ?? session.username}
+      avatarUrl={avatarUrl}
+      pendingBonusCents={pendingBonusCents}
+    />
   );
 }

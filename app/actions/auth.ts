@@ -2,9 +2,14 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { authCookieNames, isAdminRoute, type AuthRole } from "@/lib/auth/constants";
+import { authCookieNames } from "@/lib/auth/constants";
 import { getOptionalServerEnv } from "@/lib/env/server";
-import { createSupabaseAdminClient } from "@/lib/supabase/admin";
+import {
+  establishSession,
+  resolveIdentity,
+  resolveRedirectPath,
+} from "@/lib/auth/session";
+import { createSupabaseAnonClient } from "@/lib/supabase/anon";
 import { loginFormSchema, type LoginActionState } from "@/schemas/auth";
 
 const sanitizeNextPath = (value: string | undefined) => {
@@ -13,55 +18,6 @@ const sanitizeNextPath = (value: string | undefined) => {
   }
 
   return value;
-};
-
-const getRoleFromEmail = (email: string): AuthRole =>
-  email.toLowerCase().includes("admin") ? "admin" : "user";
-
-const getUsernameFromEmail = (email: string) =>
-  email
-    .split("@")[0]
-    ?.replace(/[^a-z0-9._-]/gi, "")
-    .slice(0, 24) || "trader";
-
-interface ResolvedIdentity {
-  role: AuthRole;
-  userId: string | null;
-  username: string;
-  emailVerified: boolean;
-  signupBonusPending: boolean;
-}
-
-const resolveIdentity = async (email: string): Promise<ResolvedIdentity | null> => {
-  if (!getOptionalServerEnv()) {
-    return {
-      role: getRoleFromEmail(email),
-      userId: null,
-      username: getUsernameFromEmail(email),
-      emailVerified: true,
-      signupBonusPending: false,
-    };
-  }
-
-  const admin = createSupabaseAdminClient();
-  const { data, error } = await admin
-    .from("profiles")
-    .select("user_id, role, username, signup_bonus_claimed_at")
-    .ilike("email", email)
-    .maybeSingle();
-
-  if (error || !data) return null;
-
-  const authLookup = await admin.auth.admin.getUserById(data.user_id as string);
-  const emailVerified = Boolean(authLookup.data.user?.email_confirmed_at);
-
-  return {
-    role: data.role as AuthRole,
-    userId: data.user_id,
-    username: data.username,
-    emailVerified,
-    signupBonusPending: data.signup_bonus_claimed_at == null,
-  };
 };
 
 export const signInPreview = async (
@@ -82,6 +38,7 @@ export const signInPreview = async (
   }
 
   const email = validatedFields.data.email.toLowerCase();
+  const password = validatedFields.data.password;
   const nextPath = sanitizeNextPath(validatedFields.data.nextPath);
 
   const identity = await resolveIdentity(email);
@@ -92,36 +49,24 @@ export const signInPreview = async (
     };
   }
 
+  if (getOptionalServerEnv()) {
+    const anon = createSupabaseAnonClient();
+    const { error: signInError } = await anon.auth.signInWithPassword({ email, password });
+    await anon.auth.signOut().catch(() => undefined);
+
+    if (signInError) {
+      return {
+        message: "Incorrect email or password.",
+      };
+    }
+  }
+
   if (!identity.emailVerified) {
     redirect(`/verify-email?email=${encodeURIComponent(email)}`);
   }
 
-  const redirectPath =
-    identity.role === "admin"
-      ? isAdminRoute(nextPath)
-        ? nextPath
-        : "/admin"
-      : identity.signupBonusPending
-        ? "/welcome"
-        : nextPath;
-  const cookieStore = await cookies();
-  const secure = process.env.NODE_ENV === "production";
-  const baseCookie = {
-    httpOnly: true,
-    maxAge: 60 * 60 * 8,
-    path: "/",
-    sameSite: "lax" as const,
-    secure,
-  };
-
-  cookieStore.set(authCookieNames.session, "active", baseCookie);
-  cookieStore.set(authCookieNames.role, identity.role, baseCookie);
-  cookieStore.set(authCookieNames.user, identity.username, baseCookie);
-  if (identity.userId) {
-    cookieStore.set(authCookieNames.userId, identity.userId, baseCookie);
-  } else {
-    cookieStore.set(authCookieNames.userId, "", { maxAge: 0, path: "/" });
-  }
+  const redirectPath = resolveRedirectPath(identity, nextPath);
+  await establishSession(identity);
 
   redirect(redirectPath);
 };

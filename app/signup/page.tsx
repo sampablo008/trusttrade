@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import BrandLogo from "@/components/brand/BrandLogo";
 import SignupForm from "@/components/auth/signup-form";
@@ -8,9 +9,7 @@ interface SignupPageProps {
   }>;
 }
 
-export default async function SignupPage({ searchParams }: SignupPageProps) {
-  const params = await searchParams;
-
+export default function SignupPage({ searchParams }: SignupPageProps) {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-5 sm:gap-8 sm:px-6 sm:py-8 lg:px-8">
       <header className="flex items-center justify-between">
@@ -41,9 +40,16 @@ export default async function SignupPage({ searchParams }: SignupPageProps) {
         </div>
 
         <div className="mt-6 sm:mt-10">
-          <SignupForm initialCode={params.ref ?? ""} />
+          <Suspense fallback={<SignupForm initialCode="" />}>
+            <SignupFormWithRef searchParams={searchParams} />
+          </Suspense>
         </div>
       </section>
     </main>
   );
+}
+
+async function SignupFormWithRef({ searchParams }: SignupPageProps) {
+  const params = await searchParams;
+  return <SignupForm initialCode={params.ref ?? ""} />;
 }

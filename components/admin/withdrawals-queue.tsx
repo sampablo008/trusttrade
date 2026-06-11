@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
-import {
-  CheckCircle,
-  XCircle,
-  CreditCard,
-  AlertCircle,
-  RefreshCw,
-  Flag,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle, XCircle, CreditCard, RefreshCw, Flag, Inbox } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
-import type { Withdrawal, WithdrawalStatus } from "@/types/withdrawal";
+import type { Withdrawal } from "@/types/withdrawal";
+import { Button } from "@/components/ui/Button";
+import { DataTable } from "@/components/ui/DataTable";
+import { StatusPill } from "@/components/ui/StatusPill";
+import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { FormField } from "@/components/ui/FormField";
+import { Input, Textarea } from "@/components/ui/Input";
+import { CopyButton } from "@/components/ui/CopyButton";
+import EmptyState from "@/components/ui/EmptyState";
+import { notify } from "@/components/ui/toast";
 
 const formatWithdrawalAmount = (w: Withdrawal) => {
   if (w.amount != null && w.amount > 0) {
@@ -22,14 +26,6 @@ const formatWithdrawalAmount = (w: Withdrawal) => {
   return formatUsdFromCents(w.amountCents);
 };
 
-const STATUS_BADGE: Record<WithdrawalStatus, string> = {
-  pending: "bg-yellow-400/15 text-yellow-400",
-  approved: "bg-brand/15 text-brand",
-  paid: "bg-up/15 text-up",
-  rejected: "bg-down/15 text-down",
-  cancelled: "bg-border text-muted",
-};
-
 interface Props {
   initialWithdrawals: Withdrawal[];
 }
@@ -37,6 +33,7 @@ interface Props {
 export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>(initialWithdrawals);
   const [activeTab, setActiveTab] = useState<"queue" | "payout">("queue");
+  const [refreshing, setRefreshing] = useState(false);
   const [approveId, setApproveId] = useState<string | null>(null);
   const [approveNote, setApproveNote] = useState("");
   const [rejectId, setRejectId] = useState<string | null>(null);
@@ -45,11 +42,15 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
   const [payTxHash, setPayTxHash] = useState("");
   const [payAddressConfirm, setPayAddressConfirm] = useState("");
   const [busy, setBusy] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
 
-  const pendingItems = withdrawals.filter((w) => w.status === "pending");
-  const payoutItems = withdrawals.filter((w) => w.status === "approved");
-
+  const pendingItems = useMemo(
+    () => withdrawals.filter((w) => w.status === "pending"),
+    [withdrawals],
+  );
+  const payoutItems = useMemo(
+    () => withdrawals.filter((w) => w.status === "approved"),
+    [withdrawals],
+  );
   const displayItems = activeTab === "queue" ? pendingItems : payoutItems;
 
   const updateWithdrawal = (id: string, updated: Withdrawal) =>
@@ -58,14 +59,14 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
   const toggleBusy = (id: string, on: boolean) =>
     setBusy((prev) => {
       const next = new Set(prev);
-      if (on) { next.add(id); } else { next.delete(id); }
+      if (on) next.add(id);
+      else next.delete(id);
       return next;
     });
 
   const handleApprove = async () => {
     if (!approveId) return;
     toggleBusy(approveId, true);
-    setError(null);
     const res = await fetch(`/api/admin/withdrawals/${approveId}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -73,20 +74,20 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
     });
     toggleBusy(approveId, false);
     if (res.ok) {
-      const data = await res.json() as { withdrawal: Withdrawal };
+      const data = (await res.json()) as { withdrawal: Withdrawal };
       updateWithdrawal(approveId, data.withdrawal);
+      notify.success("Withdrawal approved", "Moved to the payout queue.");
       setApproveId(null);
       setApproveNote("");
     } else {
-      const json = await res.json() as { error?: { message?: string } };
-      setError(json.error?.message ?? "Approve failed.");
+      const json = (await res.json()) as { error?: { message?: string } };
+      notify.error("Approve failed", json.error?.message);
     }
   };
 
   const handleReject = async () => {
     if (!rejectId || !rejectNote.trim()) return;
     toggleBusy(rejectId, true);
-    setError(null);
     const res = await fetch(`/api/admin/withdrawals/${rejectId}/reject`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -94,20 +95,20 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
     });
     toggleBusy(rejectId, false);
     if (res.ok) {
-      const data = await res.json() as { withdrawal: Withdrawal };
+      const data = (await res.json()) as { withdrawal: Withdrawal };
       updateWithdrawal(rejectId, data.withdrawal);
+      notify.success("Withdrawal rejected", "Balance refunded to the user.");
       setRejectId(null);
       setRejectNote("");
     } else {
-      const json = await res.json() as { error?: { message?: string } };
-      setError(json.error?.message ?? "Reject failed.");
+      const json = (await res.json()) as { error?: { message?: string } };
+      notify.error("Reject failed", json.error?.message);
     }
   };
 
   const handleMarkPaid = async () => {
     if (!payId || !payTxHash.trim() || !payAddressConfirm.trim()) return;
     toggleBusy(payId, true);
-    setError(null);
     const res = await fetch(`/api/admin/withdrawals/${payId}/mark-paid`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -115,26 +116,163 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
     });
     toggleBusy(payId, false);
     if (res.ok) {
-      const data = await res.json() as { withdrawal: Withdrawal };
+      const data = (await res.json()) as { withdrawal: Withdrawal };
       updateWithdrawal(payId, data.withdrawal);
+      notify.success("Marked as paid");
       setPayId(null);
       setPayTxHash("");
       setPayAddressConfirm("");
     } else {
-      const json = await res.json() as { error?: { message?: string } };
-      setError(json.error?.message ?? "Mark paid failed.");
+      const json = (await res.json()) as { error?: { message?: string } };
+      notify.error("Mark paid failed", json.error?.message);
     }
   };
 
   const refresh = async () => {
+    setRefreshing(true);
     const res = await fetch("/api/admin/withdrawals");
     if (res.ok) {
-      const data = await res.json() as { items: Withdrawal[] };
+      const data = (await res.json()) as { items: Withdrawal[] };
       setWithdrawals(data.items);
+    } else {
+      notify.error("Could not refresh withdrawals");
     }
+    setRefreshing(false);
   };
 
   const payingWithdrawal = withdrawals.find((w) => w.id === payId);
+
+  const UserCell = ({ w }: { w: Withdrawal }) =>
+    w.userUsername || w.userEmail ? (
+      <div className="flex flex-col leading-tight">
+        <span className="text-sm font-semibold text-foreground">{w.userUsername ?? "—"}</span>
+        <span className="text-xs text-muted">{w.userEmail ?? ""}</span>
+      </div>
+    ) : (
+      <span className="font-mono text-xs text-muted">{w.userId.slice(0, 8)}…</span>
+    );
+
+  const Flags = ({ w }: { w: Withdrawal }) =>
+    w.flags.length === 0 ? (
+      <span className="text-xs text-muted">—</span>
+    ) : (
+      <div className="flex flex-wrap gap-1">
+        {w.flags.map((f) => (
+          <Badge key={f} tone="warning" icon={<Flag size={10} aria-hidden="true" />}>
+            {f}
+          </Badge>
+        ))}
+      </div>
+    );
+
+  const Actions = ({ w }: { w: Withdrawal }) => (
+    <div className="flex items-center gap-2">
+      {activeTab === "queue" && (
+        <>
+          <button
+            onClick={() => setApproveId(w.id)}
+            disabled={busy.has(w.id)}
+            aria-label="Approve withdrawal"
+            title="Approve"
+            className="rounded-full border border-up/40 bg-up/10 p-1.5 text-up transition focus-ring hover:bg-up/20 disabled:opacity-40"
+          >
+            <CheckCircle size={14} aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => setRejectId(w.id)}
+            disabled={busy.has(w.id)}
+            aria-label="Reject withdrawal"
+            title="Reject"
+            className="rounded-full border border-down/40 bg-down/10 p-1.5 text-down transition focus-ring hover:bg-down/20 disabled:opacity-40"
+          >
+            <XCircle size={14} aria-hidden="true" />
+          </button>
+        </>
+      )}
+      {activeTab === "payout" && (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() => setPayId(w.id)}
+          disabled={busy.has(w.id)}
+          iconLeft={<CreditCard size={12} aria-hidden="true" />}
+        >
+          Mark Paid
+        </Button>
+      )}
+    </div>
+  );
+
+  const columns = useMemo<ColumnDef<Withdrawal, unknown>[]>(
+    () => [
+      {
+        id: "user",
+        header: "User",
+        enableSorting: false,
+        cell: ({ row }) => <UserCell w={row.original} />,
+      },
+      {
+        id: "amount",
+        header: "Amount",
+        accessorFn: (w) => w.usdValueCents ?? w.amountCents,
+        cell: ({ row }) => (
+          <span className="text-sm font-semibold tabular-nums text-foreground">
+            {formatWithdrawalAmount(row.original)}
+          </span>
+        ),
+      },
+      {
+        id: "token",
+        header: "Token / Network",
+        accessorFn: (w) => `${w.tokenSymbol} · ${w.network}`,
+        enableSorting: false,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        id: "destination",
+        header: "Destination",
+        enableSorting: false,
+        cell: ({ row }) => (
+          <span className="flex items-center gap-1 font-mono text-xs text-muted">
+            <span className="max-w-32 truncate">{row.original.destinationAddress}</span>
+            <CopyButton value={row.original.destinationAddress} label="Copy destination address" />
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: ({ row }) => <StatusPill status={row.original.status} />,
+      },
+      {
+        id: "flags",
+        header: "Flags",
+        enableSorting: false,
+        cell: ({ row }) => <Flags w={row.original} />,
+      },
+      {
+        id: "createdAt",
+        header: "Date",
+        accessorFn: (w) => new Date(w.createdAt).getTime(),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted">
+            {new Date(row.original.createdAt).toLocaleDateString()}
+          </span>
+        ),
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        cell: ({ row }) => <Actions w={row.original} />,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activeTab, busy],
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -142,7 +280,8 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={() => setActiveTab("queue")}
-          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+          aria-pressed={activeTab === "queue"}
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition focus-ring ${
             activeTab === "queue"
               ? "bg-brand text-background"
               : "border border-border bg-background/30 text-foreground hover:border-brand"
@@ -152,7 +291,8 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
         </button>
         <button
           onClick={() => setActiveTab("payout")}
-          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+          aria-pressed={activeTab === "payout"}
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition focus-ring ${
             activeTab === "payout"
               ? "bg-brand text-background"
               : "border border-border bg-background/30 text-foreground hover:border-brand"
@@ -160,239 +300,213 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
         >
           Payout ({payoutItems.length})
         </button>
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={refresh}
-          className="ml-auto flex items-center gap-2 rounded-full border border-border bg-background/30 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-brand"
+          loading={refreshing}
+          iconLeft={<RefreshCw size={14} aria-hidden="true" />}
+          className="ml-auto"
         >
-          <RefreshCw size={14} />
           Refresh
-        </button>
+        </Button>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 rounded-[12px] border border-down/40 bg-down/10 px-4 py-3">
-          <AlertCircle size={16} className="text-down" />
-          <p className="text-sm text-down">{error}</p>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="overflow-hidden rounded-[20px] border border-border">
-        <table className="min-w-full divide-y divide-border text-left">
-          <thead className="bg-background/55">
-            <tr>
-              {["User", "Amount", "Token / Network", "Destination", "Status", "Flags", "Date", "Actions"].map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border bg-surface">
-            {displayItems.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
-                  {activeTab === "queue" ? "No pending withdrawals." : "No withdrawals awaiting payout."}
-                </td>
-              </tr>
-            )}
-            {displayItems.map((w) => (
-              <tr key={w.id} className="hover:bg-background/20">
-                <td className="px-4 py-4 font-mono text-xs text-muted">
-                  {w.userId.slice(0, 8)}…
-                </td>
-                <td className="px-4 py-4 text-sm font-semibold text-foreground">
+      <DataTable
+        columns={columns}
+        data={displayItems}
+        getRowId={(w) => w.id}
+        emptyState={
+          <EmptyState
+            icon={Inbox}
+            title={activeTab === "queue" ? "No pending withdrawals" : "No withdrawals awaiting payout"}
+            description="Nothing to action right now."
+          />
+        }
+        mobileCard={(w) => (
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <UserCell w={w} />
+              <StatusPill status={w.status} />
+            </div>
+            <dl className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-muted">Amount</dt>
+                <dd className="font-semibold tabular-nums text-foreground">
                   {formatWithdrawalAmount(w)}
-                </td>
-                <td className="px-4 py-4 text-sm text-foreground">
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-muted">Token</dt>
+                <dd className="text-foreground">
                   {w.tokenSymbol} · {w.network}
-                </td>
-                <td className="max-w-40 truncate px-4 py-4 font-mono text-xs text-muted">
-                  {w.destinationAddress}
-                </td>
-                <td className="px-4 py-4">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${STATUS_BADGE[w.status]}`}>
-                    {w.status}
-                  </span>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex flex-wrap gap-1">
-                    {w.flags.length === 0 && <span className="text-xs text-muted">—</span>}
-                    {w.flags.map((f) => (
-                      <span
-                        key={f}
-                        className="flex items-center gap-1 rounded-full bg-yellow-400/10 px-2 py-0.5 text-[10px] font-semibold text-yellow-400"
-                      >
-                        <Flag size={10} />
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-xs text-muted">
-                  {new Date(w.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    {activeTab === "queue" && (
-                      <>
-                        <button
-                          onClick={() => setApproveId(w.id)}
-                          disabled={busy.has(w.id)}
-                          title="Approve"
-                          className="rounded-full border border-up/40 bg-up/10 p-1.5 text-up transition hover:bg-up/20 disabled:opacity-40"
-                        >
-                          <CheckCircle size={14} />
-                        </button>
-                        <button
-                          onClick={() => setRejectId(w.id)}
-                          disabled={busy.has(w.id)}
-                          title="Reject"
-                          className="rounded-full border border-down/40 bg-down/10 p-1.5 text-down transition hover:bg-down/20 disabled:opacity-40"
-                        >
-                          <XCircle size={14} />
-                        </button>
-                      </>
-                    )}
-                    {activeTab === "payout" && (
-                      <button
-                        onClick={() => setPayId(w.id)}
-                        disabled={busy.has(w.id)}
-                        title="Mark as paid"
-                        className="flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3 py-1.5 text-xs font-semibold text-brand transition hover:bg-brand/20 disabled:opacity-40"
-                      >
-                        <CreditCard size={12} />
-                        Mark Paid
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </dd>
+              </div>
+            </dl>
+            <Flags w={w} />
+            <Actions w={w} />
+          </div>
+        )}
+      />
 
       {/* Approve modal */}
-      {approveId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur">
-          <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
-            <h3 className="font-display text-2xl text-foreground">Approve withdrawal</h3>
-            <p className="mt-2 text-sm text-muted">Optional note for the audit log.</p>
-            <textarea
-              value={approveNote}
-              onChange={(e) => setApproveNote(e.target.value)}
-              rows={2}
-              placeholder="Optional note…"
-              className="mt-4 w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-            />
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={handleApprove}
-                className="flex-1 rounded-full bg-up px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90"
-              >
-                Confirm Approve
-              </button>
-              <button
-                onClick={() => { setApproveId(null); setApproveNote(""); }}
-                className="flex-1 rounded-full border border-border bg-background/30 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={Boolean(approveId)}
+        onClose={() => {
+          setApproveId(null);
+          setApproveNote("");
+        }}
+        title="Approve withdrawal"
+        description="Optional note for the audit log."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setApproveId(null);
+                setApproveNote("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApprove}
+              loading={approveId ? busy.has(approveId) : false}
+            >
+              Confirm approve
+            </Button>
+          </>
+        }
+      >
+        <FormField htmlFor="wd-approve-note" label="Note (optional)">
+          <Textarea
+            id="wd-approve-note"
+            rows={2}
+            value={approveNote}
+            onChange={(e) => setApproveNote(e.target.value)}
+            placeholder="Optional note…"
+          />
+        </FormField>
+      </Modal>
 
       {/* Reject modal */}
-      {rejectId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur">
-          <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
-            <h3 className="font-display text-2xl text-foreground">Reject withdrawal</h3>
-            <p className="mt-2 text-sm text-muted">Provide a reason — balance is refunded immediately.</p>
-            <textarea
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
-              rows={3}
-              placeholder="e.g. Suspicious activity, RAPID flag…"
-              className="mt-4 w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-            />
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={handleReject}
-                disabled={!rejectNote.trim()}
-                className="flex-1 rounded-full bg-down px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
-              >
-                Confirm Reject
-              </button>
-              <button
-                onClick={() => { setRejectId(null); setRejectNote(""); }}
-                className="flex-1 rounded-full border border-border bg-background/30 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={Boolean(rejectId)}
+        onClose={() => {
+          setRejectId(null);
+          setRejectNote("");
+        }}
+        title="Reject withdrawal"
+        description="Provide a reason — balance is refunded immediately."
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setRejectId(null);
+                setRejectNote("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleReject}
+              loading={rejectId ? busy.has(rejectId) : false}
+              disabled={!rejectNote.trim()}
+            >
+              Confirm reject
+            </Button>
+          </>
+        }
+      >
+        <FormField htmlFor="wd-reject-note" label="Reason" required>
+          <Textarea
+            id="wd-reject-note"
+            rows={3}
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            placeholder="e.g. Suspicious activity, RAPID flag…"
+          />
+        </FormField>
+      </Modal>
 
       {/* Mark-paid modal — requires address confirm */}
-      {payId && payingWithdrawal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur">
-          <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
-            <h3 className="font-display text-2xl text-foreground">Mark as paid</h3>
-            <div className="mt-3 rounded-[12px] border border-border bg-background/30 p-4">
-              <p className="text-xs text-muted">Destination</p>
-              <code className="mt-1 break-all font-mono text-sm text-foreground">
-                {payingWithdrawal.destinationAddress}
-              </code>
-            </div>
-            <div className="mt-4 flex flex-col gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                Re-type last 8 chars of address
-              </label>
-              <input
-                type="text"
-                value={payAddressConfirm}
-                onChange={(e) => setPayAddressConfirm(e.target.value)}
-                placeholder={payingWithdrawal.destinationAddress.slice(-8)}
-                maxLength={8}
-                className="w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-              />
-            </div>
-            <div className="mt-4 flex flex-col gap-2">
-              <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                Transaction hash
-              </label>
-              <input
-                type="text"
-                value={payTxHash}
-                onChange={(e) => setPayTxHash(e.target.value)}
-                placeholder="Paste tx hash from wallet"
-                className="w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-              />
-            </div>
-            <div className="mt-4 flex gap-3">
-              <button
+      <Modal
+        open={Boolean(payId && payingWithdrawal)}
+        onClose={() => {
+          setPayId(null);
+          setPayTxHash("");
+          setPayAddressConfirm("");
+        }}
+        title="Mark as paid"
+        footer={
+          payingWithdrawal ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setPayId(null);
+                  setPayTxHash("");
+                  setPayAddressConfirm("");
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
                 onClick={handleMarkPaid}
+                loading={payId ? busy.has(payId) : false}
                 disabled={
                   !payTxHash.trim() ||
                   payAddressConfirm !== payingWithdrawal.destinationAddress.slice(-8)
                 }
-                className="flex-1 rounded-full bg-brand px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
               >
-                Confirm Paid
-              </button>
-              <button
-                onClick={() => { setPayId(null); setPayTxHash(""); setPayAddressConfirm(""); }}
-                className="flex-1 rounded-full border border-border bg-background/30 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
-              >
-                Cancel
-              </button>
+                Confirm paid
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {payingWithdrawal ? (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-background/30 p-4">
+              <p className="text-xs text-muted">Destination</p>
+              <code className="mt-1 block break-all font-mono text-sm text-foreground">
+                {payingWithdrawal.destinationAddress}
+              </code>
             </div>
+            <FormField
+              htmlFor="pay-addr-confirm"
+              label="Re-type last 8 chars of address"
+              required
+            >
+              <Input
+                id="pay-addr-confirm"
+                value={payAddressConfirm}
+                onChange={(e) => setPayAddressConfirm(e.target.value)}
+                placeholder={payingWithdrawal.destinationAddress.slice(-8)}
+                maxLength={8}
+                className="font-mono"
+              />
+            </FormField>
+            <FormField htmlFor="pay-tx-hash" label="Transaction hash" required>
+              <Input
+                id="pay-tx-hash"
+                value={payTxHash}
+                onChange={(e) => setPayTxHash(e.target.value)}
+                placeholder="Paste tx hash from wallet"
+                className="font-mono"
+              />
+            </FormField>
           </div>
-        </div>
-      )}
+        ) : null}
+      </Modal>
     </div>
   );
 }

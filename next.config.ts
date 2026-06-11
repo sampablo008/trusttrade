@@ -27,6 +27,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  cacheComponents: true,
+  experimental: {
+    instantNavigationDevToolsToggle: true,
+  },
   async headers() {
     return [
       {

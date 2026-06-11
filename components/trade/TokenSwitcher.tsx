@@ -34,7 +34,7 @@ export default function TokenSwitcher({ coins, iconPaths = {} }: TokenSwitcherPr
   const tradeable = coins.filter((c) => c.symbol !== "USDT" && c.symbol !== "USDC");
 
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1">
+    <div className="flex shrink-0 gap-1.5 overflow-x-auto pb-1">
       {tradeable.map((coin) => {
         const active = coin.symbol === currentSymbol;
         return (

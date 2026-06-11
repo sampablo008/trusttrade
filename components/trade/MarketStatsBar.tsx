@@ -65,7 +65,7 @@ export default function MarketStatsBar({ coin, iconPath }: MarketStatsBarProps) 
   const isUp = (ticker?.changePercent ?? 0) >= 0;
 
   return (
-    <section className="flex flex-col gap-4 rounded-[28px] border border-border bg-surface-soft p-5 sm:flex-row sm:items-center sm:gap-6 sm:p-6">
+    <section className="flex flex-col gap-4 rounded-2xl border border-border bg-surface-soft p-4 sm:flex-row sm:items-center sm:gap-6 sm:p-5">
       <div className="flex items-center gap-4">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-border bg-linear-to-br from-brand/20 to-up/10">
           <CoinIcon symbol={coin.symbol} iconPath={iconPath} size={36} />

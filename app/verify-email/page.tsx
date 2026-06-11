@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import AuthCard from "@/components/auth/auth-card";
 import VerifyEmailForm from "@/components/auth/verify-email-form";
@@ -11,10 +12,7 @@ interface VerifyEmailPageProps {
   searchParams: Promise<{ email?: string }>;
 }
 
-export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
-  const params = await searchParams;
-  const prefillEmail = (params.email ?? "").trim();
-
+export default function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
   return (
     <AuthCard
       eyebrow="Email verification"
@@ -23,7 +21,14 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
       backHref="/login"
       backLabel="Back to sign in"
     >
-      <VerifyEmailForm prefillEmail={prefillEmail} />
+      <Suspense fallback={<VerifyEmailForm prefillEmail="" />}>
+        <VerifyForm searchParams={searchParams} />
+      </Suspense>
     </AuthCard>
   );
+}
+
+async function VerifyForm({ searchParams }: VerifyEmailPageProps) {
+  const params = await searchParams;
+  return <VerifyEmailForm prefillEmail={(params.email ?? "").trim()} />;
 }

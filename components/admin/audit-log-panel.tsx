@@ -5,10 +5,10 @@ import type { AuditLogEntry } from "@/types/admin";
 
 const ACTION_COLORS: Record<string, string> = {
   adjust_balance: "bg-blue-500/15 text-blue-400",
-  freeze_user: "bg-[#f6465d]/15 text-[#f6465d]",
+  freeze_user: "bg-down/15 text-down",
   mint_codes: "bg-purple-500/15 text-purple-400",
   reject_deposit: "bg-yellow-500/15 text-yellow-400",
-  settle_trade: "bg-[#0ecb81]/15 text-[#0ecb81]",
+  settle_trade: "bg-up/15 text-up",
 };
 
 const actionColor = (action: string): string =>

@@ -16,7 +16,7 @@ const patchSchema = z.object({
   refDefaultL5Bps: z.number().int().min(0).max(10000).optional(),
   refMinDepositCents: z.number().int().min(0).optional(),
   signupBonusCents: z.number().int().min(0).optional(),
-  withdrawFeeCents: z.number().int().min(0).optional(),
+  withdrawFeeBps: z.number().int().min(0).max(10000).optional(),
   withdrawMinCents: z.number().int().min(0).optional(),
 });
 
