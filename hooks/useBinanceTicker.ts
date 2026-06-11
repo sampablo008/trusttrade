@@ -12,10 +12,16 @@ export interface BinanceTicker {
 
 export function useBinanceTicker(binanceSymbol: string): BinanceTicker | null {
   const [ticker, setTicker] = useState<BinanceTicker | null>(null);
+  const [prevSymbol, setPrevSymbol] = useState(binanceSymbol);
+
+  // Reset stale ticker synchronously when the symbol changes (React-sanctioned
+  // "adjust state during render" pattern — avoids a flash of the old symbol's data).
+  if (binanceSymbol !== prevSymbol) {
+    setPrevSymbol(binanceSymbol);
+    setTicker(null);
+  }
 
   useEffect(() => {
-    setTicker(null);
-
     const es = new EventSource(
       `/api/market/ticker-stream?symbol=${binanceSymbol.toLowerCase()}`,
     );

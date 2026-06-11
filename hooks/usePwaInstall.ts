@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -8,8 +8,12 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 let cachedEvent: BeforeInstallPromptEvent | null = null;
-const listeners = new Set<(e: BeforeInstallPromptEvent | null) => void>();
+const listeners = new Set<() => void>();
 let globalHandlerAttached = false;
+
+function notify() {
+  listeners.forEach((fn) => fn());
+}
 
 function attachGlobalHandler() {
   if (globalHandlerAttached || typeof window === "undefined") return;
@@ -17,25 +21,32 @@ function attachGlobalHandler() {
   window.addEventListener("beforeinstallprompt", (e: Event) => {
     e.preventDefault();
     cachedEvent = e as BeforeInstallPromptEvent;
-    listeners.forEach((fn) => fn(cachedEvent));
+    notify();
   });
   window.addEventListener("appinstalled", () => {
     cachedEvent = null;
-    listeners.forEach((fn) => fn(null));
+    notify();
   });
 }
 
-export function usePwaInstall() {
-  const [event, setEvent] = useState<BeforeInstallPromptEvent | null>(cachedEvent);
+function subscribe(callback: () => void) {
+  attachGlobalHandler();
+  listeners.add(callback);
+  return () => {
+    listeners.delete(callback);
+  };
+}
 
-  useEffect(() => {
-    attachGlobalHandler();
-    setEvent(cachedEvent);
-    listeners.add(setEvent);
-    return () => {
-      listeners.delete(setEvent);
-    };
-  }, []);
+function getSnapshot() {
+  return cachedEvent;
+}
+
+function getServerSnapshot(): BeforeInstallPromptEvent | null {
+  return null;
+}
+
+export function usePwaInstall() {
+  const event = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   const install = async () => {
     if (!event) return false;
@@ -43,7 +54,7 @@ export function usePwaInstall() {
     const { outcome } = await event.userChoice;
     if (outcome === "accepted") {
       cachedEvent = null;
-      listeners.forEach((fn) => fn(null));
+      notify();
     }
     return outcome === "accepted";
   };

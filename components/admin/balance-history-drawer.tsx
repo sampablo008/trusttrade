@@ -101,12 +101,33 @@ export default function BalanceHistoryDrawer({
     [],
   );
 
+  // Initial load / reset when the drawer opens or refreshKey changes. The fetch runs
+  // inside an inline async function so the setState calls happen in a callback rather
+  // than synchronously in the effect body (react-hooks/set-state-in-effect).
   useEffect(() => {
     if (!isOpen || !user) return;
-    setItems([]);
-    setTotal(0);
-    fetchPage(user.userId, 0, false);
-  }, [isOpen, user, refreshKey, fetchPage]);
+    const userId = user.userId;
+    let cancelled = false;
+    void (async () => {
+      setLoading(true);
+      setItems([]);
+      setTotal(0);
+      try {
+        const res = await fetch(
+          `/api/admin/users/${userId}/transactions?limit=${PAGE_SIZE}&offset=0`,
+        );
+        const data = (await res.json()) as { items: AdminTransaction[]; total: number };
+        if (cancelled) return;
+        setItems(data.items ?? []);
+        setTotal(data.total ?? 0);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, user, refreshKey]);
 
   const handleLoadMore = () => {
     if (!user) return;

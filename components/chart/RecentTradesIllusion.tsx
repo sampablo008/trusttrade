@@ -44,7 +44,9 @@ export default function RecentTradesIllusion({ lastPriceCents, symbol }: RecentT
   const priceRef = useRef(lastPriceCents);
 
   // Keep the latest price available to the interval without re-arming it
-  priceRef.current = lastPriceCents;
+  useEffect(() => {
+    priceRef.current = lastPriceCents;
+  }, [lastPriceCents]);
 
   useEffect(() => {
     setTrades(

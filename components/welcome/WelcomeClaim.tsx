@@ -59,7 +59,7 @@ export default function WelcomeClaim({ amountCents, displayName }: Props) {
         <span className="font-semibold text-foreground">
           {formatUsdtFromCents(amountCents)}
         </span>{" "}
-        signup bonus. Once claimed, it lands in your USDT balance and you're ready to trade.
+        signup bonus. Once claimed, it lands in your USDT balance and you&apos;re ready to trade.
       </p>
 
       <div className="mt-10">

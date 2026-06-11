@@ -16,6 +16,7 @@
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
     "db:migrate": "supabase db push --db-url \"$DATABASE_URL\"",
+    "migrate:prod": "bash scripts/migrate-prod.sh",
     "db:pull": "supabase db pull",
     "db:diff": "supabase db diff",
     "db:lint": "supabase db lint",
