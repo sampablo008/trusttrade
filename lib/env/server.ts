@@ -1,10 +1,24 @@
 import "server-only";
 import { z } from "zod";
 
+// Sentinel hosts/keys CI injects so the build can prerender without real infra
+// (see .github/workflows/ci.yml). They satisfy the format checks below but are
+// unreachable, so we treat them as "unconfigured" and fall back to preview data.
+const PLACEHOLDER_SUPABASE_HOST = "placeholder.supabase.co";
+const PLACEHOLDER_KEY = "placeholder";
+
 const serverEnvSchema = z.object({
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_URL: z
+    .url()
+    .refine((value) => {
+      try {
+        return new URL(value).hostname !== PLACEHOLDER_SUPABASE_HOST;
+      } catch {
+        return false;
+      }
+    }, "Supabase URL is a build placeholder"),
+  SUPABASE_ANON_KEY: z.string().min(1).refine((v) => v !== PLACEHOLDER_KEY),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).refine((v) => v !== PLACEHOLDER_KEY),
 });
 
 const emailEnvSchema = z.object({
