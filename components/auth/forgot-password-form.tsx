@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
 
 export default function ForgotPasswordForm() {
   const router = useRouter();
@@ -32,34 +35,23 @@ export default function ForgotPasswordForm() {
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="space-y-2">
-        <label
-          className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <input
+      <FormField htmlFor="email" label="Email" required error={error ?? undefined}>
+        <Input
           required
           id="email"
           name="email"
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           placeholder="you@company.com"
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
+          invalid={Boolean(error)}
         />
-      </div>
+      </FormField>
 
-      {error ? <p className="text-sm text-down">{error}</p> : null}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-4 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="submit" fullWidth size="lg" loading={submitting}>
         {submitting ? "Sending code…" : "Send reset code"}
-      </button>
+      </Button>
     </form>
   );
 }

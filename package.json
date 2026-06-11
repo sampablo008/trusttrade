@@ -15,6 +15,7 @@
     "db:status": "supabase status",
     "db:reset": "supabase db reset",
     "db:push": "supabase db push",
+    "db:migrate": "supabase db push --db-url \"$DATABASE_URL\"",
     "db:pull": "supabase db pull",
     "db:diff": "supabase db diff",
     "db:lint": "supabase db lint",
@@ -22,7 +23,8 @@
     "db:list": "supabase migration list",
     "db:repair": "supabase migration repair",
     "db:types": "supabase gen types typescript --local > types/supabase.ts",
-    "db:link": "supabase link"
+    "db:link": "supabase link",
+    "db:seed": "node --env-file=.env --experimental-strip-types scripts/seed-admin.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

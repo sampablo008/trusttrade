@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import { ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { notify } from "@/components/ui/toast";
 
 interface WithdrawalPinFormProps {
   hasPin: boolean;
@@ -23,7 +27,7 @@ const emptyState: FieldState = {
 export default function WithdrawalPinForm({ hasPin, onStateChange }: WithdrawalPinFormProps) {
   const [form, setForm] = useState<FieldState>(emptyState);
   const [submitting, setSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ ok: boolean; msg: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const update = (key: keyof FieldState, raw: string) => {
     const value = raw.replace(/\D/g, "").slice(0, 6);
@@ -33,7 +37,7 @@ export default function WithdrawalPinForm({ hasPin, onStateChange }: WithdrawalP
   const submit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitting(true);
-    setFeedback(null);
+    setError(null);
     try {
       const payload: Record<string, string> = {
         newPin: form.newPin,
@@ -55,16 +59,15 @@ export default function WithdrawalPinForm({ hasPin, onStateChange }: WithdrawalP
       }
 
       setForm(emptyState);
-      setFeedback({
-        ok: true,
-        msg:
-          json.data.action === "set"
-            ? "Withdrawal PIN set. We emailed a confirmation."
-            : "Withdrawal PIN updated. We emailed a confirmation.",
-      });
+      notify.success(
+        json.data.action === "set" ? "Withdrawal PIN set" : "Withdrawal PIN updated",
+        "We emailed a confirmation.",
+      );
       onStateChange?.(true);
     } catch (err) {
-      setFeedback({ ok: false, msg: (err as Error).message });
+      const msg = (err as Error).message;
+      setError(msg);
+      notify.error("Could not update PIN", msg);
     } finally {
       setSubmitting(false);
     }
@@ -73,7 +76,7 @@ export default function WithdrawalPinForm({ hasPin, onStateChange }: WithdrawalP
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <div className="flex items-center gap-2">
-        <ShieldCheck size={16} className="text-brand" />
+        <ShieldCheck size={16} className="text-brand" aria-hidden="true" />
         <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted">
           {hasPin ? "Change withdrawal PIN" : "Set withdrawal PIN"}
         </h3>
@@ -81,74 +84,71 @@ export default function WithdrawalPinForm({ hasPin, onStateChange }: WithdrawalP
 
       <p className="text-xs leading-5 text-muted">
         Your 6-digit PIN is required for every withdrawal. Keep it private — never share it
-        with anyone, including {" "}
+        with anyone, including{" "}
         <span className="font-semibold text-foreground">TrustTrade</span> staff.
       </p>
 
       <div className="flex flex-col gap-3">
         {hasPin ? (
-          <PinInput
-            label="Current PIN"
-            value={form.currentPin}
-            onChange={(value) => update("currentPin", value)}
-            autoFocus
-          />
+          <FormField htmlFor="current-pin" label="Current PIN" required>
+            <PinInput
+              id="current-pin"
+              value={form.currentPin}
+              onChange={(value) => update("currentPin", value)}
+              autoFocus
+            />
+          </FormField>
         ) : null}
-        <PinInput
-          label="New PIN"
-          value={form.newPin}
-          onChange={(value) => update("newPin", value)}
-          hint="Exactly 6 digits."
-        />
-        <PinInput
+        <FormField htmlFor="new-pin" label="New PIN" required hint="Exactly 6 digits.">
+          <PinInput
+            id="new-pin"
+            value={form.newPin}
+            onChange={(value) => update("newPin", value)}
+          />
+        </FormField>
+        <FormField
+          htmlFor="confirm-pin"
           label="Confirm new PIN"
-          value={form.confirmPin}
-          onChange={(value) => update("confirmPin", value)}
-        />
+          required
+          error={error ?? undefined}
+        >
+          <PinInput
+            id="confirm-pin"
+            value={form.confirmPin}
+            onChange={(value) => update("confirmPin", value)}
+          />
+        </FormField>
       </div>
 
-      {feedback ? (
-        <p className={`text-xs font-semibold ${feedback.ok ? "text-up" : "text-down"}`}>
-          {feedback.msg}
-        </p>
-      ) : null}
-
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-50"
-      >
+      <Button type="submit" loading={submitting} className="self-start">
         {submitting ? "Saving…" : hasPin ? "Update PIN" : "Set PIN"}
-      </button>
+      </Button>
     </form>
   );
 }
 
-interface PinInputProps {
-  label: string;
+const PinInput = ({
+  id,
+  value,
+  onChange,
+  autoFocus,
+}: {
+  id: string;
   value: string;
   onChange: (value: string) => void;
-  hint?: string;
   autoFocus?: boolean;
-}
-
-const PinInput = ({ label, value, onChange, hint, autoFocus }: PinInputProps) => (
-  <label className="flex flex-col gap-1">
-    <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted">
-      {label}
-    </span>
-    <input
-      type="password"
-      inputMode="numeric"
-      autoComplete="off"
-      pattern="\d{6}"
-      maxLength={6}
-      autoFocus={autoFocus}
-      required
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="rounded-xl border border-border bg-background/30 px-4 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none focus:border-brand"
-    />
-    {hint ? <span className="text-[11px] text-muted">{hint}</span> : null}
-  </label>
+}) => (
+  <Input
+    id={id}
+    type="password"
+    inputMode="numeric"
+    autoComplete="off"
+    pattern="\d{6}"
+    maxLength={6}
+    autoFocus={autoFocus}
+    required
+    value={value}
+    onChange={(event) => onChange(event.target.value)}
+    className="text-center font-mono text-lg tracking-[0.4em]"
+  />
 );

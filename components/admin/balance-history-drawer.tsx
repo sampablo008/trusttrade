@@ -143,9 +143,9 @@ export default function BalanceHistoryDrawer({
               const amount = renderAmount(tx);
               const toneClass =
                 amount.tone === "up"
-                  ? "text-[#0ecb81]"
+                  ? "text-up"
                   : amount.tone === "down"
-                  ? "text-[#f6465d]"
+                  ? "text-down"
                   : "text-muted";
               return (
                 <li

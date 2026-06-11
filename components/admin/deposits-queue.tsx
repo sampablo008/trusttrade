@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import {
-  CheckCircle,
-  XCircle,
-  Eye,
-  AlertCircle,
-  RefreshCw,
-} from "lucide-react";
+import { useMemo, useState } from "react";
+import { CheckCircle, XCircle, Eye, RefreshCw, Inbox } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { Deposit, DepositStatus } from "@/types/deposit";
+import { Button } from "@/components/ui/Button";
+import { DataTable } from "@/components/ui/DataTable";
+import { StatusPill } from "@/components/ui/StatusPill";
+import { Modal } from "@/components/ui/Modal";
+import { FormField } from "@/components/ui/FormField";
+import { Input, Textarea } from "@/components/ui/Input";
+import { CopyButton } from "@/components/ui/CopyButton";
+import EmptyState from "@/components/ui/EmptyState";
+import { notify } from "@/components/ui/toast";
 
 const formatDepositAmount = (deposit: Deposit) => {
   if (deposit.amount != null && deposit.amount > 0) {
@@ -21,12 +25,6 @@ const formatDepositAmount = (deposit: Deposit) => {
   return formatUsdFromCents(deposit.amountCents);
 };
 
-const STATUS_COLORS: Record<DepositStatus, string> = {
-  pending: "bg-yellow-400/15 text-yellow-400",
-  approved: "bg-up/15 text-up",
-  rejected: "bg-down/15 text-down",
-};
-
 interface Props {
   initialDeposits: Deposit[];
 }
@@ -34,18 +32,23 @@ interface Props {
 export default function DepositsQueue({ initialDeposits }: Props) {
   const [deposits, setDeposits] = useState<Deposit[]>(initialDeposits);
   const [statusFilter, setStatusFilter] = useState<DepositStatus | "all">("pending");
+  const [refreshing, setRefreshing] = useState(false);
   const [lightboxPath, setLightboxPath] = useState<string | null>(null);
   const [approveTarget, setApproveTarget] = useState<Deposit | null>(null);
   const [approveAmount, setApproveAmount] = useState("");
   const [approveNote, setApproveNote] = useState("");
-  const [rejectId, setRejectId] = useState<string | null>(null);
+  const [approveError, setApproveError] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Deposit | null>(null);
   const [rejectNote, setRejectNote] = useState("");
   const [busy, setBusy] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
 
-  const filtered = statusFilter === "all"
-    ? deposits
-    : deposits.filter((d) => d.status === statusFilter);
+  const filtered = useMemo(
+    () =>
+      statusFilter === "all"
+        ? deposits
+        : deposits.filter((d) => d.status === statusFilter),
+    [deposits, statusFilter],
+  );
 
   const setDepositStatus = (id: string, updated: Deposit) =>
     setDeposits((prev) => prev.map((d) => (d.id === id ? updated : d)));
@@ -53,7 +56,8 @@ export default function DepositsQueue({ initialDeposits }: Props) {
   const toggleBusy = (id: string, on: boolean) =>
     setBusy((prev) => {
       const next = new Set(prev);
-      if (on) { next.add(id); } else { next.delete(id); }
+      if (on) next.add(id);
+      else next.delete(id);
       return next;
     });
 
@@ -65,72 +69,196 @@ export default function DepositsQueue({ initialDeposits }: Props) {
         : (deposit.amountCents / 100).toFixed(2),
     );
     setApproveNote("");
-    setError(null);
+    setApproveError(null);
   };
 
   const closeApprove = () => {
     setApproveTarget(null);
     setApproveAmount("");
     setApproveNote("");
+    setApproveError(null);
   };
 
   const handleApprove = async () => {
     if (!approveTarget) return;
     const parsed = Number.parseFloat(approveAmount);
     if (!Number.isFinite(parsed) || parsed <= 0) {
-      setError("Enter an amount greater than zero.");
+      setApproveError("Enter an amount greater than zero.");
       return;
     }
     const id = approveTarget.id;
     toggleBusy(id, true);
-    setError(null);
+    setApproveError(null);
     const res = await fetch(`/api/admin/deposits/${id}/approve`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        amount: parsed,
-        note: approveNote.trim() || undefined,
-      }),
+      body: JSON.stringify({ amount: parsed, note: approveNote.trim() || undefined }),
     });
     toggleBusy(id, false);
     if (res.ok) {
       const data = (await res.json()) as { deposit: Deposit };
       setDepositStatus(id, data.deposit);
+      notify.success("Deposit approved", "User balance credited.");
       closeApprove();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
-      setError(json.error?.message ?? "Approve failed.");
+      setApproveError(json.error?.message ?? "Approve failed.");
     }
   };
 
   const handleReject = async () => {
-    if (!rejectId || !rejectNote.trim()) return;
-    toggleBusy(rejectId, true);
-    setError(null);
-    const res = await fetch(`/api/admin/deposits/${rejectId}/reject`, {
+    if (!rejectTarget || !rejectNote.trim()) return;
+    const id = rejectTarget.id;
+    toggleBusy(id, true);
+    const res = await fetch(`/api/admin/deposits/${id}/reject`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ note: rejectNote }),
     });
-    toggleBusy(rejectId, false);
+    toggleBusy(id, false);
     if (res.ok) {
-      const data = await res.json() as { deposit: Deposit };
-      setDepositStatus(rejectId, data.deposit);
-      setRejectId(null);
+      const data = (await res.json()) as { deposit: Deposit };
+      setDepositStatus(id, data.deposit);
+      notify.success("Deposit rejected");
+      setRejectTarget(null);
       setRejectNote("");
     } else {
-      const json = await res.json() as { error?: { message?: string } };
-      setError(json.error?.message ?? "Reject failed.");
+      const json = (await res.json()) as { error?: { message?: string } };
+      notify.error("Reject failed", json.error?.message);
     }
   };
 
   const refresh = async () => {
-    const res = await fetch(`/api/admin/deposits?status=${statusFilter === "all" ? "" : statusFilter}`);
+    setRefreshing(true);
+    const res = await fetch(
+      `/api/admin/deposits?status=${statusFilter === "all" ? "" : statusFilter}`,
+    );
     if (res.ok) {
-      const data = await res.json() as { items: Deposit[] };
+      const data = (await res.json()) as { items: Deposit[] };
       setDeposits(data.items);
+    } else {
+      notify.error("Could not refresh deposits");
     }
+    setRefreshing(false);
   };
+
+  const UserCell = ({ deposit }: { deposit: Deposit }) =>
+    deposit.userUsername || deposit.userEmail ? (
+      <div className="flex flex-col leading-tight">
+        <span className="text-sm font-semibold text-foreground">
+          {deposit.userUsername ?? "—"}
+        </span>
+        <span className="text-xs text-muted">{deposit.userEmail ?? ""}</span>
+      </div>
+    ) : (
+      <span className="font-mono text-xs text-muted">{deposit.userId.slice(0, 8)}…</span>
+    );
+
+  const Actions = ({ deposit }: { deposit: Deposit }) => (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => setLightboxPath(deposit.proofPath)}
+        aria-label="View deposit screenshot"
+        title="View screenshot"
+        className="rounded-full border border-border p-1.5 text-muted transition focus-ring hover:border-brand hover:text-foreground"
+      >
+        <Eye size={14} aria-hidden="true" />
+      </button>
+      {deposit.status === "pending" && (
+        <>
+          <button
+            onClick={() => openApprove(deposit)}
+            disabled={busy.has(deposit.id)}
+            aria-label="Approve deposit"
+            title="Approve"
+            className="rounded-full border border-up/40 bg-up/10 p-1.5 text-up transition focus-ring hover:bg-up/20 disabled:opacity-40"
+          >
+            <CheckCircle size={14} aria-hidden="true" />
+          </button>
+          <button
+            onClick={() => {
+              setRejectTarget(deposit);
+              setRejectNote("");
+            }}
+            disabled={busy.has(deposit.id)}
+            aria-label="Reject deposit"
+            title="Reject"
+            className="rounded-full border border-down/40 bg-down/10 p-1.5 text-down transition focus-ring hover:bg-down/20 disabled:opacity-40"
+          >
+            <XCircle size={14} aria-hidden="true" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+
+  const columns = useMemo<ColumnDef<Deposit, unknown>[]>(
+    () => [
+      {
+        id: "user",
+        header: "User",
+        enableSorting: false,
+        cell: ({ row }) => <UserCell deposit={row.original} />,
+      },
+      {
+        id: "token",
+        header: "Token / Network",
+        accessorFn: (d) => `${d.tokenSymbol} · ${d.network}`,
+        enableSorting: false,
+        cell: ({ getValue }) => (
+          <span className="text-sm text-foreground">{getValue() as string}</span>
+        ),
+      },
+      {
+        id: "amount",
+        header: "Amount",
+        accessorFn: (d) => d.usdValueCents ?? d.amountCents,
+        cell: ({ row }) => (
+          <span className="text-sm font-semibold tabular-nums text-foreground">
+            {formatDepositAmount(row.original)}
+          </span>
+        ),
+      },
+      {
+        id: "txHash",
+        header: "Tx Hash",
+        enableSorting: false,
+        cell: ({ row }) =>
+          row.original.txHash ? (
+            <span className="flex items-center gap-1 font-mono text-xs text-muted">
+              {row.original.txHash.slice(0, 12)}…
+              <CopyButton value={row.original.txHash} label="Copy transaction hash" />
+            </span>
+          ) : (
+            <span className="text-muted">—</span>
+          ),
+      },
+      {
+        id: "createdAt",
+        header: "Submitted",
+        accessorFn: (d) => new Date(d.createdAt).getTime(),
+        cell: ({ row }) => (
+          <span className="text-xs text-muted">
+            {new Date(row.original.createdAt).toLocaleDateString()}
+          </span>
+        ),
+      },
+      {
+        id: "status",
+        header: "Status",
+        accessorKey: "status",
+        cell: ({ row }) => <StatusPill status={row.original.status} />,
+      },
+      {
+        id: "actions",
+        header: "Actions",
+        enableSorting: false,
+        cell: ({ row }) => <Actions deposit={row.original} />,
+      },
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [busy],
+  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -140,7 +268,8 @@ export default function DepositsQueue({ initialDeposits }: Props) {
           <button
             key={s}
             onClick={() => setStatusFilter(s)}
-            className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition ${
+            aria-pressed={statusFilter === s}
+            className={`rounded-full px-4 py-2 text-sm font-semibold capitalize transition focus-ring ${
               statusFilter === s
                 ? "bg-brand text-background"
                 : "border border-border bg-background/30 text-foreground hover:border-brand"
@@ -149,221 +278,182 @@ export default function DepositsQueue({ initialDeposits }: Props) {
             {s}
           </button>
         ))}
-        <button
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={refresh}
-          className="ml-auto flex items-center gap-2 rounded-full border border-border bg-background/30 px-4 py-2 text-sm font-semibold text-foreground transition hover:border-brand"
+          loading={refreshing}
+          iconLeft={<RefreshCw size={14} aria-hidden="true" />}
+          className="ml-auto"
         >
-          <RefreshCw size={14} />
           Refresh
-        </button>
+        </Button>
       </div>
 
-      {error && (
-        <div className="flex items-center gap-2 rounded-[12px] border border-down/40 bg-down/10 px-4 py-3">
-          <AlertCircle size={16} className="text-down" />
-          <p className="text-sm text-down">{error}</p>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="overflow-hidden rounded-[20px] border border-border">
-        <table className="min-w-full divide-y divide-border text-left">
-          <thead className="bg-background/55">
-            <tr>
-              {["User", "Token / Network", "Amount", "Tx Hash", "Submitted", "Status", "Actions"].map((h) => (
-                <th key={h} className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border bg-surface">
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-sm text-muted">
-                  No deposits found.
-                </td>
-              </tr>
-            )}
-            {filtered.map((deposit) => (
-              <tr key={deposit.id} className="hover:bg-background/20">
-                <td className="px-4 py-4 align-top">
-                  {deposit.userUsername || deposit.userEmail ? (
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-sm font-semibold text-foreground">
-                        {deposit.userUsername ?? "—"}
-                      </span>
-                      <span className="text-xs text-muted">
-                        {deposit.userEmail ?? ""}
-                      </span>
-                    </div>
-                  ) : (
-                    <span className="font-mono text-xs text-muted">{deposit.userId.slice(0, 8)}…</span>
-                  )}
-                </td>
-                <td className="px-4 py-4 text-sm text-foreground">
-                  {deposit.tokenSymbol} · {deposit.network}
-                </td>
-                <td className="px-4 py-4 text-sm font-semibold text-foreground">
+      <DataTable
+        columns={columns}
+        data={filtered}
+        getRowId={(d) => d.id}
+        emptyState={
+          <EmptyState
+            icon={Inbox}
+            title="No deposits found"
+            description="Nothing matches this filter right now."
+          />
+        }
+        mobileCard={(deposit) => (
+          <div className="space-y-3">
+            <div className="flex items-start justify-between gap-3">
+              <UserCell deposit={deposit} />
+              <StatusPill status={deposit.status} />
+            </div>
+            <dl className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-muted">Amount</dt>
+                <dd className="font-semibold tabular-nums text-foreground">
                   {formatDepositAmount(deposit)}
-                </td>
-                <td className="px-4 py-4 font-mono text-xs text-muted">
-                  {deposit.txHash ? `${deposit.txHash.slice(0, 12)}…` : "—"}
-                </td>
-                <td className="px-4 py-4 text-xs text-muted">
-                  {new Date(deposit.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-4 py-4">
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${STATUS_COLORS[deposit.status]}`}>
-                    {deposit.status}
-                  </span>
-                </td>
-                <td className="px-4 py-4">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setLightboxPath(deposit.proofPath)}
-                      title="View screenshot"
-                      className="rounded-full border border-border p-1.5 text-muted transition hover:border-brand hover:text-foreground"
-                    >
-                      <Eye size={14} />
-                    </button>
-                    {deposit.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() => openApprove(deposit)}
-                          disabled={busy.has(deposit.id)}
-                          title="Approve"
-                          className="rounded-full border border-up/40 bg-up/10 p-1.5 text-up transition hover:bg-up/20 disabled:opacity-40"
-                        >
-                          <CheckCircle size={14} />
-                        </button>
-                        <button
-                          onClick={() => setRejectId(deposit.id)}
-                          disabled={busy.has(deposit.id)}
-                          title="Reject"
-                          className="rounded-full border border-down/40 bg-down/10 p-1.5 text-down transition hover:bg-down/20 disabled:opacity-40"
-                        >
-                          <XCircle size={14} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[11px] uppercase tracking-wide text-muted">Token</dt>
+                <dd className="text-foreground">
+                  {deposit.tokenSymbol} · {deposit.network}
+                </dd>
+              </div>
+            </dl>
+            <Actions deposit={deposit} />
+          </div>
+        )}
+      />
 
       {/* Lightbox */}
-      {lightboxPath && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur"
-          onClick={() => setLightboxPath(null)}
-        >
-          <div className="max-h-[90vh] max-w-[90vw] overflow-hidden rounded-[20px] border border-border">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/media/deposit-proofs/${lightboxPath}`}
-              alt="Deposit proof"
-              className="max-h-[85vh] w-auto object-contain"
-            />
-          </div>
-        </div>
-      )}
+      <Modal
+        open={Boolean(lightboxPath)}
+        onClose={() => setLightboxPath(null)}
+        title="Deposit proof"
+        size="lg"
+      >
+        {lightboxPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={`/api/media/deposit-proofs/${lightboxPath}`}
+            alt="Deposit proof screenshot"
+            className="max-h-[70vh] w-full rounded-xl object-contain"
+          />
+        ) : null}
+      </Modal>
 
       {/* Approve modal */}
-      {approveTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur">
-          <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
-            <h3 className="font-display text-2xl text-foreground">Approve deposit</h3>
-            <p className="mt-2 text-sm text-muted">
-              Confirm the {approveTarget.tokenSymbol} amount to credit. Submitted:{" "}
-              <span className="font-semibold text-foreground">
-                {formatDepositAmount(approveTarget)}
-              </span>
-              .
-            </p>
-
-            <label className="mt-5 block text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Amount ({approveTarget.tokenSymbol})
-            </label>
-            <div className="mt-2 flex items-center gap-2 rounded-[12px] border border-border bg-background/30 px-4 py-3">
-              <input
+      <Modal
+        open={Boolean(approveTarget)}
+        onClose={closeApprove}
+        title="Approve deposit"
+        description={
+          approveTarget
+            ? `Confirm the ${approveTarget.tokenSymbol} amount to credit. Submitted: ${formatDepositAmount(
+                approveTarget,
+              )}.`
+            : undefined
+        }
+        dismissible={!approveTarget || !busy.has(approveTarget.id)}
+        footer={
+          approveTarget ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={closeApprove}
+                disabled={busy.has(approveTarget.id)}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleApprove}
+                loading={busy.has(approveTarget.id)}
+              >
+                Approve &amp; credit
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        {approveTarget ? (
+          <div className="space-y-4">
+            <FormField
+              htmlFor="approve-amount"
+              label={`Amount (${approveTarget.tokenSymbol})`}
+              required
+              error={approveError ?? undefined}
+            >
+              <Input
+                id="approve-amount"
                 type="number"
                 min="0"
                 step="any"
                 value={approveAmount}
                 onChange={(e) => setApproveAmount(e.target.value)}
-                className="flex-1 bg-transparent text-sm text-foreground outline-none"
+                invalid={Boolean(approveError)}
               />
-              <span className="text-sm text-muted">{approveTarget.tokenSymbol}</span>
-            </div>
-
-            <label className="mt-4 block text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Internal note (optional)
-            </label>
-            <textarea
-              value={approveNote}
-              onChange={(e) => setApproveNote(e.target.value)}
-              rows={2}
-              placeholder="Visible in the user's deposit history."
-              className="mt-2 w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-            />
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={handleApprove}
-                disabled={busy.has(approveTarget.id)}
-                className="flex-1 rounded-full bg-up px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
-              >
-                {busy.has(approveTarget.id) ? "Approving…" : "Approve & credit"}
-              </button>
-              <button
-                onClick={closeApprove}
-                disabled={busy.has(approveTarget.id)}
-                className="flex-1 rounded-full border border-border bg-background/30 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand disabled:opacity-40"
-              >
-                Cancel
-              </button>
-            </div>
+            </FormField>
+            <FormField htmlFor="approve-note" label="Internal note (optional)">
+              <Textarea
+                id="approve-note"
+                rows={2}
+                value={approveNote}
+                onChange={(e) => setApproveNote(e.target.value)}
+                placeholder="Visible in the user's deposit history."
+              />
+            </FormField>
           </div>
-        </div>
-      )}
+        ) : null}
+      </Modal>
 
       {/* Reject modal */}
-      {rejectId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/90 backdrop-blur">
-          <div className="w-full max-w-md rounded-[24px] border border-border bg-surface-soft p-8">
-            <h3 className="font-display text-2xl text-foreground">Reject deposit</h3>
-            <p className="mt-2 text-sm text-muted">
-              Provide a reason visible to the user.
-            </p>
-            <textarea
-              value={rejectNote}
-              onChange={(e) => setRejectNote(e.target.value)}
-              rows={3}
-              placeholder="e.g. Screenshot unclear, wrong network…"
-              className="mt-4 w-full rounded-[12px] border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none"
-            />
-            <div className="mt-4 flex gap-3">
-              <button
-                onClick={handleReject}
-                disabled={!rejectNote.trim()}
-                className="flex-1 rounded-full bg-down px-5 py-3 text-sm font-semibold text-background transition hover:opacity-90 disabled:opacity-40"
-              >
-                Confirm Reject
-              </button>
-              <button
-                onClick={() => { setRejectId(null); setRejectNote(""); }}
-                className="flex-1 rounded-full border border-border bg-background/30 px-5 py-3 text-sm font-semibold text-foreground transition hover:border-brand"
+      <Modal
+        open={Boolean(rejectTarget)}
+        onClose={() => {
+          setRejectTarget(null);
+          setRejectNote("");
+        }}
+        title="Reject deposit"
+        description="Provide a reason visible to the user."
+        footer={
+          rejectTarget ? (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => {
+                  setRejectTarget(null);
+                  setRejectNote("");
+                }}
               >
                 Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleReject}
+                loading={busy.has(rejectTarget.id)}
+                disabled={!rejectNote.trim()}
+              >
+                Confirm reject
+              </Button>
+            </>
+          ) : undefined
+        }
+      >
+        <FormField htmlFor="reject-note" label="Reason" required>
+          <Textarea
+            id="reject-note"
+            rows={3}
+            value={rejectNote}
+            onChange={(e) => setRejectNote(e.target.value)}
+            placeholder="e.g. Screenshot unclear, wrong network…"
+          />
+        </FormField>
+      </Modal>
     </div>
   );
 }

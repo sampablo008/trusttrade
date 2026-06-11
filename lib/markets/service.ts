@@ -145,7 +145,7 @@ const mapLiveToken = (row: TokenRow, liveUsd: number | undefined, withdrawFeeBps
     feedSource: row.feed_source,
     iconPath: row.icon_path,
     id: row.id,
-    lastPriceAt: row.last_price_at,
+    lastPriceAt: row.last_price_at ? new Date(row.last_price_at).toISOString() : null,
     name: row.name,
     priceCents: Math.max(Math.round(priceCents), 0),
     shadowOffsetPercent: Number(shadowOffsetPercent.toFixed(2)),

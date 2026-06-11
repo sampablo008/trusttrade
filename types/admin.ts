@@ -158,7 +158,7 @@ export interface AppConfig {
   refDefaultL5Bps: number;
   refMinDepositCents: number;
   signupBonusCents: number;
-  withdrawFeeCents: number;
+  withdrawFeeBps: number;
   withdrawMinCents: number;
 }
 
@@ -174,7 +174,7 @@ export interface UpdateAppConfigInput {
   refDefaultL5Bps?: number;
   refMinDepositCents?: number;
   signupBonusCents?: number;
-  withdrawFeeCents?: number;
+  withdrawFeeBps?: number;
   withdrawMinCents?: number;
 }
 

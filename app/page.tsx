@@ -1,4 +1,6 @@
+import { Suspense } from "react";
 import { Metadata } from "next";
+import { cacheLife } from "next/cache";
 import LandingShell from "@/components/home/landing-shell";
 import { listPromoSlots } from "@/lib/promo/service";
 import { listMarketTokens } from "@/lib/markets/service";
@@ -15,7 +17,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home() {
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <LandingContent />
+    </Suspense>
+  );
+}
+
+async function LandingContent() {
+  "use cache";
+  cacheLife("minutes");
+
   const [promoResult, marketData] = await Promise.all([
     listPromoSlots(true),
     listMarketTokens(),

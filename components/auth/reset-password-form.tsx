@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 
 interface FormState {
   email: string;
@@ -15,7 +18,6 @@ interface ResetPasswordFormProps {
 }
 
 export default function ResetPasswordForm({ prefillEmail }: ResetPasswordFormProps) {
-  const router = useRouter();
   const [form, setForm] = useState<FormState>({
     email: prefillEmail,
     code: "",
@@ -39,12 +41,18 @@ export default function ResetPasswordForm({ prefillEmail }: ResetPasswordFormPro
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      const json = (await res.json()) as { error?: { message: string } };
+      const json = (await res.json()) as {
+        data?: { redirectTo?: string };
+        error?: { message: string };
+      };
       if (!res.ok) {
         throw new Error(json.error?.message ?? "Could not reset password.");
       }
-      setFeedback({ ok: true, msg: "Password updated. Redirecting to sign in…" });
-      setTimeout(() => router.push("/login?reset=1"), 1200);
+      setFeedback({ ok: true, msg: "Password updated. Signing you in…" });
+      // Session cookies are already set by the response; do a full navigation
+      // so middleware picks up the new session.
+      const dest = json.data?.redirectTo ?? "/trade";
+      setTimeout(() => window.location.assign(dest), 800);
     } catch (err) {
       setFeedback({ ok: false, msg: (err as Error).message });
       setSubmitting(false);
@@ -75,19 +83,19 @@ export default function ResetPasswordForm({ prefillEmail }: ResetPasswordFormPro
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <Field label="Email" id="email">
-        <input
+      <FormField htmlFor="email" label="Email" required>
+        <Input
           required
           id="email"
           type="email"
+          autoComplete="email"
           value={form.email}
           onChange={(event) => update("email", event.target.value)}
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
         />
-      </Field>
+      </FormField>
 
-      <Field label="6-digit code" id="code">
-        <input
+      <FormField htmlFor="code" label="6-digit code" required>
+        <Input
           required
           id="code"
           inputMode="numeric"
@@ -96,78 +104,59 @@ export default function ResetPasswordForm({ prefillEmail }: ResetPasswordFormPro
           maxLength={6}
           value={form.code}
           onChange={(event) => update("code", event.target.value.replace(/\D/g, ""))}
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none transition focus:border-brand"
+          className="text-center font-mono text-lg tracking-[0.4em]"
         />
-      </Field>
+      </FormField>
 
-      <Field label="New password" id="newPassword" hint="8+ chars, one uppercase, one number.">
-        <input
+      <FormField
+        htmlFor="newPassword"
+        label="New password"
+        required
+        hint="8+ chars, one uppercase, one number."
+      >
+        <PasswordInput
           required
           id="newPassword"
-          type="password"
           autoComplete="new-password"
           value={form.newPassword}
           onChange={(event) => update("newPassword", event.target.value)}
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
         />
-      </Field>
+      </FormField>
 
-      <Field label="Confirm new password" id="confirmPassword">
-        <input
+      <FormField htmlFor="confirmPassword" label="Confirm new password" required>
+        <PasswordInput
           required
           id="confirmPassword"
-          type="password"
           autoComplete="new-password"
           value={form.confirmPassword}
           onChange={(event) => update("confirmPassword", event.target.value)}
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
         />
-      </Field>
+      </FormField>
 
       {feedback ? (
         <p
+          role={feedback.ok ? "status" : "alert"}
+          aria-live="polite"
           className={`text-sm ${feedback.ok ? "text-up" : "text-down"}`}
         >
           {feedback.msg}
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-4 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="submit" fullWidth size="lg" loading={submitting}>
         {submitting ? "Updating…" : "Reset password"}
-      </button>
+      </Button>
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        fullWidth
         onClick={resend}
         disabled={resending || !form.email}
-        className="w-full text-xs font-semibold uppercase tracking-[0.24em] text-muted transition hover:text-foreground disabled:opacity-50"
+        className="text-xs uppercase tracking-[0.24em] text-muted"
       >
         {resending ? "Sending…" : "Resend code"}
-      </button>
+      </Button>
     </form>
   );
 }
-
-interface FieldProps {
-  label: string;
-  id: string;
-  hint?: string;
-  children: React.ReactNode;
-}
-
-const Field = ({ label, id, hint, children }: FieldProps) => (
-  <div className="space-y-2">
-    <label
-      htmlFor={id}
-      className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-    >
-      {label}
-    </label>
-    {children}
-    {hint ? <p className="text-[11px] text-muted">{hint}</p> : null}
-  </div>
-);

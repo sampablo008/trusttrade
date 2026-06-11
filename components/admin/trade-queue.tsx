@@ -5,7 +5,7 @@ import { formatUsdFromCents } from "@/lib/utils/format";
 import type { AdminTrade, AdminTradeFlag } from "@/types/admin";
 
 const FLAG_STYLES: Record<AdminTradeFlag, string> = {
-  EXPIRING_SOON: "bg-[#f6465d]/15 text-[#f6465d] border border-[#f6465d]/30",
+  EXPIRING_SOON: "bg-down/15 text-down border border-down/30",
   HIGH_STAKE: "bg-brand/15 text-brand border border-brand/30",
   LOW_TRADE_VOLUME: "bg-yellow-500/15 text-yellow-400 border border-yellow-500/30",
   NEW_USER: "bg-purple-500/15 text-purple-400 border border-purple-500/30",
@@ -229,11 +229,11 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
   return (
     <div className="flex flex-col gap-4">
       {settleError && (
-        <div className="flex items-center justify-between gap-3 rounded-2xl border border-[#f6465d]/30 bg-[#f6465d]/10 px-4 py-3 text-sm text-[#f6465d]">
+        <div className="flex items-center justify-between gap-3 rounded-2xl border border-down/30 bg-down/10 px-4 py-3 text-sm text-down">
           <span>{settleError}</span>
           <button
             onClick={() => setSettleError(null)}
-            className="text-xs font-semibold uppercase tracking-wider text-[#f6465d]/80 transition hover:text-[#f6465d]"
+            className="text-xs font-semibold uppercase tracking-wider text-down/80 transition hover:text-down"
           >
             Dismiss
           </button>
@@ -299,19 +299,22 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
           <div className="h-4 w-px bg-border" />
           <button
             onClick={() => settle(Array.from(selected), "win")}
-            className="rounded-full bg-[#0ecb81]/15 px-4 py-1.5 text-xs font-semibold text-[#0ecb81] transition hover:bg-[#0ecb81]/25"
+            aria-label={`Settle ${selected.size} selected as win`}
+            className="rounded-full bg-up/15 px-4 py-1.5 text-xs font-semibold text-up transition focus-ring hover:bg-up/25"
           >
             Win (W)
           </button>
           <button
             onClick={() => settle(Array.from(selected), "lose")}
-            className="rounded-full bg-[#f6465d]/15 px-4 py-1.5 text-xs font-semibold text-[#f6465d] transition hover:bg-[#f6465d]/25"
+            aria-label={`Settle ${selected.size} selected as lose`}
+            className="rounded-full bg-down/15 px-4 py-1.5 text-xs font-semibold text-down transition focus-ring hover:bg-down/25"
           >
             Lose (L)
           </button>
           <button
             onClick={() => settle(Array.from(selected), "void")}
-            className="rounded-full border border-border bg-background/30 px-4 py-1.5 text-xs font-semibold text-muted transition hover:text-foreground"
+            aria-label={`Void ${selected.size} selected`}
+            className="rounded-full border border-border bg-background/30 px-4 py-1.5 text-xs font-semibold text-muted transition focus-ring hover:text-foreground"
           >
             Void (V)
           </button>
@@ -393,9 +396,9 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                 const forced = trade.adminForcedOutcome;
                 const forcedStyle =
                   forced === "win"
-                    ? "bg-[#0ecb81]/15 text-[#0ecb81] border border-[#0ecb81]/40"
+                    ? "bg-up/15 text-up border border-up/40"
                     : forced === "lose"
-                    ? "bg-[#f6465d]/15 text-[#f6465d] border border-[#f6465d]/40"
+                    ? "bg-down/15 text-down border border-down/40"
                     : "bg-muted/20 text-muted border border-muted/40";
 
                 return (
@@ -413,7 +416,7 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                     <td className="px-4 py-3 font-mono text-sm">
                       <span
                         className={`font-semibold tabular-nums ${
-                          isUrgent ? "text-[#f6465d] animate-pulse" : "text-foreground"
+                          isUrgent ? "text-down animate-pulse" : "text-foreground"
                         }`}
                       >
                         {formatMs(remainingMs)}
@@ -434,8 +437,8 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold ${
                           trade.direction === "long"
-                            ? "bg-[#0ecb81]/15 text-[#0ecb81]"
-                            : "bg-[#f6465d]/15 text-[#f6465d]"
+                            ? "bg-up/15 text-up"
+                            : "bg-down/15 text-down"
                         }`}
                       >
                         {trade.direction.toUpperCase()}
@@ -472,19 +475,22 @@ export default function TradeQueue({ initialTrades }: TradeQueueProps) {
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={(e) => { e.stopPropagation(); settle([trade.id], "win"); }}
-                          className="rounded-full bg-[#0ecb81]/15 px-3 py-1 text-xs font-semibold text-[#0ecb81] transition hover:bg-[#0ecb81]/30"
+                          aria-label="Settle as win"
+                          className="rounded-full bg-up/15 px-3 py-1 text-xs font-semibold text-up transition focus-ring hover:bg-up/30"
                         >
                           W
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); settle([trade.id], "lose"); }}
-                          className="rounded-full bg-[#f6465d]/15 px-3 py-1 text-xs font-semibold text-[#f6465d] transition hover:bg-[#f6465d]/30"
+                          aria-label="Settle as lose"
+                          className="rounded-full bg-down/15 px-3 py-1 text-xs font-semibold text-down transition focus-ring hover:bg-down/30"
                         >
                           L
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); settle([trade.id], "void"); }}
-                          className="rounded-full border border-border bg-background/30 px-3 py-1 text-xs font-semibold text-muted transition hover:text-foreground"
+                          aria-label="Settle as void"
+                          className="rounded-full border border-border bg-background/30 px-3 py-1 text-xs font-semibold text-muted transition focus-ring hover:text-foreground"
                         >
                           V
                         </button>

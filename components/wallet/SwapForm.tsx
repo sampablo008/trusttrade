@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { ArrowDownUp, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import CoinIcon from "@/components/ui/CoinIcon";
+import { Button } from "@/components/ui/Button";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { PublicToken } from "@/types/market";
 import type { SwapQuote } from "@/types/swap";
@@ -80,6 +81,7 @@ export default function SwapForm({ tokens, balances }: Props) {
 
   useEffect(() => {
     if (!validInput || sameSide) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale quote when input invalid
       setQuote(null);
       setQuoteError(null);
       return;
@@ -185,16 +187,14 @@ export default function SwapForm({ tokens, balances }: Props) {
           You swapped {success.fromAmount} {success.fromSymbol} for{" "}
           {formatTokenAmount(success.toAmount, success.toSymbol, 8)}.
         </p>
-        <button
-          type="button"
+        <Button
           onClick={() => {
             setSuccess(null);
             location.reload();
           }}
-          className="rounded-full bg-brand px-5 py-2.5 text-sm font-semibold text-background transition hover:brightness-110"
         >
           Make another swap
-        </button>
+        </Button>
       </div>
     );
   }
@@ -232,9 +232,10 @@ export default function SwapForm({ tokens, balances }: Props) {
         <button
           type="button"
           onClick={flip}
-          className="rounded-full border border-border bg-background/40 p-2 text-muted transition hover:border-brand hover:text-foreground"
+          aria-label="Swap pay and receive sides"
+          className="rounded-full border border-border bg-background/40 p-2 text-muted transition focus-ring hover:border-brand hover:text-foreground"
         >
-          <ArrowDownUp size={16} />
+          <ArrowDownUp size={16} aria-hidden="true" />
         </button>
       </div>
 
@@ -312,11 +313,13 @@ export default function SwapForm({ tokens, balances }: Props) {
         </div>
       )}
 
-      <button
+      <Button
         type="button"
+        fullWidth
+        size="lg"
         onClick={submit}
+        loading={submitting}
         disabled={!canSubmit || submitting}
-        className="rounded-2xl bg-brand px-6 py-4 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
       >
         {submitting
           ? "Swapping…"
@@ -333,7 +336,7 @@ export default function SwapForm({ tokens, balances }: Props) {
                     : !sufficient
                       ? `Insufficient ${fromSide?.symbol ?? ""}`
                       : `Swap ${fromSide?.symbol} → ${toSide?.symbol}`}
-      </button>
+      </Button>
     </div>
   );
 }

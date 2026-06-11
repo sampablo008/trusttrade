@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/Button";
+import { FormField } from "@/components/ui/FormField";
+import { Input } from "@/components/ui/Input";
 
 interface VerifyEmailFormProps {
   prefillEmail: string;
@@ -61,31 +64,19 @@ export default function VerifyEmailForm({ prefillEmail }: VerifyEmailFormProps) 
 
   return (
     <form onSubmit={submit} className="space-y-5">
-      <div className="space-y-2">
-        <label
-          className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-          htmlFor="email"
-        >
-          Email
-        </label>
-        <input
+      <FormField htmlFor="email" label="Email" required>
+        <Input
           required
           id="email"
           type="email"
+          autoComplete="email"
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
         />
-      </div>
+      </FormField>
 
-      <div className="space-y-2">
-        <label
-          className="text-xs font-semibold uppercase tracking-[0.24em] text-muted"
-          htmlFor="code"
-        >
-          6-digit code
-        </label>
-        <input
+      <FormField htmlFor="code" label="6-digit code" required>
+        <Input
           required
           id="code"
           inputMode="numeric"
@@ -94,32 +85,34 @@ export default function VerifyEmailForm({ prefillEmail }: VerifyEmailFormProps) 
           maxLength={6}
           value={code}
           onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-          className="w-full rounded-[20px] border border-border bg-background/40 px-4 py-4 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none transition focus:border-brand"
+          className="text-center font-mono text-lg tracking-[0.4em]"
         />
-      </div>
+      </FormField>
 
       {feedback ? (
-        <p className={`text-sm ${feedback.ok ? "text-up" : "text-down"}`}>
+        <p
+          role={feedback.ok ? "status" : "alert"}
+          aria-live="polite"
+          className={`text-sm ${feedback.ok ? "text-up" : "text-down"}`}
+        >
           {feedback.msg}
         </p>
       ) : null}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-4 text-sm font-semibold text-background transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-      >
+      <Button type="submit" fullWidth size="lg" loading={submitting}>
         {submitting ? "Verifying…" : "Verify email"}
-      </button>
+      </Button>
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        fullWidth
         onClick={resend}
         disabled={resending || !email}
-        className="w-full text-xs font-semibold uppercase tracking-[0.24em] text-muted transition hover:text-foreground disabled:opacity-50"
+        className="text-xs uppercase tracking-[0.24em] text-muted"
       >
         {resending ? "Sending…" : "Resend code"}
-      </button>
+      </Button>
     </form>
   );
 }

@@ -99,7 +99,7 @@ export default function AmountInput({
           "flex items-center gap-2 rounded-2xl border bg-background/40 px-4 py-3.5 transition-colors",
           isInvalid
             ? "border-down/60"
-            : "border-white/10 focus-within:border-brand/60",
+            : "border-white/10 focus-within:border-brand/60 focus-within:ring-2 focus-within:ring-brand/30",
         ].join(" ")}
       >
         <span className="text-base font-bold text-muted">$</span>
@@ -112,7 +112,7 @@ export default function AmountInput({
           onFocus={() => setFocused(true)}
           onBlur={handleBlur}
           disabled={disabled}
-          className="flex-1 bg-transparent text-base font-bold text-foreground placeholder:text-muted outline-none"
+          className="flex-1 bg-transparent text-base font-bold text-foreground placeholder:text-muted outline-none focus-visible:outline-none!"
         />
       </div>
 

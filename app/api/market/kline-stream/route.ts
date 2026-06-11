@@ -1,7 +1,5 @@
 import type { NextRequest } from "next/server";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
 
 const ALLOWED_INTERVALS = new Set([
   "1s", "1m", "3m", "5m", "15m", "30m",

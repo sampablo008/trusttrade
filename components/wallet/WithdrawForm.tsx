@@ -10,9 +10,13 @@ import {
   Pencil,
   ShieldCheck,
   Trash2,
-  X,
 } from "lucide-react";
 import CoinIcon from "@/components/ui/CoinIcon";
+import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { FormField } from "@/components/ui/FormField";
+import { CopyButton } from "@/components/ui/CopyButton";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { PublicToken } from "@/types/market";
 import type { PrimaryAddress } from "@/types/primary-address";
@@ -377,11 +381,12 @@ export default function WithdrawForm({
           </label>
           {primary ? (
             <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 min-w-0">
-                <ShieldCheck size={14} className="shrink-0 text-brand" />
+              <div className="flex min-w-0 items-center gap-2">
+                <ShieldCheck size={14} className="shrink-0 text-brand" aria-hidden="true" />
                 <span className="truncate font-mono text-sm text-foreground">
                   {primary.address}
                 </span>
+                <CopyButton value={primary.address} label="Copy primary address" />
               </div>
               <div className="flex shrink-0 gap-2">
                 <button
@@ -498,113 +503,96 @@ export default function WithdrawForm({
         </div>
       )}
 
-      <button
+      <Button
         type="button"
+        fullWidth
+        size="lg"
         onClick={() => {
           setWithdrawalPin("");
           setErrorMsg(null);
           setReviewOpen(true);
         }}
         disabled={!canReview || submitStatus === "loading"}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl bg-brand px-6 py-4 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none"
+        iconLeft={<ArrowDownToLine size={16} aria-hidden="true" />}
       >
-        <ArrowDownToLine size={16} />
         Review withdrawal
-      </button>
+      </Button>
 
       {reviewOpen && selected && primary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-          <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-surface shadow-2xl">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="text-brand" />
-                <h3 className="font-display text-base text-foreground">Review withdrawal</h3>
-              </div>
-              <button
-                type="button"
+        <Modal
+          open
+          onClose={() => setReviewOpen(false)}
+          title="Review withdrawal"
+          dismissible={submitStatus !== "loading"}
+          footer={
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setReviewOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted transition hover:border-brand hover:text-foreground"
-                aria-label="Close"
+                disabled={submitStatus === "loading"}
               >
-                <X size={14} />
-              </button>
+                Edit details
+              </Button>
+              <Button
+                size="sm"
+                onClick={submitWithPin}
+                loading={submitStatus === "loading"}
+              >
+                Confirm &amp; submit
+              </Button>
+            </>
+          }
+        >
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-border bg-background/30 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+                You will receive
+              </p>
+              <p className="mt-1 font-display text-3xl font-bold tabular-nums text-foreground">
+                {formatTokenAmount(net, selected.symbol, selected.decimals)}
+              </p>
+              <p className="text-xs text-muted">
+                ≈ {formatUsdFromCents(Math.round(net * selected.usdPriceCents))} on {network}
+              </p>
             </div>
 
-            <div className="flex flex-col gap-4 px-6 py-5">
-              <div className="rounded-2xl border border-border bg-background/30 p-4">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  You will receive
-                </p>
-                <p className="mt-1 font-display text-3xl font-bold text-foreground tabular-nums">
-                  {formatTokenAmount(net, selected.symbol, selected.decimals)}
-                </p>
-                <p className="text-xs text-muted">
-                  ≈ {formatUsdFromCents(Math.round(net * selected.usdPriceCents))} on {network}
-                </p>
+            <dl className="flex flex-col gap-2 text-sm">
+              <Row label="Token" value={selected.symbol} />
+              <Row label="Network" value={network} />
+              <Row label="Destination" value={truncateAddress(primary.address)} mono />
+              <Row
+                label="Fee"
+                value={`${formatTokenAmount(fee, selected.symbol, selected.decimals)} (${(selected.withdrawFeeBps / 100).toFixed(2)}%)`}
+              />
+              <Row label="ETA" value="1-3 hours" />
+            </dl>
+
+            <FormField htmlFor="withdrawalPin" label="Confirm with 6-digit withdrawal PIN" required>
+              <Input
+                id="withdrawalPin"
+                type="password"
+                inputMode="numeric"
+                autoComplete="off"
+                pattern="\d{6}"
+                maxLength={6}
+                autoFocus
+                value={withdrawalPin}
+                onChange={(event) =>
+                  setWithdrawalPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                className="text-center font-mono text-lg tracking-[0.4em]"
+              />
+            </FormField>
+
+            {errorMsg && (
+              <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
+                <AlertCircle size={14} className="text-down" aria-hidden="true" />
+                <p className="text-xs text-down">{errorMsg}</p>
               </div>
-
-              <dl className="flex flex-col gap-2 text-sm">
-                <Row label="Token" value={selected.symbol} />
-                <Row label="Network" value={network} />
-                <Row label="Destination" value={truncateAddress(primary.address)} mono />
-                <Row
-                  label="Fee"
-                  value={`${formatTokenAmount(fee, selected.symbol, selected.decimals)} (${(selected.withdrawFeeBps / 100).toFixed(2)}%)`}
-                />
-                <Row label="ETA" value="1-3 hours" />
-              </dl>
-
-              <div className="flex flex-col gap-2 rounded-2xl border border-border bg-background/30 px-4 py-4">
-                <label
-                  htmlFor="withdrawalPin"
-                  className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted"
-                >
-                  Confirm with 6-digit withdrawal PIN
-                </label>
-                <input
-                  id="withdrawalPin"
-                  type="password"
-                  inputMode="numeric"
-                  autoComplete="off"
-                  pattern="\d{6}"
-                  maxLength={6}
-                  autoFocus
-                  value={withdrawalPin}
-                  onChange={(event) =>
-                    setWithdrawalPin(event.target.value.replace(/\D/g, "").slice(0, 6))
-                  }
-                  className="rounded-xl border border-border bg-background/40 px-4 py-2.5 text-center font-mono text-lg tracking-[0.4em] text-foreground outline-none focus:border-brand"
-                />
-              </div>
-
-              {errorMsg && (
-                <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
-                  <AlertCircle size={14} className="text-down" />
-                  <p className="text-xs text-down">{errorMsg}</p>
-                </div>
-              )}
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setReviewOpen(false)}
-                  disabled={submitStatus === "loading"}
-                  className="flex-1 rounded-xl border border-border bg-background/40 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-border/80 disabled:opacity-40"
-                >
-                  Edit details
-                </button>
-                <button
-                  type="button"
-                  onClick={submitWithPin}
-                  disabled={submitStatus === "loading"}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand px-4 py-3 text-sm font-semibold text-background shadow-lg shadow-brand/25 transition hover:brightness-110 disabled:opacity-40"
-                >
-                  {submitStatus === "loading" ? "Submitting…" : "Confirm & submit"}
-                </button>
-              </div>
-            </div>
+            )}
           </div>
-        </div>
+        </Modal>
       )}
 
       {bindOpen && selected && (
@@ -727,56 +715,37 @@ function PinModal({
   children: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-border bg-surface shadow-2xl">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div className="flex items-center gap-2">
-            <ShieldCheck size={16} className="text-brand" />
-            <h3 className="font-display text-base text-foreground">{title}</h3>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full border border-border text-muted transition hover:border-brand hover:text-foreground"
-            aria-label="Close"
+    <Modal
+      open
+      onClose={onClose}
+      title={title}
+      dismissible={!isLoading}
+      footer={
+        <>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isLoading}>
+            Cancel
+          </Button>
+          <Button
+            variant={submitVariant === "danger" ? "danger" : "primary"}
+            size="sm"
+            onClick={onSubmit}
+            loading={isLoading}
           >
-            <X size={14} />
-          </button>
-        </div>
-
-        <div className="flex flex-col gap-4 px-6 py-5">
-          <p className="text-sm text-muted">{description}</p>
-          {children}
-          {error && (
-            <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
-              <AlertCircle size={14} className="text-down" />
-              <p className="text-xs text-down">{error}</p>
-            </div>
-          )}
-          <div className="flex gap-2 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isLoading}
-              className="flex-1 rounded-xl border border-border bg-background/40 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-border/80 disabled:opacity-40"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={isLoading}
-              className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold text-background shadow-lg transition hover:brightness-110 disabled:opacity-40 ${
-                submitVariant === "danger"
-                  ? "bg-down shadow-down/25"
-                  : "bg-brand shadow-brand/25"
-              }`}
-            >
-              {isLoading ? "Saving…" : submitLabel}
-            </button>
+            {submitLabel}
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-muted">{description}</p>
+        {children}
+        {error && (
+          <div className="flex items-center gap-2 rounded-xl border border-down/40 bg-down/10 px-3 py-2">
+            <AlertCircle size={14} className="text-down" aria-hidden="true" />
+            <p className="text-xs text-down">{error}</p>
           </div>
-        </div>
+        )}
       </div>
-    </div>
+    </Modal>
   );
 }

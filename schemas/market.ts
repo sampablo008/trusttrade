@@ -7,7 +7,7 @@ export const publicTokenSchema = z.object({
   feedSource: z.enum(["synthetic", "shadow", "replay", "frozen"]),
   iconPath: z.string().nullable(),
   id: z.string().uuid(),
-  lastPriceAt: z.string().datetime().nullable(),
+  lastPriceAt: z.string().datetime({ offset: true }).nullable(),
   name: z.string().min(1),
   priceCents: z.number().int().nonnegative(),
   shadowOffsetPercent: z.number(),

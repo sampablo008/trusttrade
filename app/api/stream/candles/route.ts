@@ -4,7 +4,6 @@ import { getPreviewCandles } from "@/lib/markets/preview-data";
 import { publicCandlesQuerySchema } from "@/schemas/market";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export const dynamic = "force-dynamic";
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 const TF_TABLE_MAP: Record<string, string> = {

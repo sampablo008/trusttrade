@@ -1,8 +1,9 @@
+import { Suspense } from "react";
 import { type Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
-import AppShell from "@/components/layout/AppShell";
 import TradeShell from "@/components/trade/TradeShell";
 import TokenSwitcher from "@/components/trade/TokenSwitcher";
+import { RouteSkeleton } from "@/components/ui/RouteSkeleton";
 import { assertAuthenticated } from "@/lib/auth/session";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { TOP_COINS, findTopCoin } from "@/lib/markets/top-coins";
@@ -11,6 +12,13 @@ import { listMarketTokens, listTradePeriods } from "@/lib/markets/service";
 import { getBalance, listActiveTrades } from "@/lib/trades/service";
 import { getWalletBalances } from "@/lib/wallet-balances/service";
 import type { PublicToken } from "@/types/market";
+
+// Pre-generate static shells for the known tradable symbols so the route's
+// static shell (nav frame + skeleton) is prerenderable. Unknown symbols still
+// render dynamically.
+export function generateStaticParams() {
+  return TOP_COINS.map((coin) => ({ symbol: coin.symbol }));
+}
 
 export async function generateMetadata(
   { params }: { params: Promise<{ symbol: string }> },
@@ -45,7 +53,21 @@ function stubToken(symbol: string, name: string): PublicToken {
   };
 }
 
-export default async function TradeSymbolPage({
+export default function TradeSymbolPage({
+  params,
+}: {
+  params: Promise<{ symbol: string }>;
+}) {
+  return (
+    <main className="flex w-full flex-col gap-3 px-4 py-4 sm:px-6 lg:h-[calc(100dvh-3.75rem)] lg:overflow-hidden lg:px-16">
+      <Suspense fallback={<RouteSkeleton className="space-y-6" />}>
+        <TradeSymbolContent params={params} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function TradeSymbolContent({
   params,
 }: {
   params: Promise<{ symbol: string }>;
@@ -111,21 +133,19 @@ export default async function TradeSymbolPage({
   );
 
   return (
-    <AppShell>
-      <main className="mx-auto flex w-full max-w-350 flex-col gap-4 px-4 py-6 sm:px-6 lg:px-8">
-        <TokenSwitcher coins={TOP_COINS} iconPaths={iconPaths} />
-        <TradeShell
-          coin={coin}
-          coins={TOP_COINS}
-          iconPaths={iconPaths}
-          token={token}
-          periods={periodsResult.items}
-          initialBalance={balance}
-          initialTrades={activeTrades.items}
-          tokenFreeBalance={tokenFreeBalance}
-          tokenUsdPriceCents={tokenUsdPriceCents}
-        />
-      </main>
-    </AppShell>
+    <>
+      <TokenSwitcher coins={TOP_COINS} iconPaths={iconPaths} />
+      <TradeShell
+        coin={coin}
+        coins={TOP_COINS}
+        iconPaths={iconPaths}
+        token={token}
+        periods={periodsResult.items}
+        initialBalance={balance}
+        initialTrades={activeTrades.items}
+        tokenFreeBalance={tokenFreeBalance}
+        tokenUsdPriceCents={tokenUsdPriceCents}
+      />
+    </>
   );
 }

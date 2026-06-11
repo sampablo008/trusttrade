@@ -122,7 +122,7 @@ export default function OrderTicket({
   };
 
   return (
-    <div className="sticky top-20 flex flex-col gap-4 overflow-hidden rounded-[28px] border border-border bg-surface-soft p-5 shadow-2xl shadow-black/40">
+    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-surface-soft p-5 shadow-2xl shadow-black/40">
       {/* Header */}
       <div className="relative flex items-center justify-between border-b border-border/60 pb-4">
         <button
@@ -132,7 +132,7 @@ export default function OrderTicket({
           aria-haspopup="listbox"
           aria-expanded={tokenMenuOpen}
           className={[
-            "flex items-center gap-2 rounded-xl px-1.5 py-1 -ml-1.5 text-left transition",
+            "-ml-1.5 flex items-center gap-2 rounded-xl px-1.5 py-1 text-left transition focus-ring",
             canSwitchToken
               ? "hover:bg-background/40"
               : "cursor-default",
@@ -277,7 +277,7 @@ export default function OrderTicket({
         disabled={!canPlace}
         onClick={handlePlace}
         className={[
-          "group flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-bold tracking-wide transition-all",
+          "group mt-auto flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-bold tracking-wide transition-all focus-ring",
           "bg-brand text-white shadow-lg shadow-brand/25 hover:brightness-110",
           !canPlace ? "cursor-not-allowed opacity-50" : "",
           isPending ? "animate-pulse" : "",

@@ -10,8 +10,6 @@ export const metadata: Metadata = {
   description: "Open your welcome gift to claim your signup bonus.",
 };
 
-export const dynamic = "force-dynamic";
-
 export default async function WelcomePage() {
   const { userId } = await assertUserApi();
   const status = await getSignupBonusStatus(userId);

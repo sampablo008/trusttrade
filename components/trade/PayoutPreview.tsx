@@ -26,18 +26,19 @@ export default function PayoutPreview({
   const maxTotalCents = calcTotalPayout(stakeCents, maxBps);
 
   return (
-    <div className="rounded-2xl border border-brand/20 bg-brand/5 px-4 py-3.5">
+    <div className="flex flex-col gap-3.5 rounded-2xl border border-brand/20 bg-brand/5 px-5 py-5">
       <div className="flex items-center justify-between">
         <span className="text-xs text-muted">Total payout</span>
-        <span className="text-sm font-bold text-foreground">
+        <span className="text-base font-bold text-foreground tabular-nums">
           {isRange
             ? `${formatUsdFromCents(minTotalCents)} – ${formatUsdFromCents(maxTotalCents)}`
             : formatUsdFromCents(minTotalCents)}
         </span>
       </div>
-      <div className="mt-2 flex items-center justify-between">
+      <div className="h-px bg-brand/10" />
+      <div className="flex items-center justify-between">
         <span className="text-xs text-muted">Profit</span>
-        <span className="text-sm font-bold text-brand">
+        <span className="text-base font-bold text-brand tabular-nums">
           {isRange
             ? `+${formatUsdFromCents(minProfitCents)} – ${formatUsdFromCents(maxProfitCents)}`
             : `+${formatUsdFromCents(minProfitCents)}`}{" "}
@@ -47,7 +48,7 @@ export default function PayoutPreview({
         </span>
       </div>
       {isRange ? (
-        <p className="mt-2 text-[10px] text-muted/80">
+        <p className="text-[10px] leading-relaxed text-muted/80">
           Actual rate is sampled randomly per trade within this range.
         </p>
       ) : null}

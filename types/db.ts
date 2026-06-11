@@ -106,7 +106,7 @@ export type Database = {
           ref_min_deposit_cents: number
           signup_bonus_cents: number
           updated_at: string
-          withdraw_fee_cents: number
+          withdraw_fee_bps: number
           withdraw_min_cents: number
         }
         Insert: {
@@ -125,7 +125,7 @@ export type Database = {
           ref_min_deposit_cents?: number
           signup_bonus_cents?: number
           updated_at?: string
-          withdraw_fee_cents?: number
+          withdraw_fee_bps?: number
           withdraw_min_cents?: number
         }
         Update: {
@@ -144,7 +144,7 @@ export type Database = {
           ref_min_deposit_cents?: number
           signup_bonus_cents?: number
           updated_at?: string
-          withdraw_fee_cents?: number
+          withdraw_fee_bps?: number
           withdraw_min_cents?: number
         }
         Relationships: []

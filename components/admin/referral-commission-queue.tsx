@@ -1,20 +1,18 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Check, X, ChevronDown } from "lucide-react";
+import { Check, X, ChevronDown, Inbox } from "lucide-react";
 import type { ReferralCommission } from "@/types/referrals";
 import { formatUsdFromCents, formatUsdtFromCents } from "@/lib/utils/format";
+import { Button } from "@/components/ui/Button";
+import { StatusPill } from "@/components/ui/StatusPill";
+import { Badge } from "@/components/ui/Badge";
+import EmptyState from "@/components/ui/EmptyState";
+import { notify } from "@/components/ui/toast";
 
 interface ReferralCommissionQueueProps {
   initialCommissions: ReferralCommission[];
 }
-
-const STATUS_PILL: Record<string, string> = {
-  approved: "bg-up/10 text-up",
-  clawed_back: "bg-down/10 text-down",
-  pending: "bg-brand/10 text-brand",
-  rejected: "bg-down/10 text-down",
-};
 
 export default function ReferralCommissionQueue({
   initialCommissions,
@@ -24,27 +22,21 @@ export default function ReferralCommissionQueue({
   const [statusFilter, setStatusFilter] = useState<string>("pending");
   const [loading, setLoading] = useState<Set<string>>(new Set());
 
-  const visible = commissions.filter(
-    (c) => !statusFilter || c.status === statusFilter,
-  );
-
+  const visible = commissions.filter((c) => !statusFilter || c.status === statusFilter);
   const pending = visible.filter((c) => c.status === "pending");
 
   const toggleSelect = (id: string) =>
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) { next.delete(id); } else { next.add(id); }
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
 
-  const selectAll = () =>
-    setSelected(new Set(pending.map((c) => c.id)));
-
+  const selectAll = () => setSelected(new Set(pending.map((c) => c.id)));
   const clearSelection = () => setSelected(new Set());
 
-  const markLoading = (ids: string[]) =>
-    setLoading((prev) => new Set([...prev, ...ids]));
-
+  const markLoading = (ids: string[]) => setLoading((prev) => new Set([...prev, ...ids]));
   const clearLoading = (ids: string[]) =>
     setLoading((prev) => {
       const next = new Set(prev);
@@ -62,6 +54,9 @@ export default function ReferralCommissionQueue({
           setCommissions((prev) =>
             prev.map((c) => (c.id === id ? { ...c, status: "approved" as const } : c)),
           );
+          notify.success("Commission approved");
+        } else {
+          notify.error("Approve failed");
         }
       } else {
         const res = await fetch("/api/admin/commissions/bulk-approve", {
@@ -76,6 +71,12 @@ export default function ReferralCommissionQueue({
               result.approved.includes(c.id) ? { ...c, status: "approved" as const } : c,
             ),
           );
+          notify.success(
+            `Approved ${result.approved.length}`,
+            result.failed.length ? `${result.failed.length} failed` : undefined,
+          );
+        } else {
+          notify.error("Bulk approve failed");
         }
       }
     } finally {
@@ -92,6 +93,9 @@ export default function ReferralCommissionQueue({
         setCommissions((prev) =>
           prev.map((c) => (c.id === id ? { ...c, status: "rejected" as const } : c)),
         );
+        notify.success("Commission rejected");
+      } else {
+        notify.error("Reject failed");
       }
     } finally {
       clearLoading([id]);
@@ -103,44 +107,42 @@ export default function ReferralCommissionQueue({
       {/* Filter + bulk bar */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <label className="text-xs font-semibold text-muted">Status:</label>
+          <label htmlFor="commission-status" className="text-xs font-semibold text-muted">
+            Status:
+          </label>
           <div className="relative">
             <select
+              id="commission-status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="appearance-none rounded-full border border-border bg-background/30 py-1.5 pl-3 pr-8 text-sm font-semibold text-foreground"
+              className="appearance-none rounded-full border border-border bg-background/30 py-1.5 pl-3 pr-8 text-sm font-semibold text-foreground focus-ring"
             >
               <option value="">All</option>
               <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
             </select>
-            <ChevronDown size={14} className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted" />
+            <ChevronDown
+              size={14}
+              className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-muted"
+              aria-hidden="true"
+            />
           </div>
         </div>
 
         {statusFilter === "pending" && (
           <div className="flex items-center gap-2 text-sm">
-            <button
-              onClick={selectAll}
-              className="rounded-full border border-border bg-background/30 px-3 py-1.5 text-xs font-semibold hover:border-brand"
-            >
+            <Button variant="secondary" size="sm" onClick={selectAll}>
               Select all ({pending.length})
-            </button>
+            </Button>
             {selected.size > 0 && (
               <>
-                <button
-                  onClick={clearSelection}
-                  className="rounded-full border border-border bg-background/30 px-3 py-1.5 text-xs font-semibold hover:border-brand"
-                >
+                <Button variant="secondary" size="sm" onClick={clearSelection}>
                   Clear
-                </button>
-                <button
-                  onClick={() => handleApprove([...selected])}
-                  className="rounded-full bg-up px-4 py-1.5 text-xs font-semibold text-black hover:opacity-90"
-                >
+                </Button>
+                <Button size="sm" onClick={() => handleApprove([...selected])}>
                   Approve {selected.size} selected
-                </button>
+                </Button>
               </>
             )}
           </div>
@@ -149,40 +151,40 @@ export default function ReferralCommissionQueue({
 
       {/* Table */}
       {visible.length === 0 ? (
-        <div className="rounded-2xl border border-border bg-surface-soft p-8 text-center text-sm text-muted">
-          No commissions to show.
-        </div>
+        <EmptyState
+          icon={Inbox}
+          title="No commissions to show"
+          description="Nothing matches this filter."
+        />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border">
+        <div className="overflow-x-auto rounded-2xl border border-border">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-surface-soft">
-                {statusFilter === "pending" && (
-                  <th className="w-10 px-4 py-3" />
-                )}
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                {statusFilter === "pending" && <th scope="col" className="w-10 px-4 py-3" />}
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Date
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Beneficiary
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Referee
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted">
                   Level
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted">
                   Base
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-muted">
                   Commission
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted">
+                <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted">
                   Status
                 </th>
                 {statusFilter === "pending" && (
-                  <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted">
+                  <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-muted">
                     Actions
                   </th>
                 )}
@@ -200,7 +202,8 @@ export default function ReferralCommissionQueue({
                             type="checkbox"
                             checked={selected.has(c.id)}
                             onChange={() => toggleSelect(c.id)}
-                            className="h-4 w-4 rounded border-border accent-brand"
+                            aria-label={`Select commission for ${c.refereeUsername}`}
+                            className="h-4 w-4 rounded border-border accent-brand focus-ring"
                           />
                         )}
                       </td>
@@ -208,28 +211,22 @@ export default function ReferralCommissionQueue({
                     <td className="px-4 py-3 text-muted">
                       {new Date(c.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-4 py-3 font-medium text-foreground">
+                    <td className="px-4 py-3 font-mono font-medium text-foreground">
                       {c.beneficiaryUserId.slice(0, 8)}…
                     </td>
                     <td className="px-4 py-3 text-foreground">{c.refereeUsername}</td>
                     <td className="px-4 py-3">
-                      <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-bold text-brand">
-                        L{c.level}
-                      </span>
+                      <Badge tone="brand">L{c.level}</Badge>
                     </td>
-                    <td className="px-4 py-3 text-right text-muted">
+                    <td className="px-4 py-3 text-right tabular-nums text-muted">
                       {formatUsdFromCents(c.baseAmountCents)}
                     </td>
-                    <td className="px-4 py-3 text-right font-semibold text-foreground">
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-foreground">
                       {formatUsdtFromCents(c.commissionCents)}
                       <span className="ml-1 text-xs text-muted">({c.bpsApplied / 100}%)</span>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_PILL[c.status] ?? ""}`}
-                      >
-                        {c.status}
-                      </span>
+                      <StatusPill status={c.status} />
                     </td>
                     {statusFilter === "pending" && (
                       <td className="px-4 py-3">
@@ -238,18 +235,20 @@ export default function ReferralCommissionQueue({
                             <button
                               onClick={() => handleApprove([c.id])}
                               disabled={isLoading}
-                              className="flex h-7 w-7 items-center justify-center rounded-full bg-up/10 text-up transition hover:bg-up hover:text-black disabled:opacity-40"
+                              aria-label="Approve commission"
                               title="Approve"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-up/10 text-up transition focus-ring hover:bg-up hover:text-black disabled:opacity-40"
                             >
-                              <Check size={14} />
+                              <Check size={14} aria-hidden="true" />
                             </button>
                             <button
                               onClick={() => handleReject(c.id)}
                               disabled={isLoading}
-                              className="flex h-7 w-7 items-center justify-center rounded-full bg-down/10 text-down transition hover:bg-down hover:text-white disabled:opacity-40"
+                              aria-label="Reject commission"
                               title="Reject"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-down/10 text-down transition focus-ring hover:bg-down hover:text-white disabled:opacity-40"
                             >
-                              <X size={14} />
+                              <X size={14} aria-hidden="true" />
                             </button>
                           </div>
                         )}

@@ -2,7 +2,6 @@ import { getOptionalServerEnv } from "@/lib/env/server";
 import { getPreviewMarketTokens } from "@/lib/markets/preview-data";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-export const dynamic = "force-dynamic";
 
 const HEARTBEAT_INTERVAL_MS = 25_000;
 const TICK_INTERVAL_MS = 2_000;
