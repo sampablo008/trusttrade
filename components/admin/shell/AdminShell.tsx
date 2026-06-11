@@ -6,7 +6,7 @@ import AdminTopbar from "./AdminTopbar";
 
 type Props = {
   username: string | null;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 };
 
 export default function AdminShell({ username, children }: Props) {

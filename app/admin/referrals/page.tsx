@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { ArrowRight, Flag, GitBranch, ListChecks, Percent } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import AdminPageHeader from "@/components/admin/shell/AdminPageHeader";
@@ -16,6 +17,10 @@ type ModuleCard = {
 };
 
 export default async function AdminReferralsPage() {
+  // Admin pages are auth-gated and per-request; pin to request time so the
+  // preview-data fallback (used on placeholder build env) runs at request, not
+  // during prerender where Cache Components forbids Date.now()/non-deferred data.
+  await connection();
   const [commissionsData, flagsData] = await Promise.all([
     listAdminCommissions({ status: "pending", limit: 1 }),
     listAdminFlags({ isResolved: false, limit: 1 }),
