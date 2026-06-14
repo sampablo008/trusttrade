@@ -10,7 +10,8 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Modal } from "@/components/ui/Modal";
 import { FormField } from "@/components/ui/FormField";
-import { Input, Textarea } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
+import { TokenAmountInput } from "@/components/ui/TokenAmountInput";
 import { CopyButton } from "@/components/ui/CopyButton";
 import EmptyState from "@/components/ui/EmptyState";
 import { notify } from "@/components/ui/toast";
@@ -98,6 +99,9 @@ export default function DepositsQueue({ initialDeposits }: Props) {
     if (res.ok) {
       const data = (await res.json()) as { deposit: Deposit };
       setDepositStatus(id, data.deposit);
+      // Surface the just-approved row: jump the filter to its new status so it
+      // doesn't silently vanish from the default "pending" view.
+      if (statusFilter === "pending") setStatusFilter("approved");
       notify.success("Deposit approved", "User balance credited.");
       closeApprove();
     } else {
@@ -386,13 +390,19 @@ export default function DepositsQueue({ initialDeposits }: Props) {
               required
               error={approveError ?? undefined}
             >
-              <Input
+              <TokenAmountInput
                 id="approve-amount"
-                type="number"
-                min="0"
-                step="any"
                 value={approveAmount}
-                onChange={(e) => setApproveAmount(e.target.value)}
+                onChange={setApproveAmount}
+                symbol={approveTarget.tokenSymbol}
+                priceCents={
+                  approveTarget.amount != null &&
+                  approveTarget.amount > 0 &&
+                  approveTarget.usdValueCents != null &&
+                  approveTarget.usdValueCents > 0
+                    ? Math.round(approveTarget.usdValueCents / approveTarget.amount)
+                    : null
+                }
                 invalid={Boolean(approveError)}
               />
             </FormField>

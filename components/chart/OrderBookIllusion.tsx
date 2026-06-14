@@ -14,7 +14,7 @@ interface OrderRow {
   total: string;
 }
 
-const ROWS = 10;
+const ROWS = 7;
 const SPREAD_BPS = 3;
 const PRICE_DECIMALS = 4;
 

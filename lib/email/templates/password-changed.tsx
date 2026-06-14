@@ -11,7 +11,6 @@ export interface PasswordChangedEmailProps {
   appUrl?: string | null;
   supportEmail?: string | null;
   changedAt: string;
-  requestIp?: string | null;
 }
 
 const PasswordChangedEmail = ({
@@ -19,7 +18,6 @@ const PasswordChangedEmail = ({
   appUrl,
   supportEmail,
   changedAt,
-  requestIp,
 }: PasswordChangedEmailProps) => (
   <BaseLayout
     appName={appName}
@@ -34,7 +32,6 @@ const PasswordChangedEmail = ({
     </BodyText>
 
     <InfoRow label="Changed at" value={changedAt} />
-    {requestIp ? <InfoRow label="Source IP" value={requestIp} /> : null}
 
     <MutedText>
       If you did not make this change, your account may be compromised. Reset
@@ -57,7 +54,6 @@ PasswordChangedEmail.PreviewProps = {
   appUrl: "https://trusttrade.pro",
   supportEmail: "support@trusttrade.pro",
   changedAt: "April 25, 2026, 14:02 UTC",
-  requestIp: "203.0.113.10",
 } satisfies PasswordChangedEmailProps;
 
 export default PasswordChangedEmail;

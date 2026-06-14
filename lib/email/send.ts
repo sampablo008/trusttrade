@@ -69,7 +69,6 @@ export const sendPasswordResetCodeEmail = async (params: {
   to: string;
   code: string;
   expiresInMinutes: number;
-  requestIp?: string | null;
 }): Promise<SendEmailResult> => {
   const b = brand();
   return sendEmail({
@@ -82,7 +81,6 @@ export const sendPasswordResetCodeEmail = async (params: {
       supportEmail: b.supportEmail,
       code: params.code,
       expiresInMinutes: params.expiresInMinutes,
-      requestIp: params.requestIp ?? null,
     }),
   });
 };
@@ -90,7 +88,6 @@ export const sendPasswordResetCodeEmail = async (params: {
 export const sendPasswordChangedEmail = async (params: {
   to: string;
   changedAtIso: string;
-  requestIp?: string | null;
 }): Promise<SendEmailResult> => {
   const b = brand();
   return sendEmail({
@@ -102,7 +99,6 @@ export const sendPasswordChangedEmail = async (params: {
       appUrl: b.appUrl,
       supportEmail: b.supportEmail,
       changedAt: formatUtc(params.changedAtIso),
-      requestIp: params.requestIp ?? null,
     }),
   });
 };
@@ -111,7 +107,6 @@ export const sendPinActivityEmail = async (params: {
   to: string;
   action: "set" | "changed";
   actionAtIso: string;
-  requestIp?: string | null;
 }): Promise<SendEmailResult> => {
   const b = brand();
   const subject =
@@ -128,7 +123,6 @@ export const sendPinActivityEmail = async (params: {
       supportEmail: b.supportEmail,
       action: params.action,
       actionAt: formatUtc(params.actionAtIso),
-      requestIp: params.requestIp ?? null,
     }),
   });
 };
@@ -137,7 +131,6 @@ export const sendLoginCodeEmail = async (params: {
   to: string;
   code: string;
   expiresInMinutes: number;
-  requestIp?: string | null;
 }): Promise<SendEmailResult> => {
   const b = brand();
   return sendEmail({
@@ -150,7 +143,6 @@ export const sendLoginCodeEmail = async (params: {
       supportEmail: b.supportEmail,
       code: params.code,
       expiresInMinutes: params.expiresInMinutes,
-      requestIp: params.requestIp ?? null,
     }),
   });
 };

@@ -20,7 +20,18 @@ export function useOverlay({
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const restoreRef = useRef<HTMLElement | null>(null);
+  // Keep latest props in refs so the effects below depend only on `open`.
+  // Depending on `onClose`/`closeOnEsc` would re-run the focus effect on every
+  // parent render (handlers are usually inline), yanking focus back to the
+  // first focusable element (the close button) on each keystroke.
+  const onCloseRef = useRef(onClose);
+  const closeOnEscRef = useRef(closeOnEsc);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    closeOnEscRef.current = closeOnEsc;
+  });
 
+  // Focus move + scroll lock + focus restore — runs only when `open` flips.
   useEffect(() => {
     if (!open) return;
 
@@ -37,10 +48,22 @@ export function useOverlay({
     const first = panel?.querySelector<HTMLElement>(FOCUSABLE);
     (first ?? panel)?.focus();
 
+    return () => {
+      document.body.style.overflow = overflow;
+      document.body.style.paddingRight = paddingRight;
+      restoreRef.current?.focus?.();
+    };
+  }, [open]);
+
+  // Esc-to-close + Tab focus trap — reads latest props via refs.
+  useEffect(() => {
+    if (!open) return;
+
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape" && closeOnEsc) {
+      const panel = panelRef.current;
+      if (event.key === "Escape" && closeOnEscRef.current) {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== "Tab" || !panel) return;
@@ -65,13 +88,8 @@ export function useOverlay({
     }
 
     document.addEventListener("keydown", onKeyDown, true);
-    return () => {
-      document.removeEventListener("keydown", onKeyDown, true);
-      document.body.style.overflow = overflow;
-      document.body.style.paddingRight = paddingRight;
-      restoreRef.current?.focus?.();
-    };
-  }, [open, onClose, closeOnEsc]);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [open]);
 
   return panelRef;
 }

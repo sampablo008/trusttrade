@@ -9,7 +9,6 @@ import { changePasswordInputSchema } from "@/schemas/account";
 export interface ChangePasswordContext {
   userId: string;
   email: string;
-  requestIp?: string | null;
 }
 
 export const changePassword = async (
@@ -24,7 +23,6 @@ export const changePassword = async (
     await sendPasswordChangedEmail({
       to: context.email,
       changedAtIso: changedAt,
-      requestIp: context.requestIp ?? null,
     }).catch(() => undefined);
     return { changedAt };
   }
@@ -62,7 +60,6 @@ export const changePassword = async (
   await sendPasswordChangedEmail({
     to: context.email,
     changedAtIso: changedAt,
-    requestIp: context.requestIp ?? null,
   }).catch((err) => {
     console.error("[password-service] notification email failed", err);
   });

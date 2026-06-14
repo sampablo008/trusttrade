@@ -18,13 +18,8 @@ import {
   resetPasswordInputSchema,
 } from "@/schemas/password-reset";
 
-export interface RequestContext {
-  requestIp?: string | null;
-}
-
 export const requestPasswordReset = async (
   payload: unknown,
-  context: RequestContext = {},
 ): Promise<{ ok: true }> => {
   const input = forgotPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
@@ -43,7 +38,6 @@ export const requestPasswordReset = async (
       to: email,
       code,
       expiresInMinutes,
-      requestIp: context.requestIp ?? null,
     });
   } catch (err) {
     console.error("[password-reset] otp send failed", err);
@@ -54,7 +48,6 @@ export const requestPasswordReset = async (
 
 export const confirmPasswordReset = async (
   payload: unknown,
-  context: RequestContext = {},
 ): Promise<{ ok: true; redirectTo: string }> => {
   const input = resetPasswordInputSchema.parse(payload);
   const email = input.email.trim().toLowerCase();
@@ -92,7 +85,6 @@ export const confirmPasswordReset = async (
   await sendPasswordChangedEmail({
     to: email,
     changedAtIso: new Date().toISOString(),
-    requestIp: context.requestIp ?? null,
   }).catch(() => undefined);
 
   // Log the user in directly: a successful recovery OTP proves email ownership,
