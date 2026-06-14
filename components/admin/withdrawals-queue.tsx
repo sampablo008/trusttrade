@@ -32,7 +32,7 @@ interface Props {
 
 export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
   const [withdrawals, setWithdrawals] = useState<Withdrawal[]>(initialWithdrawals);
-  const [activeTab, setActiveTab] = useState<"queue" | "payout">("queue");
+  const [activeTab, setActiveTab] = useState<"queue" | "payout" | "paid">("queue");
   const [refreshing, setRefreshing] = useState(false);
   const [approveId, setApproveId] = useState<string | null>(null);
   const [approveNote, setApproveNote] = useState("");
@@ -51,7 +51,12 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
     () => withdrawals.filter((w) => w.status === "approved"),
     [withdrawals],
   );
-  const displayItems = activeTab === "queue" ? pendingItems : payoutItems;
+  const paidItems = useMemo(
+    () => withdrawals.filter((w) => w.status === "paid"),
+    [withdrawals],
+  );
+  const displayItems =
+    activeTab === "queue" ? pendingItems : activeTab === "payout" ? payoutItems : paidItems;
 
   const updateWithdrawal = (id: string, updated: Withdrawal) =>
     setWithdrawals((prev) => prev.map((w) => (w.id === id ? updated : w)));
@@ -300,6 +305,17 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
         >
           Payout ({payoutItems.length})
         </button>
+        <button
+          onClick={() => setActiveTab("paid")}
+          aria-pressed={activeTab === "paid"}
+          className={`rounded-full px-4 py-2 text-sm font-semibold transition focus-ring ${
+            activeTab === "paid"
+              ? "bg-brand text-background"
+              : "border border-border bg-background/30 text-foreground hover:border-brand"
+          }`}
+        >
+          Paid ({paidItems.length})
+        </button>
         <Button
           variant="secondary"
           size="sm"
@@ -319,7 +335,13 @@ export default function WithdrawalsQueue({ initialWithdrawals }: Props) {
         emptyState={
           <EmptyState
             icon={Inbox}
-            title={activeTab === "queue" ? "No pending withdrawals" : "No withdrawals awaiting payout"}
+            title={
+              activeTab === "queue"
+                ? "No pending withdrawals"
+                : activeTab === "payout"
+                  ? "No withdrawals awaiting payout"
+                  : "No paid withdrawals yet"
+            }
             description="Nothing to action right now."
           />
         }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle, XCircle, Eye, RefreshCw, Inbox } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
@@ -132,11 +132,10 @@ export default function DepositsQueue({ initialDeposits }: Props) {
     }
   };
 
-  const refresh = async () => {
+  const loadDeposits = useCallback(async (status: DepositStatus | "all") => {
     setRefreshing(true);
-    const res = await fetch(
-      `/api/admin/deposits?status=${statusFilter === "all" ? "" : statusFilter}`,
-    );
+    const query = status === "all" ? "" : `?status=${status}`;
+    const res = await fetch(`/api/admin/deposits${query}`);
     if (res.ok) {
       const data = (await res.json()) as { items: Deposit[] };
       setDeposits(data.items);
@@ -144,7 +143,21 @@ export default function DepositsQueue({ initialDeposits }: Props) {
       notify.error("Could not refresh deposits");
     }
     setRefreshing(false);
-  };
+  }, []);
+
+  // Filter tabs are server-backed: the page only seeds "pending", so any other
+  // tab (and the post-approve auto-jump) must refetch that status. Skip the
+  // first run — the initial pending list already came from the server.
+  const didMount = useRef(false);
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    void loadDeposits(statusFilter);
+  }, [statusFilter, loadDeposits]);
+
+  const refresh = () => loadDeposits(statusFilter);
 
   const UserCell = ({ deposit }: { deposit: Deposit }) =>
     deposit.userUsername || deposit.userEmail ? (
