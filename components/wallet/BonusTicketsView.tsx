@@ -22,6 +22,7 @@ const statusLabel: Record<BonusTicket["status"], string> = {
 
 const kindLabel: Record<BonusTicket["kind"], string> = {
   signup: "Signup Bonus",
+  deposit: "Deposit Bonus",
   commission: "Referral Commission",
   gift: "Gift",
   admin: "Admin Credit",

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ShieldAlert, Snowflake, RefreshCw } from "lucide-react";
+import { ShieldAlert, Snowflake, RefreshCw, MessageCircle } from "lucide-react";
 import type { AppConfig, ExpiryPolicy, UpdateAppConfigInput } from "@/types/admin";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import { Skeleton } from "@/components/ui/Skeleton";
@@ -119,43 +119,63 @@ export default function GlobalConfigPanel() {
       <div className="grid gap-4 md:grid-cols-2">
         <NumericField
           label="Signup Bonus"
-          hint={formatUsdFromCents(data.signupBonusCents)}
+          kind="usd"
           value={data.signupBonusCents}
           onSave={(v) => mutation.mutate({ signupBonusCents: v })}
           disabled={mutation.isPending}
         />
         <NumericField
+          label="Deposit Bonus %"
+          kind="percent"
+          value={data.depositBonusPctBps}
+          onSave={(v) => mutation.mutate({ depositBonusPctBps: v })}
+          disabled={mutation.isPending}
+        />
+        <NumericField
+          label="Deposit Bonus Cap"
+          kind="usd"
+          value={data.depositBonusMaxCents}
+          onSave={(v) => mutation.mutate({ depositBonusMaxCents: v })}
+          disabled={mutation.isPending}
+        />
+        <NumericField
           label="Min Withdrawal"
-          hint={formatUsdFromCents(data.withdrawMinCents)}
+          kind="usd"
           value={data.withdrawMinCents}
           onSave={(v) => mutation.mutate({ withdrawMinCents: v })}
           disabled={mutation.isPending}
         />
         <NumericField
-          label="Withdrawal Fee (bps)"
-          hint={`${(data.withdrawFeeBps / 100).toFixed(2)}% (${data.withdrawFeeBps} bps)`}
+          label="Withdrawal Fee"
+          kind="percent"
           value={data.withdrawFeeBps}
           onSave={(v) => mutation.mutate({ withdrawFeeBps: v })}
           disabled={mutation.isPending}
         />
         <NumericField
-          label="Bonus Wager Multiplier"
-          hint={`${data.bonusWagerMultiplier}×`}
-          value={data.bonusWagerMultiplier}
-          onSave={(v) => mutation.mutate({ bonusWagerMultiplier: v })}
-          isFloat
+          label="Swap Fee"
+          kind="percent"
+          value={data.swapFeeBps}
+          onSave={(v) => mutation.mutate({ swapFeeBps: v })}
           disabled={mutation.isPending}
         />
         <NumericField
-          label="Bonus Ticket TTL (days)"
-          hint={`${data.bonusTicketTtlDays} days`}
+          label="Bonus Wager Multiplier"
+          kind="multiplier"
+          value={data.bonusWagerMultiplier}
+          onSave={(v) => mutation.mutate({ bonusWagerMultiplier: v })}
+          disabled={mutation.isPending}
+        />
+        <NumericField
+          label="Bonus Ticket TTL"
+          kind="days"
           value={data.bonusTicketTtlDays}
           onSave={(v) => mutation.mutate({ bonusTicketTtlDays: v })}
           disabled={mutation.isPending}
         />
         <NumericField
           label="Min Deposit for Commission"
-          hint={formatUsdFromCents(data.refMinDepositCents)}
+          kind="usd"
           value={data.refMinDepositCents}
           onSave={(v) => mutation.mutate({ refMinDepositCents: v })}
           disabled={mutation.isPending}
@@ -165,8 +185,8 @@ export default function GlobalConfigPanel() {
       {/* Default referral rates */}
       <ConfigCard
         icon={ShieldAlert}
-        title="Default Referral Rates (bps)"
-        description="Base commission rates for each referral level. 100 bps = 1%."
+        title="Default Referral Rates"
+        description="Base commission rate (%) earned at each referral level."
       >
         <div className="grid grid-cols-5 gap-3">
           {([1, 2, 3, 4, 5] as const).map((level) => {
@@ -181,6 +201,30 @@ export default function GlobalConfigPanel() {
               />
             );
           })}
+        </div>
+      </ConfigCard>
+
+      {/* Support channels */}
+      <ConfigCard
+        icon={MessageCircle}
+        title="Customer Support Channels"
+        description="Telegram and WhatsApp shown on the landing page and in user settings. Leave a field blank to hide that channel."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <TextField
+            label="Telegram"
+            placeholder="@handle, phone, or t.me link"
+            value={data.supportTelegram}
+            onSave={(v) => mutation.mutate({ supportTelegram: v })}
+            disabled={mutation.isPending}
+          />
+          <TextField
+            label="WhatsApp"
+            placeholder="Phone, e.g. +15551234567"
+            value={data.supportWhatsapp}
+            onSave={(v) => mutation.mutate({ supportWhatsapp: v })}
+            disabled={mutation.isPending}
+          />
         </div>
       </ConfigCard>
     </div>
@@ -216,64 +260,214 @@ function ConfigCard({
   );
 }
 
+/**
+ * Field "kinds" decouple the stored unit (cents, bps) from what the admin types.
+ * The input always shows a human value (dollars, percent), so editing "$7.00"
+ * means typing 7 — never the raw 700 cents / 200 bps that lives in the DB.
+ */
+type FieldKind = "usd" | "percent" | "days" | "multiplier";
+
+type FieldConfig = {
+  /** stored value -> editable human string */
+  toDraft: (stored: number) => string;
+  /** human string -> stored value (null = invalid) */
+  parse: (draft: string) => number | null;
+  /** stored value -> read-only display */
+  display: (stored: number) => string;
+  prefix?: string;
+  suffix?: string;
+  step: string;
+};
+
+const FIELD_CONFIG: Record<FieldKind, FieldConfig> = {
+  // cents in the DB, dollars in the UI
+  usd: {
+    toDraft: (cents) => (cents / 100).toString(),
+    parse: (draft) => {
+      const dollars = parseFloat(draft);
+      if (isNaN(dollars) || dollars < 0) return null;
+      return Math.round(dollars * 100);
+    },
+    display: (cents) => formatUsdFromCents(cents),
+    prefix: "$",
+    step: "0.01",
+  },
+  // basis points in the DB, percent in the UI (100 bps = 1%)
+  percent: {
+    toDraft: (bps) => (bps / 100).toString(),
+    parse: (draft) => {
+      const pct = parseFloat(draft);
+      if (isNaN(pct) || pct < 0 || pct > 100) return null;
+      return Math.round(pct * 100);
+    },
+    display: (bps) => `${(bps / 100).toFixed(2)}%`,
+    suffix: "%",
+    step: "0.01",
+  },
+  days: {
+    toDraft: (d) => d.toString(),
+    parse: (draft) => {
+      const d = parseInt(draft, 10);
+      if (isNaN(d) || d < 0) return null;
+      return d;
+    },
+    display: (d) => `${d} ${d === 1 ? "day" : "days"}`,
+    suffix: "days",
+    step: "1",
+  },
+  multiplier: {
+    toDraft: (m) => m.toString(),
+    parse: (draft) => {
+      const m = parseFloat(draft);
+      if (isNaN(m) || m < 0) return null;
+      return m;
+    },
+    display: (m) => `${m}×`,
+    suffix: "×",
+    step: "0.1",
+  },
+};
+
 function NumericField({
   label,
-  hint,
+  kind,
   value,
   onSave,
-  isFloat = false,
   disabled,
 }: {
   label: string;
-  hint: string;
+  kind: FieldKind;
   value: number;
   onSave: (v: number) => void;
-  isFloat?: boolean;
   disabled: boolean;
 }) {
+  const cfg = FIELD_CONFIG[kind];
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value ?? ""));
+  const [draft, setDraft] = useState(() => cfg.toDraft(value));
+  const [error, setError] = useState<string | null>(null);
+
+  function startEdit() {
+    setDraft(cfg.toDraft(value));
+    setError(null);
+    setEditing(true);
+  }
 
   function save() {
-    const parsed = isFloat ? parseFloat(draft) : parseInt(draft, 10);
-    if (!isNaN(parsed) && parsed >= 0) onSave(parsed);
+    const parsed = cfg.parse(draft);
+    if (parsed === null) {
+      setError("Enter a valid amount");
+      return;
+    }
+    onSave(parsed);
     setEditing(false);
+    setError(null);
   }
 
   return (
     <div className="rounded-xl border border-border bg-surface-strong p-4">
       <p className="text-xs font-semibold uppercase tracking-widest text-muted">{label}</p>
       {editing ? (
-        <div className="mt-2 flex gap-2">
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") save();
-              if (e.key === "Escape") setEditing(false);
-            }}
-            className="w-full rounded-lg border border-brand bg-transparent px-2 py-1 text-sm text-foreground outline-none"
-          />
-          <button
-            onClick={save}
-            disabled={disabled}
-            className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-background"
-          >
-            Save
-          </button>
-        </div>
+        <>
+          <div className="mt-2 flex gap-2">
+            <div
+              className={`flex w-full items-center gap-1 rounded-lg border bg-transparent px-2 focus-within:ring-2 focus-within:ring-brand/40 ${
+                error ? "border-down" : "border-brand"
+              }`}
+            >
+              {cfg.prefix && <span className="text-sm text-muted">{cfg.prefix}</span>}
+              <input
+                autoFocus
+                type="number"
+                inputMode="decimal"
+                min={0}
+                step={cfg.step}
+                value={draft}
+                aria-label={label}
+                aria-invalid={!!error}
+                onChange={(e) => {
+                  setDraft(e.target.value);
+                  if (error) setError(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") save();
+                  if (e.key === "Escape") setEditing(false);
+                }}
+                className="w-full bg-transparent py-1 text-sm text-foreground tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+              />
+              {cfg.suffix && <span className="text-sm text-muted">{cfg.suffix}</span>}
+            </div>
+            <button
+              onClick={save}
+              disabled={disabled}
+              className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-background transition disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Save
+            </button>
+          </div>
+          {error && (
+            <p className="mt-1 text-xs text-down" role="alert">
+              {error}
+            </p>
+          )}
+        </>
       ) : (
         <button
-          onClick={() => {
-            setDraft(String(value ?? ""));
-            setEditing(true);
-          }}
-          className="mt-2 w-full text-left font-display text-xl font-bold text-foreground hover:text-brand"
+          onClick={startEdit}
+          className="mt-2 w-full text-left font-display text-xl font-bold tabular-nums text-foreground transition hover:text-brand"
         >
-          {hint}
+          {cfg.display(value)}
         </button>
       )}
+    </div>
+  );
+}
+
+function TextField({
+  label,
+  placeholder,
+  value,
+  onSave,
+  disabled,
+}: {
+  label: string;
+  placeholder: string;
+  value: string | null;
+  onSave: (v: string | null) => void;
+  disabled: boolean;
+}) {
+  const [draft, setDraft] = useState(value ?? "");
+  const dirty = draft.trim() !== (value ?? "");
+
+  function save() {
+    if (!dirty) return;
+    const trimmed = draft.trim();
+    onSave(trimmed === "" ? null : trimmed);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-surface-strong p-4">
+      <label className="text-xs font-semibold uppercase tracking-widest text-muted">{label}</label>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setDraft(value ?? "");
+          }}
+          placeholder={placeholder}
+          inputMode="text"
+          autoComplete="off"
+          className="w-full rounded-lg border border-border bg-transparent px-2 py-1 text-sm text-foreground placeholder-muted outline-none focus:border-brand"
+        />
+        <button
+          onClick={save}
+          disabled={disabled || !dirty}
+          className="rounded-lg bg-brand px-3 py-1 text-xs font-semibold text-background transition disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 }
@@ -289,12 +483,18 @@ function InlineBpsField({
   onSave: (v: number) => void;
   disabled: boolean;
 }) {
+  // value is stored in basis points; the admin edits a plain percent.
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(String(value ?? ""));
+  const [draft, setDraft] = useState(() => (value / 100).toString());
+
+  function startEdit() {
+    setDraft((value / 100).toString());
+    setEditing(true);
+  }
 
   function save() {
-    const parsed = parseInt(draft, 10);
-    if (!isNaN(parsed) && parsed >= 0 && parsed <= 10000) onSave(parsed);
+    const pct = parseFloat(draft);
+    if (!isNaN(pct) && pct >= 0 && pct <= 100) onSave(Math.round(pct * 100));
     setEditing(false);
   }
 
@@ -302,30 +502,36 @@ function InlineBpsField({
     <div className="rounded-xl border border-border bg-surface p-3 text-center">
       <p className="text-xs font-semibold text-muted">L{level}</p>
       {editing ? (
-        <input
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={save}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") save();
-            if (e.key === "Escape") setEditing(false);
-          }}
-          disabled={disabled}
-          className="mt-1 w-full bg-transparent text-center text-sm font-bold text-foreground outline-none"
-        />
+        <div className="mt-1 flex items-center justify-center gap-0.5">
+          <input
+            autoFocus
+            type="number"
+            inputMode="decimal"
+            min={0}
+            max={100}
+            step="0.1"
+            value={draft}
+            aria-label={`Level ${level} referral rate (percent)`}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={save}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") save();
+              if (e.key === "Escape") setEditing(false);
+            }}
+            disabled={disabled}
+            className="w-full bg-transparent text-center text-sm font-bold text-foreground tabular-nums outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          />
+          <span className="text-xs text-muted">%</span>
+        </div>
       ) : (
         <button
-          onClick={() => {
-            setDraft(String(value ?? ""));
-            setEditing(true);
-          }}
-          className="mt-1 block w-full text-sm font-bold text-foreground hover:text-brand"
+          onClick={startEdit}
+          className="mt-1 block w-full text-sm font-bold text-foreground tabular-nums hover:text-brand"
         >
-          {value}
+          {(value / 100).toFixed(1)}%
         </button>
       )}
-      <p className="text-[10px] text-muted">{(value / 100).toFixed(1)}%</p>
+      <p className="text-[10px] text-muted">{value} bps</p>
     </div>
   );
 }

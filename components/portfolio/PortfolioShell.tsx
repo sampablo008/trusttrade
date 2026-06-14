@@ -12,6 +12,7 @@ import {
   Activity,
 } from "lucide-react";
 import { formatUsdFromCents } from "@/lib/utils/format";
+import { calcTotalPayout } from "@/lib/utils/money";
 import type { UserTrade } from "@/types/trade";
 
 interface PortfolioShellProps {
@@ -23,13 +24,17 @@ interface PortfolioShellProps {
 
 type OutcomeFilter = "all" | "win" | "lose";
 
+// payoutBps is the TOTAL-return multiplier in bps (10000 = 1.0×), so
+// calcTotalPayout already includes the stake — do NOT add it again.
 function payoutCents(trade: UserTrade): number {
-  if (trade.outcome === "win") {
-    return trade.stakeCents + Math.round((trade.stakeCents * trade.payoutBps) / 10000);
-  }
+  if (trade.outcome === "win") return calcTotalPayout(trade.stakeCents, trade.payoutBps);
   if (trade.outcome === "void") return trade.stakeCents;
   return 0;
 }
+
+// Profit margin as a percent string: bps/10000 = total multiplier, −100 → profit %.
+const profitRatePercent = (payoutBps: number): string =>
+  (payoutBps / 100 - 100).toFixed(2);
 
 function profitCents(trade: UserTrade): number {
   return payoutCents(trade) - trade.stakeCents;
@@ -78,8 +83,8 @@ function ActiveTradeCard({ trade }: { trade: UserTrade }) {
   const m = Math.floor(totalSeconds / 60);
   const s = totalSeconds % 60;
   const isLong = trade.direction === "long";
-  const projectedReturn = trade.stakeCents + Math.round((trade.stakeCents * trade.payoutBps) / 10000);
-  const rate = (trade.payoutBps / 100).toFixed(2);
+  const projectedReturn = calcTotalPayout(trade.stakeCents, trade.payoutBps);
+  const rate = profitRatePercent(trade.payoutBps);
 
   return (
     <div className="rounded-[24px] border border-brand/40 bg-brand/5 p-5 shadow-[0_0_0_1px_rgba(0,200,150,0.05)]">
@@ -145,7 +150,7 @@ function SettledTradeCard({ trade }: { trade: UserTrade }) {
   const isCancelled = trade.status === "cancelled";
   const profit = profitCents(trade);
   const payout = payoutCents(trade);
-  const rate = (trade.payoutBps / 100).toFixed(2);
+  const rate = profitRatePercent(trade.payoutBps);
 
   const resultStyle = isWin
     ? "bg-up/15 text-up"

@@ -25,7 +25,6 @@ interface TokenRow {
   volatility_factor: number | string;
   decimals: number | string | null;
   min_deposit: number | string | null;
-  swap_fee_bps: number | string | null;
   min_swap: number | string | null;
   min_withdrawal: number | string | null;
 }
@@ -153,7 +152,6 @@ const mapLiveToken = (row: TokenRow, liveUsd: number | undefined, withdrawFeeBps
     volumeLabel: formatCompactUsd(volumeEstimateUsd),
     decimals: row.decimals != null ? Math.round(toNumber(row.decimals)) : 8,
     minDeposit: toNumber(row.min_deposit),
-    swapFeeBps: row.swap_fee_bps != null ? Math.round(toNumber(row.swap_fee_bps)) : 0,
     minSwap: toNumber(row.min_swap),
     minWithdrawal: toNumber(row.min_withdrawal),
     withdrawFeeBps,
@@ -170,7 +168,7 @@ export const listMarketTokens = async (): Promise<PublicTokensResult> => {
     adminClient
       .from("tokens")
       .select(
-        "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, swap_fee_bps, min_swap, min_withdrawal, shadow_symbol",
+        "id, symbol, name, icon_path, feed_source, base_price_cents, last_price_cents, last_shadow_price_cents, last_price_at, price_scale, price_offset_cents, volatility_factor, is_enabled, decimals, min_deposit, min_swap, min_withdrawal, shadow_symbol",
       )
       .eq("is_enabled", true)
       .order("symbol", { ascending: true }),

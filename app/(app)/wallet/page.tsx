@@ -9,7 +9,7 @@ import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { listBonusTickets } from "@/lib/bonus/service";
 import { listUserDeposits } from "@/lib/deposits/service";
 import { listTransactions } from "@/lib/transactions/service";
-import { formatUsdFromCents } from "@/lib/utils/format";
+import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import { getWalletBalances } from "@/lib/wallet-balances/service";
 import { listUserWithdrawals } from "@/lib/withdrawals/service";
 
@@ -133,16 +133,44 @@ async function WalletContent() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">{tx.memo ?? "—"}</td>
-                    <td
-                      className={`px-4 py-3 text-right font-mono font-semibold tabular-nums ${
-                        tx.amountCents >= 0
-                          ? "text-[hsl(var(--color-up))]"
-                          : "text-[hsl(var(--color-down))]"
-                      }`}
-                    >
-                      {tx.amountCents >= 0 ? "+" : ""}
-                      {formatUsdFromCents(tx.amountCents)}
-                    </td>
+                    {(() => {
+                      // Trade settlement rows are token-denominated: amount_cents
+                      // is a hardcoded 0 and the real movement lives in the
+                      // metadata-derived token fields. Prefer those when present,
+                      // and show the ~USDT equivalent at exit price underneath.
+                      const hasToken = tx.tokenAmount != null && tx.tokenSymbol != null;
+                      const value = hasToken ? tx.tokenAmount! : tx.amountCents;
+                      const positive = value >= 0;
+                      return (
+                        <td
+                          className={`px-4 py-3 text-right font-mono font-semibold tabular-nums ${
+                            positive
+                              ? "text-[hsl(var(--color-up))]"
+                              : "text-[hsl(var(--color-down))]"
+                          }`}
+                        >
+                          {hasToken ? (
+                            <>
+                              <div>
+                                {positive ? "+" : ""}
+                                {formatTokenAmount(tx.tokenAmount!, tx.tokenSymbol!)}
+                              </div>
+                              {tx.tokenUsdCents != null && (
+                                <div className="text-[10px] font-normal text-muted">
+                                  ≈ {positive ? "+" : ""}
+                                  {formatUsdFromCents(tx.tokenUsdCents)}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              {positive ? "+" : ""}
+                              {formatUsdFromCents(tx.amountCents)}
+                            </>
+                          )}
+                        </td>
+                      );
+                    })()}
                   </tr>
                 ))}
               </tbody>

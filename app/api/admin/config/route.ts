@@ -7,6 +7,8 @@ import { z } from "zod";
 const patchSchema = z.object({
   bonusTicketTtlDays: z.number().int().min(1).max(3650).optional(),
   bonusWagerMultiplier: z.number().min(1).max(100).optional(),
+  depositBonusMaxCents: z.number().int().min(0).optional(),
+  depositBonusPctBps: z.number().int().min(0).max(10000).optional(),
   expiryPolicy: z.enum(["auto_lose", "auto_win", "void", "leave_pending"]).optional(),
   globalTradeFreezeEnabled: z.boolean().optional(),
   refDefaultL1Bps: z.number().int().min(0).max(10000).optional(),
@@ -16,6 +18,22 @@ const patchSchema = z.object({
   refDefaultL5Bps: z.number().int().min(0).max(10000).optional(),
   refMinDepositCents: z.number().int().min(0).optional(),
   signupBonusCents: z.number().int().min(0).optional(),
+  // Free-form contact handle/phone/URL. Empty string clears the channel (→ null).
+  supportTelegram: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .optional(),
+  supportWhatsapp: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((v) => (v === "" ? null : v))
+    .nullable()
+    .optional(),
+  swapFeeBps: z.number().int().min(0).max(10000).optional(),
   withdrawFeeBps: z.number().int().min(0).max(10000).optional(),
   withdrawMinCents: z.number().int().min(0).optional(),
 });

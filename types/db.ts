@@ -105,6 +105,8 @@ export type Database = {
           ref_default_l5_bps: number
           ref_min_deposit_cents: number
           signup_bonus_cents: number
+          support_telegram: string | null
+          support_whatsapp: string | null
           updated_at: string
           withdraw_fee_bps: number
           withdraw_min_cents: number
@@ -124,6 +126,8 @@ export type Database = {
           ref_default_l5_bps?: number
           ref_min_deposit_cents?: number
           signup_bonus_cents?: number
+          support_telegram?: string | null
+          support_whatsapp?: string | null
           updated_at?: string
           withdraw_fee_bps?: number
           withdraw_min_cents?: number
@@ -143,6 +147,8 @@ export type Database = {
           ref_default_l5_bps?: number
           ref_min_deposit_cents?: number
           signup_bonus_cents?: number
+          support_telegram?: string | null
+          support_whatsapp?: string | null
           updated_at?: string
           withdraw_fee_bps?: number
           withdraw_min_cents?: number

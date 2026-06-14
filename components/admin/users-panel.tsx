@@ -6,6 +6,7 @@ import BalanceHistoryDrawer from "@/components/admin/balance-history-drawer";
 import CoinIcon from "@/components/ui/CoinIcon";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { TokenAmountInput } from "@/components/ui/TokenAmountInput";
 import { Badge } from "@/components/ui/Badge";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
 import type { AdminTokenBalance, AdminUser } from "@/types/admin";
@@ -475,13 +476,6 @@ function UserDetail({
     { totalUsdCents: 0, lockedUsdCents: 0 },
   );
 
-  const previewUsd =
-    adjustTokenSelected && adjustAmount
-      ? Math.round(
-          (parseFloat(adjustAmount) || 0) * adjustTokenSelected.usdPriceCents,
-        )
-      : null;
-
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]">
       {/* Column 1: balances + status */}
@@ -684,28 +678,15 @@ function UserDetail({
               {adjustTokenSelected?.symbol ?? "—"}
             </span>
           </label>
-          <div className="relative">
-            <input
-              type="number"
-              min="0"
-              step="any"
-              value={adjustAmount}
-              onChange={(e) => setAdjustAmount(e.target.value)}
-              placeholder="0.00"
-              disabled={!adjustTarget}
-              className="w-full rounded-full border border-border bg-background/40 px-4 py-2 pr-20 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-brand disabled:opacity-40"
-            />
-            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-brand/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-brand">
-              {adjustTokenSelected?.symbol ?? ""}
-            </span>
-          </div>
-          {previewUsd != null && (
-            <p className="px-1 text-[11px] text-muted">
-              ≈ {formatUsdFromCents(previewUsd)} at{" "}
-              {formatUsdFromCents(adjustTokenSelected!.usdPriceCents)} /{" "}
-              {adjustTokenSelected!.symbol}
-            </p>
-          )}
+          <TokenAmountInput
+            value={adjustAmount}
+            onChange={setAdjustAmount}
+            symbol={adjustTokenSelected?.symbol ?? ""}
+            decimals={adjustTokenSelected?.decimals}
+            priceCents={adjustTokenSelected?.usdPriceCents ?? null}
+            disabled={!adjustTarget}
+            placeholder="0.00"
+          />
         </div>
 
         <input

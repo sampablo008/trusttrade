@@ -106,6 +106,8 @@ export default function OrderTicket({
           },
         );
         upsertTrade(result.trade);
+        // Sync server data (free balance dropped by the locked stake) without a reload.
+        router.refresh();
         // Reveal the actual sampled payout to the user (range pre-trade → fixed post-trade).
         const sampledPercent = ((result.trade.payoutBps / 10_000) * 100 - 100).toFixed(0);
         toast.success(`Trade placed · ${sampledPercent}% payout locked`, {
@@ -122,7 +124,7 @@ export default function OrderTicket({
   };
 
   return (
-    <div className="flex h-full flex-col gap-4 overflow-hidden rounded-2xl border border-border bg-surface-soft p-5 shadow-2xl shadow-black/40">
+    <div className="flex min-h-full flex-col gap-4 rounded-2xl border border-border bg-surface-soft p-5 shadow-2xl shadow-black/40">
       {/* Header */}
       <div className="relative flex items-center justify-between border-b border-border/60 pb-4">
         <button

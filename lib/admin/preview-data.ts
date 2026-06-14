@@ -223,6 +223,8 @@ export const previewAuditLog: AuditLogEntry[] = [
 export const previewAppConfig: AppConfig = {
   bonusTicketTtlDays: 90,
   bonusWagerMultiplier: 3,
+  depositBonusMaxCents: 5000,
+  depositBonusPctBps: 1000,
   expiryPolicy: "auto_lose",
   globalTradeFreezeEnabled: false,
   id: 1,
@@ -233,6 +235,9 @@ export const previewAppConfig: AppConfig = {
   refDefaultL5Bps: 50,
   refMinDepositCents: 1000,
   signupBonusCents: 1000,
+  supportTelegram: "@trusttrade_support",
+  supportWhatsapp: "+15551234567",
+  swapFeeBps: 100,
   withdrawFeeBps: 0,
   withdrawMinCents: 5000,
 };

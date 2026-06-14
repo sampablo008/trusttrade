@@ -13,7 +13,6 @@ const previewPinStore = new Map<string, string>();
 export interface PinContext {
   userId: string;
   email: string;
-  requestIp?: string | null;
 }
 
 const hashPin = (pin: string) => bcrypt.hash(pin, BCRYPT_COST);
@@ -108,7 +107,6 @@ export const setOrChangeWithdrawalPin = async (
     to: context.email,
     action,
     actionAtIso: actionAt,
-    requestIp: context.requestIp ?? null,
   }).catch((err) => console.error("[pin-service] email failed", err));
 
   return { action, actionAt };

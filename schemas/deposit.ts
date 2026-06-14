@@ -37,7 +37,12 @@ export const submitDepositInputSchema = z.object({
 });
 
 export const adminDepositFiltersSchema = z.object({
-  status: depositStatusSchema.optional(),
+  // Coerce blank/missing query param (?status= or no param) to undefined so an
+  // "all" filter doesn't trip the enum and 500 the route.
+  status: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    depositStatusSchema.optional(),
+  ),
   userId: z.string().uuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),

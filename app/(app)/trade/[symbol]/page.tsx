@@ -46,7 +46,6 @@ function stubToken(symbol: string, name: string): PublicToken {
     lastPriceAt: null,
     decimals: 8,
     minDeposit: 0,
-    swapFeeBps: 0,
     minSwap: 0,
     minWithdrawal: 0,
     withdrawFeeBps: 0,
@@ -59,7 +58,7 @@ export default function TradeSymbolPage({
   params: Promise<{ symbol: string }>;
 }) {
   return (
-    <main className="flex w-full flex-col gap-3 px-4 py-4 sm:px-6 lg:h-[calc(100dvh-3.75rem)] lg:overflow-hidden lg:px-16">
+    <main className="flex w-full flex-col gap-3 px-4 py-4 sm:px-6 lg:min-h-[calc(100dvh-3.75rem)] lg:px-16">
       <Suspense fallback={<RouteSkeleton className="space-y-6" />}>
         <TradeSymbolContent params={params} />
       </Suspense>

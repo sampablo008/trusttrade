@@ -2,17 +2,21 @@
 
 import { useState, useRef, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Camera, User, Mail, AtSign, Wallet, TrendingUp, Lock, ShieldAlert } from "lucide-react";
+import { Camera, User, Mail, AtSign, Wallet, TrendingUp, Lock, ShieldAlert, LifeBuoy } from "lucide-react";
 import ChangePasswordForm from "@/components/profile/change-password-form";
 import WithdrawalPinForm from "@/components/profile/withdrawal-pin-form";
+import SupportContact from "@/components/support/SupportContact";
+import { hasAnySupportChannel } from "@/lib/config/support";
 import { formatUsdFromCents } from "@/lib/utils/format";
 import type { UserProfile } from "@/types/trade";
+import type { SupportContacts } from "@/types/admin";
 
 interface ProfileShellProps {
   profile: UserProfile;
   avatarUrl: string | null;
   hasWithdrawalPin: boolean;
   emailVerified: boolean;
+  support: SupportContacts | null;
 }
 
 export default function ProfileShell({
@@ -20,6 +24,7 @@ export default function ProfileShell({
   avatarUrl,
   hasWithdrawalPin,
   emailVerified,
+  support,
 }: ProfileShellProps) {
   const [pinSet, setPinSet] = useState(hasWithdrawalPin);
   const router = useRouter();
@@ -246,6 +251,26 @@ export default function ProfileShell({
           </div>
         </div>
       </section>
+
+      {hasAnySupportChannel(support) ? (
+        <section className="rounded-[28px] border border-border bg-surface-soft p-6 sm:p-8">
+          <div className="flex flex-col gap-2">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+              <LifeBuoy size={14} aria-hidden="true" />
+              Support
+            </p>
+            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+              Need help?
+            </h2>
+            <p className="text-sm leading-6 text-muted">
+              Message our team directly on Telegram or WhatsApp for account, deposit, or
+              withdrawal questions.
+            </p>
+          </div>
+
+          <SupportContact contacts={support} variant="row" className="mt-5 sm:max-w-lg" />
+        </section>
+      ) : null}
     </div>
   );
 }

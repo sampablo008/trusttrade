@@ -23,8 +23,11 @@ import {
 } from "lucide-react";
 import { motion, useReducedMotion, useScroll, useTransform } from "framer-motion";
 import BrandLogo from "@/components/brand/BrandLogo";
+import SupportContact from "@/components/support/SupportContact";
+import { hasAnySupportChannel } from "@/lib/config/support";
 import type { PromoSlot } from "@/types/promo";
 import type { MarketSnapshot } from "@/types/platform";
+import type { SupportContacts } from "@/types/admin";
 
 const FEATURE_ICONS: Record<
   string,
@@ -266,6 +269,7 @@ const riseIn = {
 interface LandingShellProps {
   slots: PromoSlot[];
   marketSnapshots: MarketSnapshot[];
+  support: SupportContacts | null;
 }
 
 interface MotionSectionProps {
@@ -347,7 +351,7 @@ function SectionFrame({
   );
 }
 
-export default function LandingShell({ slots, marketSnapshots }: LandingShellProps) {
+export default function LandingShell({ slots, marketSnapshots, support }: LandingShellProps) {
   const heroRef = useRef<HTMLElement | null>(null);
   const reduceMotion = useReducedMotion();
   const { scrollYProgress } = useScroll({
@@ -1267,6 +1271,25 @@ export default function LandingShell({ slots, marketSnapshots }: LandingShellPro
             </div>
           </div>
         </MotionSection>
+
+        {hasAnySupportChannel(support) ? (
+          <MotionSection className="rounded-[28px] border border-border/80 bg-surface/60 p-6 sm:p-8">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="max-w-md">
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-brand">
+                  Need a hand?
+                </p>
+                <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                  Talk to our support team
+                </h3>
+                <p className="mt-1.5 text-sm leading-6 text-muted">
+                  Reach us on Telegram or WhatsApp — real humans, fast replies, 24/7.
+                </p>
+              </div>
+              <SupportContact contacts={support} className="sm:max-w-sm sm:flex-1" />
+            </div>
+          </MotionSection>
+        ) : null}
 
         <motion.footer
           className="pb-8 pt-2 text-center text-xs uppercase tracking-[0.26em] text-muted"

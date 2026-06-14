@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowDownToLine,
@@ -15,6 +16,7 @@ import CoinIcon from "@/components/ui/CoinIcon";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
+import { TokenAmountInput } from "@/components/ui/TokenAmountInput";
 import { FormField } from "@/components/ui/FormField";
 import { CopyButton } from "@/components/ui/CopyButton";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
@@ -65,6 +67,7 @@ export default function WithdrawForm({
   hasWithdrawalPin,
   initialPrimaryAddresses,
 }: Props) {
+  const router = useRouter();
   const withdrawable = useMemo<WithdrawableToken[]>(() => {
     return balances.tokens
       .filter((b) => b.balance > 0)
@@ -187,6 +190,8 @@ export default function WithdrawForm({
     if (res.ok) {
       setSubmitStatus("success");
       setReviewOpen(false);
+      // Refetch server data — balance is now held, withdrawal appears pending.
+      router.refresh();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
       setErrorMsg(json.error?.message ?? "Withdrawal request failed.");
@@ -244,6 +249,7 @@ export default function WithdrawForm({
         return [...without, json.data];
       });
       setBindOpen(false);
+      router.refresh();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
       setBindError(json.error?.message ?? "Failed to save address.");
@@ -287,6 +293,7 @@ export default function WithdrawForm({
         ),
       );
       setRemoveOpen(false);
+      router.refresh();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
       setRemoveError(json.error?.message ?? "Failed to remove address.");
@@ -432,34 +439,28 @@ export default function WithdrawForm({
 
       {/* Amount */}
       <div className="flex flex-col gap-2">
-        <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-          Amount ({selected?.symbol ?? "TOKEN"})
-        </label>
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            min={0}
-            step="any"
-            placeholder={`Enter amount in ${selected?.symbol ?? ""}`}
-            value={amountStr}
-            onChange={(e) => setAmountStr(e.target.value)}
-            disabled={!primary}
-            className="w-full rounded-xl border border-border bg-background/30 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-brand focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-          />
+        <div className="flex items-center justify-between gap-2">
+          <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
+            Amount ({selected?.symbol ?? "TOKEN"})
+          </label>
           <button
             type="button"
             onClick={() => selected && setAmountStr(String(selected.balance))}
             disabled={!primary}
-            className="rounded-full border border-border bg-background/40 px-3 py-2 text-xs font-semibold text-muted transition hover:border-brand hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-full border border-border bg-background/40 px-3 py-1 text-[11px] font-semibold text-muted transition hover:border-brand hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
           >
             Max
           </button>
         </div>
-        {selected && validAmount && (
-          <p className="text-xs text-muted">
-            ≈ {formatUsdFromCents(Math.round(amount * selected.usdPriceCents))}
-          </p>
-        )}
+        <TokenAmountInput
+          value={amountStr}
+          onChange={setAmountStr}
+          symbol={selected?.symbol ?? "TOKEN"}
+          decimals={selected?.decimals}
+          priceCents={selected?.usdPriceCents ?? null}
+          disabled={!primary}
+          placeholder={`Enter amount in ${selected?.symbol ?? ""}`}
+        />
         {validAmount && !minOk && selected && (
           <p className="text-xs text-down">
             Below min withdrawal ({formatTokenAmount(selected.minWithdrawal, selected.symbol, selected.decimals)}).
@@ -620,6 +621,9 @@ export default function WithdrawForm({
               id="bindAddress"
               type="text"
               autoFocus
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               value={bindAddress}
               onChange={(e) => setBindAddress(e.target.value)}
               placeholder="Paste your wallet address"
@@ -678,9 +682,12 @@ function PinInput({
       </label>
       <input
         id={id}
+        name={id}
         type="password"
         inputMode="numeric"
-        autoComplete="off"
+        autoComplete="new-password"
+        data-1p-ignore
+        data-lpignore="true"
         pattern="\d{6}"
         maxLength={6}
         value={value}

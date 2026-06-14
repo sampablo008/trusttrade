@@ -12,7 +12,6 @@ export interface LoginCodeEmailProps {
   supportEmail?: string | null;
   code: string;
   expiresInMinutes: number;
-  requestIp?: string | null;
 }
 
 const LoginCodeEmail = ({
@@ -21,7 +20,6 @@ const LoginCodeEmail = ({
   supportEmail,
   code,
   expiresInMinutes,
-  requestIp,
 }: LoginCodeEmailProps) => (
   <BaseLayout
     appName={appName}
@@ -38,10 +36,8 @@ const LoginCodeEmail = ({
     <CodeBlock code={code} />
 
     <MutedText>
-      This code expires in {expiresInMinutes} minutes.
-      {requestIp ? ` Request originated from IP ${requestIp}.` : ""} If you did
-      not try to sign in, ignore this email and consider rotating your
-      password.
+      This code expires in {expiresInMinutes} minutes. If you did not try to
+      sign in, ignore this email and consider rotating your password.
     </MutedText>
   </BaseLayout>
 );
@@ -52,7 +48,6 @@ LoginCodeEmail.PreviewProps = {
   supportEmail: "support@trusttrade.pro",
   code: "519204",
   expiresInMinutes: 10,
-  requestIp: "203.0.113.10",
 } satisfies LoginCodeEmailProps;
 
 export default LoginCodeEmail;

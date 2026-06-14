@@ -42,15 +42,14 @@ const PREVIEW_DEFAULTS = {
 } as const;
 
 const parsePreviewAdminToken = (
-  token: Omit<AdminToken, "decimals" | "minDeposit" | "swapFeeBps" | "minSwap" | "coingeckoId" | "minWithdrawal" | "withdrawFeeBps"> &
-    Partial<Pick<AdminToken, "decimals" | "minDeposit" | "swapFeeBps" | "minSwap" | "coingeckoId" | "minWithdrawal" | "withdrawFeeBps">>,
+  token: Omit<AdminToken, "decimals" | "minDeposit" | "minSwap" | "coingeckoId" | "minWithdrawal" | "withdrawFeeBps"> &
+    Partial<Pick<AdminToken, "decimals" | "minDeposit" | "minSwap" | "coingeckoId" | "minWithdrawal" | "withdrawFeeBps">>,
 ): AdminToken => {
   const fallback = PREVIEW_DEFAULTS[token.symbol as keyof typeof PREVIEW_DEFAULTS];
   return adminTokenSchema.parse({
     ...token,
     decimals: token.decimals ?? fallback?.decimals ?? 8,
     minDeposit: token.minDeposit ?? 0,
-    swapFeeBps: token.swapFeeBps ?? 100,
     minSwap: token.minSwap ?? 0,
     coingeckoId: token.coingeckoId ?? fallback?.coingeckoId ?? null,
     minWithdrawal: token.minWithdrawal ?? 0,
@@ -302,7 +301,6 @@ const buildPublicToken = (token: AdminToken): PublicToken => {
     }).format(volumeBase / 100),
     decimals: token.decimals,
     minDeposit: token.minDeposit,
-    swapFeeBps: token.swapFeeBps,
     minSwap: token.minSwap,
     minWithdrawal: token.minWithdrawal,
     withdrawFeeBps: token.withdrawFeeBps,
@@ -431,7 +429,6 @@ export const createPreviewAdminToken = (payload: UpsertAdminTokenInput): AdminTo
     volatilityFactor: input.volatilityFactor,
     decimals: input.decimals,
     minDeposit: input.minDeposit,
-    swapFeeBps: input.swapFeeBps,
     minSwap: input.minSwap,
     coingeckoId: input.coingeckoId,
     minWithdrawal: input.minWithdrawal,
@@ -475,7 +472,6 @@ export const updatePreviewAdminToken = (id: string, payload: UpsertAdminTokenInp
     volatilityFactor: input.volatilityFactor,
     decimals: input.decimals,
     minDeposit: input.minDeposit,
-    swapFeeBps: input.swapFeeBps,
     minSwap: input.minSwap,
     coingeckoId: input.coingeckoId,
     minWithdrawal: input.minWithdrawal,

@@ -1,5 +1,5 @@
 export type BonusTicketStatus = "locked" | "released" | "expired";
-export type BonusTicketKind = "signup" | "commission" | "gift" | "admin";
+export type BonusTicketKind = "signup" | "deposit" | "commission" | "gift" | "admin";
 
 export interface BonusTicket {
   id: string;

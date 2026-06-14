@@ -12,7 +12,6 @@ export interface PasswordResetEmailProps {
   supportEmail?: string | null;
   code: string;
   expiresInMinutes: number;
-  requestIp?: string | null;
 }
 
 const PasswordResetEmail = ({
@@ -21,7 +20,6 @@ const PasswordResetEmail = ({
   supportEmail,
   code,
   expiresInMinutes,
-  requestIp,
 }: PasswordResetEmailProps) => (
   <BaseLayout
     appName={appName}
@@ -38,11 +36,9 @@ const PasswordResetEmail = ({
     <CodeBlock code={code} />
 
     <MutedText>
-      This code expires in {expiresInMinutes} minutes.
-      {requestIp ? ` Request originated from IP ${requestIp}.` : ""} If you did
-      not request a reset, ignore this email and your password will stay as it
-      is. Consider rotating your password anyway if this request looks
-      unfamiliar.
+      This code expires in {expiresInMinutes} minutes. If you did not request a
+      reset, ignore this email and your password will stay as it is. Consider
+      rotating your password anyway if this request looks unfamiliar.
     </MutedText>
   </BaseLayout>
 );
@@ -53,7 +49,6 @@ PasswordResetEmail.PreviewProps = {
   supportEmail: "support@trusttrade.pro",
   code: "274019",
   expiresInMinutes: 10,
-  requestIp: "203.0.113.10",
 } satisfies PasswordResetEmailProps;
 
 export default PasswordResetEmail;

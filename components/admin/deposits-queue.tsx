@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle, XCircle, Eye, RefreshCw, Inbox } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { formatTokenAmount, formatUsdFromCents } from "@/lib/utils/format";
@@ -10,7 +10,8 @@ import { DataTable } from "@/components/ui/DataTable";
 import { StatusPill } from "@/components/ui/StatusPill";
 import { Modal } from "@/components/ui/Modal";
 import { FormField } from "@/components/ui/FormField";
-import { Input, Textarea } from "@/components/ui/Input";
+import { Textarea } from "@/components/ui/Input";
+import { TokenAmountInput } from "@/components/ui/TokenAmountInput";
 import { CopyButton } from "@/components/ui/CopyButton";
 import EmptyState from "@/components/ui/EmptyState";
 import { notify } from "@/components/ui/toast";
@@ -98,6 +99,9 @@ export default function DepositsQueue({ initialDeposits }: Props) {
     if (res.ok) {
       const data = (await res.json()) as { deposit: Deposit };
       setDepositStatus(id, data.deposit);
+      // Surface the just-approved row: jump the filter to its new status so it
+      // doesn't silently vanish from the default "pending" view.
+      if (statusFilter === "pending") setStatusFilter("approved");
       notify.success("Deposit approved", "User balance credited.");
       closeApprove();
     } else {
@@ -128,11 +132,10 @@ export default function DepositsQueue({ initialDeposits }: Props) {
     }
   };
 
-  const refresh = async () => {
+  const loadDeposits = useCallback(async (status: DepositStatus | "all") => {
     setRefreshing(true);
-    const res = await fetch(
-      `/api/admin/deposits?status=${statusFilter === "all" ? "" : statusFilter}`,
-    );
+    const query = status === "all" ? "" : `?status=${status}`;
+    const res = await fetch(`/api/admin/deposits${query}`);
     if (res.ok) {
       const data = (await res.json()) as { items: Deposit[] };
       setDeposits(data.items);
@@ -140,7 +143,21 @@ export default function DepositsQueue({ initialDeposits }: Props) {
       notify.error("Could not refresh deposits");
     }
     setRefreshing(false);
-  };
+  }, []);
+
+  // Filter tabs are server-backed: the page only seeds "pending", so any other
+  // tab (and the post-approve auto-jump) must refetch that status. Skip the
+  // first run — the initial pending list already came from the server.
+  const didMount = useRef(false);
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      return;
+    }
+    void loadDeposits(statusFilter);
+  }, [statusFilter, loadDeposits]);
+
+  const refresh = () => loadDeposits(statusFilter);
 
   const UserCell = ({ deposit }: { deposit: Deposit }) =>
     deposit.userUsername || deposit.userEmail ? (
@@ -386,13 +403,19 @@ export default function DepositsQueue({ initialDeposits }: Props) {
               required
               error={approveError ?? undefined}
             >
-              <Input
+              <TokenAmountInput
                 id="approve-amount"
-                type="number"
-                min="0"
-                step="any"
                 value={approveAmount}
-                onChange={(e) => setApproveAmount(e.target.value)}
+                onChange={setApproveAmount}
+                symbol={approveTarget.tokenSymbol}
+                priceCents={
+                  approveTarget.amount != null &&
+                  approveTarget.amount > 0 &&
+                  approveTarget.usdValueCents != null &&
+                  approveTarget.usdValueCents > 0
+                    ? Math.round(approveTarget.usdValueCents / approveTarget.amount)
+                    : null
+                }
                 invalid={Boolean(approveError)}
               />
             </FormField>

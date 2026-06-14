@@ -12,7 +12,6 @@ export interface PinSetEmailProps {
   supportEmail?: string | null;
   action: "set" | "changed";
   actionAt: string;
-  requestIp?: string | null;
 }
 
 const PinSetEmail = ({
@@ -21,7 +20,6 @@ const PinSetEmail = ({
   supportEmail,
   action,
   actionAt,
-  requestIp,
 }: PinSetEmailProps) => {
   const headline =
     action === "set" ? "Withdrawal PIN activated" : "Withdrawal PIN updated";
@@ -47,7 +45,6 @@ const PinSetEmail = ({
       </BodyText>
 
       <InfoRow label={action === "set" ? "Activated at" : "Updated at"} value={actionAt} />
-      {requestIp ? <InfoRow label="Source IP" value={requestIp} /> : null}
 
       <MutedText>
         If this wasn&apos;t you, contact support immediately
@@ -71,7 +68,6 @@ PinSetEmail.PreviewProps = {
   supportEmail: "support@trusttrade.pro",
   action: "set",
   actionAt: "April 25, 2026, 14:02 UTC",
-  requestIp: "203.0.113.10",
 } satisfies PinSetEmailProps;
 
 export default PinSetEmail;

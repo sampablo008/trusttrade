@@ -50,13 +50,21 @@ const formatTokenAmount = (amount: number, symbol: string | null) => {
   return `${sign}${fixed}${symbol ? ` ${symbol}` : ""}`;
 };
 
-type AmountDisplay = { text: string; tone: "up" | "down" | "neutral" };
+type AmountDisplay = { text: string; tone: "up" | "down" | "neutral"; usd?: string };
+
+// USD-equivalent subtext for a token row (e.g. "≈ $148.21"). Sign-free —
+// direction is already conveyed by the token amount's colour/sign.
+const usdEquivalent = (tx: AdminTransaction): string | undefined =>
+  tx.tokenUsdCents !== null && tx.tokenUsdCents !== 0
+    ? `≈ ${formatUsdFromCents(Math.abs(tx.tokenUsdCents))}`
+    : undefined;
 
 const renderAmount = (tx: AdminTransaction): AmountDisplay => {
   if (tx.tokenAmount !== null && tx.tokenAmount !== 0) {
     return {
       text: formatTokenAmount(tx.tokenAmount, tx.tokenSymbol),
       tone: tx.tokenAmount > 0 ? "up" : "down",
+      usd: usdEquivalent(tx),
     };
   }
   if (tx.tokenAmount === 0 && tx.tokenSymbol) {
@@ -177,8 +185,13 @@ export default function BalanceHistoryDrawer({
                     <span className="text-sm font-semibold text-foreground">
                       {TRANSACTION_KIND_LABELS[tx.kind] ?? tx.kind}
                     </span>
-                    <span className={`text-sm font-semibold ${toneClass}`}>
-                      {amount.text}
+                    <span className="flex flex-col items-end">
+                      <span className={`text-sm font-semibold ${toneClass}`}>
+                        {amount.text}
+                      </span>
+                      {amount.usd && (
+                        <span className="text-[11px] text-muted">{amount.usd}</span>
+                      )}
                     </span>
                   </div>
                   <div className="mt-1 text-[11px] text-muted">
