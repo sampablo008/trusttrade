@@ -3,6 +3,7 @@ import ProfileShell from "@/components/profile/ProfileShell";
 import { loadAccountIdentity } from "@/lib/account/profile-lookup";
 import { assertUserApi } from "@/lib/auth/assert-user-api";
 import { getProfile } from "@/lib/trades/service";
+import { getSupportContacts } from "@/lib/admin/config-service";
 
 export const metadata: Metadata = {
   title: "My Profile | TrustTrade",
@@ -11,9 +12,10 @@ export const metadata: Metadata = {
 
 export default async function MePage() {
   const { userId } = await assertUserApi();
-  const [profile, identity] = await Promise.all([
+  const [profile, identity, support] = await Promise.all([
     getProfile(userId),
     loadAccountIdentity(userId),
+    getSupportContacts(),
   ]);
 
   const avatarUrl = profile.avatarPath
@@ -27,6 +29,7 @@ export default async function MePage() {
         avatarUrl={avatarUrl}
         hasWithdrawalPin={identity.hasWithdrawalPin}
         emailVerified={identity.emailVerified}
+        support={support}
       />
     </main>
   );

@@ -106,6 +106,8 @@ export default function OrderTicket({
           },
         );
         upsertTrade(result.trade);
+        // Sync server data (free balance dropped by the locked stake) without a reload.
+        router.refresh();
         // Reveal the actual sampled payout to the user (range pre-trade → fixed post-trade).
         const sampledPercent = ((result.trade.payoutBps / 10_000) * 100 - 100).toFixed(0);
         toast.success(`Trade placed · ${sampledPercent}% payout locked`, {

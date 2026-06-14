@@ -51,7 +51,6 @@ interface AdminTokenRow {
   volatility_factor: number | string;
   decimals: number | string | null;
   min_deposit: number | string | null;
-  swap_fee_bps: number | string | null;
   min_swap: number | string | null;
   coingecko_id: string | null;
   min_withdrawal: number | string | null;
@@ -110,7 +109,6 @@ const mapAdminTokenRow = (row: AdminTokenRow, withdrawFeeBps: number): AdminToke
     volatilityFactor: Number(toNumber(row.volatility_factor).toFixed(4)),
     decimals: row.decimals != null ? Math.round(toNumber(row.decimals)) : 8,
     minDeposit: toNumber(row.min_deposit),
-    swapFeeBps: row.swap_fee_bps != null ? Math.round(toNumber(row.swap_fee_bps)) : 0,
     minSwap: toNumber(row.min_swap),
     coingeckoId: row.coingecko_id ?? null,
     minWithdrawal: toNumber(row.min_withdrawal),
@@ -136,7 +134,7 @@ const mapAdminTradePeriodRow = (row: AdminTradePeriodRow): AdminTradePeriod => {
 };
 
 const selectAdminTokenFields =
-  "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at, decimals, min_deposit, swap_fee_bps, min_swap, coingecko_id, min_withdrawal";
+  "id, symbol, name, icon_path, feed_source, base_price_cents, shadow_symbol, price_scale, price_offset_cents, volatility_factor, is_enabled, last_price_cents, last_shadow_price_cents, created_at, updated_at, decimals, min_deposit, min_swap, coingecko_id, min_withdrawal";
 
 const fetchGlobalWithdrawFeeBps = async (
   client: ReturnType<typeof createSupabaseAdminClient>,
@@ -192,7 +190,6 @@ export const createAdminToken = async (payload: unknown): Promise<AdminToken> =>
       volatility_factor: input.volatilityFactor,
       decimals: input.decimals,
       min_deposit: input.minDeposit,
-      swap_fee_bps: input.swapFeeBps,
       min_swap: input.minSwap,
       coingecko_id: input.coingeckoId,
       min_withdrawal: input.minWithdrawal,
@@ -231,7 +228,6 @@ export const updateAdminToken = async (id: string, payload: unknown): Promise<Ad
       volatility_factor: input.volatilityFactor,
       decimals: input.decimals,
       min_deposit: input.minDeposit,
-      swap_fee_bps: input.swapFeeBps,
       min_swap: input.minSwap,
       coingecko_id: input.coingeckoId,
       min_withdrawal: input.minWithdrawal,

@@ -1,5 +1,5 @@
 import "server-only";
-import type { AppConfig, BusinessDashboard, UpdateAppConfigInput } from "@/types/admin";
+import type { AppConfig, BusinessDashboard, SupportContacts, UpdateAppConfigInput } from "@/types/admin";
 import { previewAppConfig, previewBusinessDashboard } from "@/lib/admin/preview-data";
 import { getOptionalServerEnv } from "@/lib/env/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -14,6 +14,8 @@ export const getAppConfig = async (): Promise<AppConfig> => {
   return {
     bonusTicketTtlDays: data.bonus_ticket_ttl_days,
     bonusWagerMultiplier: Number(data.bonus_wager_multiplier),
+    depositBonusMaxCents: data.deposit_bonus_max_cents,
+    depositBonusPctBps: data.deposit_bonus_pct_bps,
     expiryPolicy: data.expiry_policy,
     globalTradeFreezeEnabled: data.global_trade_freeze,
     id: data.id,
@@ -24,6 +26,9 @@ export const getAppConfig = async (): Promise<AppConfig> => {
     refDefaultL5Bps: data.ref_default_l5_bps,
     refMinDepositCents: data.ref_min_deposit_cents,
     signupBonusCents: data.signup_bonus_cents,
+    supportTelegram: data.support_telegram,
+    supportWhatsapp: data.support_whatsapp,
+    swapFeeBps: data.swap_fee_bps,
     withdrawFeeBps: data.withdraw_fee_bps,
     withdrawMinCents: data.withdraw_min_cents,
   };
@@ -37,6 +42,8 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
 
   if (input.bonusTicketTtlDays !== undefined) patch.bonus_ticket_ttl_days = input.bonusTicketTtlDays;
   if (input.bonusWagerMultiplier !== undefined) patch.bonus_wager_multiplier = input.bonusWagerMultiplier;
+  if (input.depositBonusMaxCents !== undefined) patch.deposit_bonus_max_cents = input.depositBonusMaxCents;
+  if (input.depositBonusPctBps !== undefined) patch.deposit_bonus_pct_bps = input.depositBonusPctBps;
   if (input.expiryPolicy !== undefined) patch.expiry_policy = input.expiryPolicy;
   if (input.globalTradeFreezeEnabled !== undefined) patch.global_trade_freeze = input.globalTradeFreezeEnabled;
   if (input.refDefaultL1Bps !== undefined) patch.ref_default_l1_bps = input.refDefaultL1Bps;
@@ -46,6 +53,9 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
   if (input.refDefaultL5Bps !== undefined) patch.ref_default_l5_bps = input.refDefaultL5Bps;
   if (input.refMinDepositCents !== undefined) patch.ref_min_deposit_cents = input.refMinDepositCents;
   if (input.signupBonusCents !== undefined) patch.signup_bonus_cents = input.signupBonusCents;
+  if (input.supportTelegram !== undefined) patch.support_telegram = input.supportTelegram;
+  if (input.supportWhatsapp !== undefined) patch.support_whatsapp = input.supportWhatsapp;
+  if (input.swapFeeBps !== undefined) patch.swap_fee_bps = input.swapFeeBps;
   if (input.withdrawFeeBps !== undefined) patch.withdraw_fee_bps = input.withdrawFeeBps;
   if (input.withdrawMinCents !== undefined) patch.withdraw_min_cents = input.withdrawMinCents;
 
@@ -55,6 +65,8 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
   return {
     bonusTicketTtlDays: data.bonus_ticket_ttl_days,
     bonusWagerMultiplier: Number(data.bonus_wager_multiplier),
+    depositBonusMaxCents: data.deposit_bonus_max_cents,
+    depositBonusPctBps: data.deposit_bonus_pct_bps,
     expiryPolicy: data.expiry_policy,
     globalTradeFreezeEnabled: data.global_trade_freeze,
     id: data.id,
@@ -65,9 +77,30 @@ export const updateAppConfig = async (input: UpdateAppConfigInput): Promise<AppC
     refDefaultL5Bps: data.ref_default_l5_bps,
     refMinDepositCents: data.ref_min_deposit_cents,
     signupBonusCents: data.signup_bonus_cents,
+    supportTelegram: data.support_telegram,
+    supportWhatsapp: data.support_whatsapp,
+    swapFeeBps: data.swap_fee_bps,
     withdrawFeeBps: data.withdraw_fee_bps,
     withdrawMinCents: data.withdraw_min_cents,
   };
+};
+
+// Public-safe reader: only the two support-channel fields, no admin gate.
+// Used by the landing page (cached) and the user profile/settings section.
+export const getSupportContacts = async (): Promise<SupportContacts> => {
+  if (!getOptionalServerEnv()) {
+    return { telegram: previewAppConfig.supportTelegram, whatsapp: previewAppConfig.supportWhatsapp };
+  }
+
+  const db = createSupabaseAdminClient();
+  const { data, error } = await db
+    .from("app_config")
+    .select("support_telegram, support_whatsapp")
+    .eq("id", 1)
+    .single();
+  if (error) throw new Error(error.message);
+
+  return { telegram: data.support_telegram, whatsapp: data.support_whatsapp };
 };
 
 export const getBusinessDashboard = async (): Promise<BusinessDashboard> => {

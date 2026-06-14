@@ -101,6 +101,7 @@ export interface AdminTransaction {
   tokenId: string | null;
   tokenSymbol: string | null;
   tokenAmount: number | null;
+  tokenUsdCents: number | null;
 }
 
 export interface AdminTransactionListResult {
@@ -148,6 +149,8 @@ export type ExpiryPolicy = "auto_lose" | "auto_win" | "void" | "leave_pending";
 export interface AppConfig {
   bonusTicketTtlDays: number;
   bonusWagerMultiplier: number;
+  depositBonusMaxCents: number;
+  depositBonusPctBps: number;
   expiryPolicy: ExpiryPolicy;
   globalTradeFreezeEnabled: boolean;
   id: number;
@@ -158,6 +161,9 @@ export interface AppConfig {
   refDefaultL5Bps: number;
   refMinDepositCents: number;
   signupBonusCents: number;
+  supportTelegram: string | null;
+  supportWhatsapp: string | null;
+  swapFeeBps: number;
   withdrawFeeBps: number;
   withdrawMinCents: number;
 }
@@ -165,6 +171,8 @@ export interface AppConfig {
 export interface UpdateAppConfigInput {
   bonusTicketTtlDays?: number;
   bonusWagerMultiplier?: number;
+  depositBonusMaxCents?: number;
+  depositBonusPctBps?: number;
   expiryPolicy?: ExpiryPolicy;
   globalTradeFreezeEnabled?: boolean;
   refDefaultL1Bps?: number;
@@ -174,8 +182,16 @@ export interface UpdateAppConfigInput {
   refDefaultL5Bps?: number;
   refMinDepositCents?: number;
   signupBonusCents?: number;
+  supportTelegram?: string | null;
+  supportWhatsapp?: string | null;
+  swapFeeBps?: number;
   withdrawFeeBps?: number;
   withdrawMinCents?: number;
+}
+
+export interface SupportContacts {
+  telegram: string | null;
+  whatsapp: string | null;
 }
 
 export interface BusinessDashboard {

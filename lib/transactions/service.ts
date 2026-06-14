@@ -17,6 +17,9 @@ export interface Transaction {
   tokenId: string | null;
   tokenSymbol: string | null;
   tokenAmount: number | null;
+  // USD-equivalent of the token movement at the row's recorded price, in cents.
+  // Derived from metadata price (lock/exit price). null when no price is stored.
+  tokenUsdCents: number | null;
 }
 
 export interface TransactionsResult {
@@ -25,9 +28,9 @@ export interface TransactionsResult {
 }
 
 const PREVIEW_TXNS: Transaction[] = [
-  { id: "tx-1", userId: "preview", kind: "deposit", amountCents: 50000, balanceAfterCents: 50000, referenceId: null, memo: "Deposit approved", createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), tokenId: null, tokenSymbol: null, tokenAmount: null },
-  { id: "tx-2", userId: "preview", kind: "trade_debit", amountCents: 0, balanceAfterCents: null, referenceId: null, memo: "Trade placed: ETH long", createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), tokenId: "preview-eth", tokenSymbol: "ETH", tokenAmount: -0.1085 },
-  { id: "tx-3", userId: "preview", kind: "trade_win", amountCents: 0, balanceAfterCents: null, referenceId: null, memo: "Trade won", createdAt: new Date(Date.now() - 86400000).toISOString(), tokenId: "preview-eth", tokenSymbol: "ETH", tokenAmount: 0.22785 },
+  { id: "tx-1", userId: "preview", kind: "deposit", amountCents: 50000, balanceAfterCents: 50000, referenceId: null, memo: "Deposit approved", createdAt: new Date(Date.now() - 86400000 * 3).toISOString(), tokenId: null, tokenSymbol: null, tokenAmount: null, tokenUsdCents: null },
+  { id: "tx-2", userId: "preview", kind: "trade_debit", amountCents: 0, balanceAfterCents: null, referenceId: null, memo: "Trade placed: ETH long", createdAt: new Date(Date.now() - 86400000 * 2).toISOString(), tokenId: "preview-eth", tokenSymbol: "ETH", tokenAmount: -0.1085, tokenUsdCents: -50000 },
+  { id: "tx-3", userId: "preview", kind: "trade_win", amountCents: 0, balanceAfterCents: null, referenceId: null, memo: "Trade won", createdAt: new Date(Date.now() - 86400000).toISOString(), tokenId: "preview-eth", tokenSymbol: "ETH", tokenAmount: 0.22785, tokenUsdCents: 105000 },
 ];
 
 const toNum = (v: unknown): number => {
@@ -58,13 +61,35 @@ const readString = (m: Metadata, key: string): string | null => {
   return typeof v === "string" && v.length > 0 ? v : null;
 };
 
+// First positive price (cents per whole token) among the given metadata keys.
+const readPriceCents = (m: Metadata, ...keys: string[]): number | null => {
+  for (const key of keys) {
+    const v = m?.[key];
+    if (v === null || v === undefined) continue;
+    const n = toNum(v);
+    if (n > 0) return n;
+  }
+  return null;
+};
+
+// USD-equivalent (cents) of a token amount at the given price. Sign follows the
+// token amount, so a forfeited stake stays negative. null when no price known.
+const usdFrom = (tokenAmount: number, priceCents: number | null): number | null =>
+  priceCents === null ? null : Math.round(tokenAmount * priceCents);
+
+interface TokenMovement {
+  tokenId: string;
+  amount: number;
+  usdCents: number | null;
+}
+
 // Derive the token-denominated movement for a transaction row.
 // Returns null when the kind has no token-side movement (legacy USD-only kinds
 // like deposit, withdrawal, bonus, swap-USD-leg, or pre-0036 admin credits).
 const deriveTokenMovement = (
   kind: string,
   metadata: Metadata,
-): { tokenId: string; amount: number } | null => {
+): TokenMovement | null => {
   if (!metadata) return null;
 
   switch (kind) {
@@ -72,32 +97,36 @@ const deriveTokenMovement = (
       const tokenId = readString(metadata, "token_id");
       const stake = toNum(metadata.stake_amount);
       if (!tokenId || stake === 0) return null;
-      return { tokenId, amount: -Math.abs(stake) };
+      const amount = -Math.abs(stake);
+      return { tokenId, amount, usdCents: usdFrom(amount, readPriceCents(metadata, "lock_price_cents", "entry_price_cents")) };
     }
     case "trade_win":
     case "trade_void": {
       const tokenId = readString(metadata, "lock_token_id") ?? readString(metadata, "token_id");
       const payout = toNum(metadata.payout_amount);
       if (!tokenId) return null;
-      return { tokenId, amount: payout };
+      return { tokenId, amount: payout, usdCents: usdFrom(payout, readPriceCents(metadata, "exit_price_cents")) };
     }
     case "trade_lose": {
+      // The locked stake is forfeited on a loss. Show it as a negative token
+      // movement (was rendering a misleading "0") with its USD value at exit.
       const tokenId = readString(metadata, "lock_token_id") ?? readString(metadata, "token_id");
       if (!tokenId) return null;
-      return { tokenId, amount: 0 };
+      const amount = -Math.abs(toNum(metadata.stake_amount));
+      return { tokenId, amount, usdCents: usdFrom(amount, readPriceCents(metadata, "exit_price_cents")) };
     }
     case "trade_cancel_refund": {
       const tokenId = readString(metadata, "token_id") ?? readString(metadata, "lock_token_id");
-      const amt = toNum(metadata.token_amount ?? metadata.stake_amount);
+      const amt = Math.abs(toNum(metadata.token_amount ?? metadata.stake_amount));
       if (!tokenId) return null;
-      return { tokenId, amount: Math.abs(amt) };
+      return { tokenId, amount: amt, usdCents: usdFrom(amt, readPriceCents(metadata, "lock_price_cents", "entry_price_cents")) };
     }
     case "admin_credit":
     case "admin_debit": {
       const tokenId = readString(metadata, "token_id");
       if (!tokenId) return null;
       const delta = toNum(metadata.delta);
-      return { tokenId, amount: delta };
+      return { tokenId, amount: delta, usdCents: usdFrom(delta, readPriceCents(metadata, "price_cents", "lock_price_cents")) };
     }
     case "swap": {
       // Swaps store both legs in metadata. We can't pick one side without
@@ -159,7 +188,7 @@ export const listTransactions = async (
   // Resolve token symbols for any token IDs referenced in the page.
   const movements = rows.map((r) => deriveTokenMovement(r.kind, r.metadata));
   const tokenIds = Array.from(
-    new Set(movements.filter((m): m is { tokenId: string; amount: number } => m !== null).map((m) => m.tokenId)),
+    new Set(movements.filter((m): m is TokenMovement => m !== null).map((m) => m.tokenId)),
   );
 
   const symbolByTokenId = new Map<string, string>();
@@ -187,6 +216,7 @@ export const listTransactions = async (
       tokenId: movement?.tokenId ?? null,
       tokenSymbol: movement ? symbolByTokenId.get(movement.tokenId) ?? null : null,
       tokenAmount: movement?.amount ?? null,
+      tokenUsdCents: movement?.usdCents ?? null,
     };
   });
 

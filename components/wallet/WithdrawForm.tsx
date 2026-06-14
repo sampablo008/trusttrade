@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   ArrowDownToLine,
@@ -66,6 +67,7 @@ export default function WithdrawForm({
   hasWithdrawalPin,
   initialPrimaryAddresses,
 }: Props) {
+  const router = useRouter();
   const withdrawable = useMemo<WithdrawableToken[]>(() => {
     return balances.tokens
       .filter((b) => b.balance > 0)
@@ -188,6 +190,8 @@ export default function WithdrawForm({
     if (res.ok) {
       setSubmitStatus("success");
       setReviewOpen(false);
+      // Refetch server data — balance is now held, withdrawal appears pending.
+      router.refresh();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
       setErrorMsg(json.error?.message ?? "Withdrawal request failed.");
@@ -245,6 +249,7 @@ export default function WithdrawForm({
         return [...without, json.data];
       });
       setBindOpen(false);
+      router.refresh();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
       setBindError(json.error?.message ?? "Failed to save address.");
@@ -288,6 +293,7 @@ export default function WithdrawForm({
         ),
       );
       setRemoveOpen(false);
+      router.refresh();
     } else {
       const json = (await res.json()) as { error?: { message?: string } };
       setRemoveError(json.error?.message ?? "Failed to remove address.");
@@ -615,6 +621,9 @@ export default function WithdrawForm({
               id="bindAddress"
               type="text"
               autoFocus
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               value={bindAddress}
               onChange={(e) => setBindAddress(e.target.value)}
               placeholder="Paste your wallet address"
@@ -673,9 +682,12 @@ function PinInput({
       </label>
       <input
         id={id}
+        name={id}
         type="password"
         inputMode="numeric"
-        autoComplete="off"
+        autoComplete="new-password"
+        data-1p-ignore
+        data-lpignore="true"
         pattern="\d{6}"
         maxLength={6}
         value={value}

@@ -14,7 +14,6 @@ export interface PublicToken {
   volumeLabel: string;
   decimals: number;
   minDeposit: number;
-  swapFeeBps: number;
   minSwap: number;
   minWithdrawal: number;
   withdrawFeeBps: number;
@@ -73,7 +72,6 @@ export interface AdminToken {
   volatilityFactor: number;
   decimals: number;
   minDeposit: number;
-  swapFeeBps: number;
   minSwap: number;
   coingeckoId: string | null;
   minWithdrawal: number;
@@ -97,7 +95,6 @@ export interface UpsertAdminTokenInput {
   volatilityFactor: number;
   decimals: number;
   minDeposit: number;
-  swapFeeBps: number;
   minSwap: number;
   coingeckoId: string | null;
   minWithdrawal: number;

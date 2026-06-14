@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const bonusTicketStatusSchema = z.enum(["locked", "released", "expired"]);
-export const bonusTicketKindSchema = z.enum(["signup", "commission", "gift", "admin"]);
+export const bonusTicketKindSchema = z.enum(["signup", "deposit", "commission", "gift", "admin"]);
 
 export const bonusTicketSchema = z.object({
   id: z.string().uuid(),

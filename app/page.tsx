@@ -4,6 +4,7 @@ import { cacheLife } from "next/cache";
 import LandingShell from "@/components/home/landing-shell";
 import { listPromoSlots } from "@/lib/promo/service";
 import { listMarketTokens } from "@/lib/markets/service";
+import { getSupportContacts } from "@/lib/admin/config-service";
 
 export const metadata: Metadata = {
   title: "TrustTrade — Trade BTC, ETH, SOL & top crypto in seconds",
@@ -29,14 +30,16 @@ async function LandingContent() {
   "use cache";
   cacheLife("minutes");
 
-  const [promoResult, marketData] = await Promise.all([
+  const [promoResult, marketData, support] = await Promise.all([
     listPromoSlots(true),
     listMarketTokens(),
+    getSupportContacts(),
   ]);
 
   return (
     <LandingShell
       slots={promoResult.items}
+      support={support}
       marketSnapshots={marketData.items.map((token) => ({
         dayChangePercent: token.dayChangePercent,
         name: token.name,

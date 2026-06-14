@@ -31,7 +31,6 @@ interface TokenFormState {
   volatilityFactor: string;
   decimals: string;
   minDeposit: string;
-  swapFeeBps: string;
   minSwap: string;
   coingeckoId: string;
   minWithdrawal: string;
@@ -53,7 +52,6 @@ const createEmptyDraft = (): TokenFormState => ({
   volatilityFactor: "1",
   decimals: "8",
   minDeposit: "0",
-  swapFeeBps: "100",
   minSwap: "0",
   coingeckoId: "",
   minWithdrawal: "0",
@@ -73,7 +71,6 @@ const mapTokenToDraft = (token: AdminToken): TokenFormState => ({
   volatilityFactor: String(token.volatilityFactor),
   decimals: String(token.decimals),
   minDeposit: String(token.minDeposit),
-  swapFeeBps: String(token.swapFeeBps),
   minSwap: String(token.minSwap),
   coingeckoId: token.coingeckoId ?? "",
   minWithdrawal: String(token.minWithdrawal),
@@ -206,7 +203,6 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
       volatilityFactor: draft.volatilityFactor,
       decimals: draft.decimals,
       minDeposit: draft.minDeposit,
-      swapFeeBps: draft.swapFeeBps,
       minSwap: draft.minSwap,
       coingeckoId: draft.coingeckoId.trim() || null,
       minWithdrawal: draft.minWithdrawal,
@@ -545,19 +541,6 @@ export default function TokenControlPanel({ initialData }: TokenControlPanelProp
               className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
             />
             <p className="text-[11px] text-muted">Smallest accepted user deposit, in this token&apos;s units.</p>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-xs font-semibold uppercase tracking-[0.22em] text-muted">
-              Swap fee (bps)
-            </label>
-            <input
-              inputMode="numeric"
-              value={draft.swapFeeBps}
-              onChange={(event) => updateDraft("swapFeeBps", event.target.value)}
-              className="w-full rounded-[20px] border border-border bg-background/35 px-4 py-4 text-sm text-foreground outline-none transition focus:border-brand"
-            />
-            <p className="text-[11px] text-muted">Charged when this token is the FROM side. 100 bps = 1%.</p>
           </div>
 
           <div className="space-y-2">

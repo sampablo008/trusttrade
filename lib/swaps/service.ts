@@ -30,7 +30,6 @@ interface TokenRow {
   id: string;
   symbol: string;
   decimals: number | string | null;
-  swap_fee_bps: number | string | null;
   min_swap: number | string | null;
   shadow_symbol: string | null;
 }
@@ -71,7 +70,7 @@ const buildSideContext = async (
 
   const { data, error } = await admin
     .from("tokens")
-    .select("id, symbol, decimals, swap_fee_bps, min_swap, shadow_symbol")
+    .select("id, symbol, decimals, min_swap, shadow_symbol")
     .eq("symbol", symbol)
     .maybeSingle();
 
@@ -86,10 +85,28 @@ const buildSideContext = async (
     symbol: row.symbol,
     tokenId: row.id,
     decimals: row.decimals != null ? Math.round(toNum(row.decimals)) : 8,
-    swapFeeBps: row.swap_fee_bps != null ? Math.round(toNum(row.swap_fee_bps)) : 0,
+    // Swap fee is a single global rate (app_config.swap_fee_bps), filled in by
+    // the caller before the quote is computed. 0 is a placeholder, not the fee.
+    swapFeeBps: 0,
     minSwap: toNum(row.min_swap),
     shadowSymbol: row.shadow_symbol ?? null,
   };
+};
+
+// The swap fee is house-wide (app_config), mirroring the global withdraw fee.
+// Kept in sync with the execute_swap RPC, which reads the same column.
+const getSwapFeeBps = async (
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+): Promise<number> => {
+  const { data, error } = await admin
+    .from("app_config")
+    .select("swap_fee_bps")
+    .eq("id", 1)
+    .single();
+  if (error) {
+    throw new ApiClientError(error.message, 500, "CONFIG_FETCH_FAILED", error);
+  }
+  return Math.round(toNum(data.swap_fee_bps));
 };
 
 const resolvePriceCentsForSides = async (
@@ -203,10 +220,12 @@ export const quoteSwap = async (input: QuoteSwapInput): Promise<SwapQuote> => {
   }
 
   const admin = createSupabaseAdminClient();
-  const [fromSide, toSide] = await Promise.all([
+  const [fromSide, toSide, swapFeeBps] = await Promise.all([
     buildSideContext(admin, input.fromSymbol),
     buildSideContext(admin, input.toSymbol),
+    getSwapFeeBps(admin),
   ]);
+  fromSide.swapFeeBps = swapFeeBps;
   const prices = await resolvePriceCentsForSides([fromSide, toSide]);
   const fromPrice = prices[fromSide.symbol];
   const toPrice = prices[toSide.symbol];

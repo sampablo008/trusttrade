@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import CoinIcon from "@/components/ui/CoinIcon";
 import { useForm } from "react-hook-form";
@@ -95,6 +96,7 @@ const formatBytes = (bytes: number) => {
 };
 
 export default function DepositForm({ wallets, tokens }: Props) {
+  const router = useRouter();
   const depositableTokens = useMemo<DepositableToken[]>(() => {
     const uniqueSymbols = [...new Set(wallets.map((w) => w.tokenSymbol))];
     return uniqueSymbols.map((symbol) => {
@@ -278,6 +280,9 @@ export default function DepositForm({ wallets, tokens }: Props) {
 
       if (res.ok) {
         setSubmitStatus("success");
+        // Refetch server components (wallet balance, deposit list) so the
+        // pending deposit shows without a manual full-page reload.
+        router.refresh();
         return;
       }
 

@@ -15,7 +15,6 @@ interface SwapSide {
   iconPath: string | null;
   decimals: number;
   usdPriceCents: number;
-  swapFeeBps: number;
   minSwap: number;
 }
 
@@ -33,7 +32,6 @@ const buildSides = (tokens: PublicToken[]): SwapSide[] =>
     iconPath: t.iconPath,
     decimals: t.decimals,
     usdPriceCents: t.priceCents,
-    swapFeeBps: t.swapFeeBps,
     minSwap: t.minSwap,
   }));
 
