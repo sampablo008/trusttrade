@@ -2,7 +2,11 @@ import "server-only";
 
 const BINANCE_BASE = "https://api.binance.com/api/v3";
 const COINGECKO_BASE = "https://api.coingecko.com/api/v3";
-const CACHE_TTL_MS = 5_000;
+// 60s keeps us well under CoinGecko's free/demo rate limits (the only source
+// that works from US server regions — Binance is geo-blocked, see below). The
+// stale-cache fallback at the end of getLiveUsdPrices serves the last known
+// price past this TTL rather than failing the quote with a 503.
+const CACHE_TTL_MS = 60_000;
 
 interface CacheEntry {
   expiresAt: number;
@@ -70,8 +74,16 @@ const fetchFromCoinGecko = async (
     ids: ids.join(","),
     vs_currencies: "usd",
   });
+  // The demo API key lifts the shared-IP rate limit that makes keyless calls
+  // from Vercel egress IPs 429 (the usual cause of swap 503s). Optional: when
+  // unset we fall back to the keyless endpoint, which still works under light
+  // load. Demo keys go in the x-cg-demo-api-key header on the public base URL.
+  const apiKey = process.env.COINGECKO_API_KEY;
+  const headers: Record<string, string> = { Accept: "application/json" };
+  if (apiKey) headers["x-cg-demo-api-key"] = apiKey;
+
   const res = await fetch(`${COINGECKO_BASE}/simple/price?${params.toString()}`, {
-    headers: { Accept: "application/json" },
+    headers,
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`CoinGecko HTTP ${res.status}`);
@@ -167,8 +179,18 @@ export const getLiveUsdPrices = async (
         }
       }
     } catch {
-      // Both sources unreachable — caller will fall back to base_price_cents.
+      // Both sources unreachable — fall through to the stale-cache pass below.
     }
+  }
+
+  // Stale fallback: for anything still unresolved (both sources down or rate
+  // limited this tick), serve the last known price even though its TTL lapsed.
+  // A few-minutes-stale price beats a hard 503 that blocks the swap entirely;
+  // entries are never evicted, so an expired hit is the previous good value.
+  for (const t of tokens) {
+    if (result[t.symbol] != null) continue;
+    const stale = cache.get(t.symbol);
+    if (stale && stale.usd > 0) result[t.symbol] = stale.usd;
   }
 
   return result;
