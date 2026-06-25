@@ -6,6 +6,7 @@ import {
   adjustTokenBalanceInputSchema,
   adminUserListResultSchema,
   adminUserSchema,
+  deleteUserInputSchema,
   freezeUserInputSchema,
   setForcedOutcomeInputSchema,
 } from "@/schemas/admin";
@@ -14,6 +15,7 @@ import type {
   AdminUser,
   AdminUserListResult,
   AdjustTokenBalanceInput,
+  DeleteUserInput,
   FreezeUserInput,
   SetForcedOutcomeInput,
 } from "@/types/admin";
@@ -242,6 +244,43 @@ export const freezeUser = async (
   });
 
   return getAdminUser(userId);
+};
+
+export const deleteUserAccount = async (
+  userId: string,
+  input: unknown,
+  adminId: string,
+): Promise<void> => {
+  const parsed = deleteUserInputSchema.parse(input) as DeleteUserInput;
+
+  const admin = createSupabaseAdminClient();
+  const { error } = await admin.rpc("admin_delete_user_account", {
+    p_user_id: userId,
+    p_admin_id: adminId,
+    p_reason: parsed.reason ?? null,
+  });
+
+  if (error) {
+    const message = error.message ?? "Account deletion failed.";
+    const code =
+      message.includes("USER_NOT_FOUND") ? "USER_NOT_FOUND"
+      : message.includes("CANNOT_DELETE_SELF") ? "CANNOT_DELETE_SELF"
+      : message.includes("CANNOT_DELETE_ADMIN") ? "CANNOT_DELETE_ADMIN"
+      : "USER_DELETE_FAILED";
+
+    const friendly: Record<string, string> = {
+      USER_NOT_FOUND: "User not found.",
+      CANNOT_DELETE_SELF: "You cannot delete your own account.",
+      CANNOT_DELETE_ADMIN: "Admin accounts cannot be deleted from here.",
+    };
+
+    const status =
+      code === "USER_NOT_FOUND" ? 404
+      : code === "CANNOT_DELETE_SELF" || code === "CANNOT_DELETE_ADMIN" ? 422
+      : 500;
+
+    throw new ApiClientError(friendly[code] ?? message, status, code, error);
+  }
 };
 
 export const adjustTokenBalance = async (

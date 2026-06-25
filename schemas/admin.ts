@@ -74,6 +74,10 @@ export const freezeUserInputSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
+export const deleteUserInputSchema = z.object({
+  reason: z.string().max(500).optional(),
+});
+
 export const setForcedOutcomeInputSchema = z.object({
   forcedOutcome: tradeOutcomeSchema.nullable(),
   reason: z.string().max(500).optional(),
