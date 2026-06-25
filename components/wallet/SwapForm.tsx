@@ -144,7 +144,12 @@ export default function SwapForm({ tokens, balances }: Props) {
   const handleMax = () => {
     if (!fromSide) return;
     const decimals = Math.min(fromSide.decimals, 8);
-    setFromAmountStr(Number(fromBalance.toFixed(decimals)).toString());
+    // Floor (truncate) — never round up. toFixed rounds to nearest, which can
+    // produce a value above the true balance (balances carry up to 18 dp), so
+    // the debit exceeds balance and the swap is rejected as insufficient.
+    const factor = 10 ** decimals;
+    const maxAmount = Math.floor(fromBalance * factor) / factor;
+    setFromAmountStr(maxAmount.toString());
     setEditing("from");
   };
 
