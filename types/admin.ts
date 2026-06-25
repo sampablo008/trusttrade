@@ -78,6 +78,10 @@ export interface FreezeUserInput {
   reason?: string;
 }
 
+export interface DeleteUserInput {
+  reason?: string;
+}
+
 export interface SetForcedOutcomeInput {
   forcedOutcome: TradeOutcome | null;
   reason?: string;

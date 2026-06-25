@@ -1,7 +1,7 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
-import { ChevronDown, Plus, Minus, Snowflake, CheckCircle2 } from "lucide-react";
+import { ChevronDown, Plus, Minus, Snowflake, CheckCircle2, Trash2, AlertTriangle } from "lucide-react";
 import BalanceHistoryDrawer from "@/components/admin/balance-history-drawer";
 import CoinIcon from "@/components/ui/CoinIcon";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +40,10 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyUserId, setHistoryUserId] = useState<string | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
@@ -117,6 +121,39 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
     setAdjustAmount("");
     setAdjustNote("");
     setAdjustError(null);
+    setDeleteConfirm("");
+    setDeleteReason("");
+    setDeleteError(null);
+  };
+
+  const handleDelete = async (user: AdminUser) => {
+    setDeleteError(null);
+    setDeleteSubmitting(true);
+    try {
+      const res = await fetch(`/api/admin/users/${user.userId}`, {
+        body: JSON.stringify({ reason: deleteReason || undefined }),
+        headers: { "Content-Type": "application/json" },
+        method: "DELETE",
+      });
+      const data = (await res.json().catch(() => ({}))) as
+        | { ok: true }
+        | { error: { code: string; message: string } };
+
+      if (!res.ok || "error" in data) {
+        setDeleteError(
+          "error" in data ? data.error.message : "Deletion failed.",
+        );
+        return;
+      }
+
+      setExpandedUserId(null);
+      setDeleteConfirm("");
+      setDeleteReason("");
+      setUsers((prev) => prev.filter((u) => u.userId !== user.userId));
+      setTotal((t) => Math.max(t - 1, 0));
+    } finally {
+      setDeleteSubmitting(false);
+    }
   };
 
   const replaceUser = (next: AdminUser) =>
@@ -367,6 +404,16 @@ export default function UsersPanel({ initialData }: UsersPanelProps) {
                             onSetForced={(c) =>
                               handleSetForced(u.userId, choiceToOutcome(c))
                             }
+                            deleteConfirm={deleteConfirm}
+                            setDeleteConfirm={(v) => {
+                              setDeleteConfirm(v);
+                              setDeleteError(null);
+                            }}
+                            deleteReason={deleteReason}
+                            setDeleteReason={setDeleteReason}
+                            deleteError={deleteError}
+                            deleteSubmitting={deleteSubmitting}
+                            onDelete={() => handleDelete(u)}
                             onOpenHistory={() => openHistory(u.userId)}
                             onPickToken={(tokenId) => {
                               setAdjustTarget(tokenId);
@@ -442,6 +489,13 @@ interface UserDetailProps {
   onAdjust: () => void;
   onFreeze: () => void;
   onSetForced: (c: ForcedChoice) => void;
+  deleteConfirm: string;
+  setDeleteConfirm: (v: string) => void;
+  deleteReason: string;
+  setDeleteReason: (v: string) => void;
+  deleteError: string | null;
+  deleteSubmitting: boolean;
+  onDelete: () => void;
   onOpenHistory: () => void;
   onPickToken: (tokenId: string) => void;
 }
@@ -462,6 +516,13 @@ function UserDetail({
   onAdjust,
   onFreeze,
   onSetForced,
+  deleteConfirm,
+  setDeleteConfirm,
+  deleteReason,
+  setDeleteReason,
+  deleteError,
+  deleteSubmitting,
+  onDelete,
   onOpenHistory,
   onPickToken,
 }: UserDetailProps) {
@@ -556,6 +617,54 @@ function UserDetail({
         >
           {user.isFrozen ? "Unfreeze account" : "Freeze account"}
         </button>
+
+        {/* Danger zone: permanent account deletion */}
+        <div className="mt-2 flex flex-col gap-2 rounded-2xl border border-down/30 bg-down/5 p-3">
+          <div className="flex items-center gap-1.5 text-down">
+            <AlertTriangle size={13} aria-hidden="true" />
+            <p className="text-[10px] font-semibold uppercase tracking-[0.22em]">
+              Danger zone
+            </p>
+          </div>
+          <p className="text-[11px] text-muted">
+            Permanently deletes this account and{" "}
+            <span className="font-semibold text-foreground">all</span> of its
+            data (balances, trades, deposits, withdrawals, swaps, referrals,
+            transactions). This cannot be undone.
+          </p>
+          <label className="px-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted">
+            Type{" "}
+            <span className="font-mono text-foreground">{user.username}</span>{" "}
+            to confirm
+          </label>
+          <input
+            type="text"
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            placeholder={user.username}
+            className="rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-down"
+          />
+          <input
+            type="text"
+            value={deleteReason}
+            onChange={(e) => setDeleteReason(e.target.value)}
+            placeholder="Reason (optional)"
+            className="rounded-full border border-border bg-background/40 px-4 py-2 text-sm text-foreground placeholder:text-muted focus:outline-none focus:border-down"
+          />
+          {deleteError && (
+            <p className="rounded-2xl bg-down/10 px-3 py-2 text-[11px] font-semibold text-down">
+              {deleteError}
+            </p>
+          )}
+          <button
+            onClick={onDelete}
+            disabled={deleteConfirm !== user.username || deleteSubmitting}
+            className="flex items-center justify-center gap-2 rounded-full bg-down px-5 py-2.5 text-sm font-semibold text-background transition hover:brightness-110 disabled:opacity-40"
+          >
+            <Trash2 size={14} aria-hidden="true" />
+            {deleteSubmitting ? "Deleting…" : "Delete account"}
+          </button>
+        </div>
       </div>
 
       {/* Column 2: token balances list */}
